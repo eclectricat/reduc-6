@@ -29,6 +29,7 @@
 
 #include "SynthEngine.h"
 #include "Menu.h"
+#include "Modes.h"
 
 
 // GUItool: begin automatically generated code
@@ -57,8 +58,8 @@ const int potPins[] = {A13, A12, A11, A10};
 
 const int led1Pin = 37;
 
-Menu menu;
-Menu2 menu2;
+//Menu menu;
+//Menu2 menu2;
 
 int selectedMenuItem = 0;
 int potMoved = 0;
@@ -68,12 +69,13 @@ int nbPots = 4;
 int potsMoved[] = {0,0,0,0};
 int potValuesOnParamChange[] = {0,0,0,0};
 
-int selectedLane = 0;
-int selectedPage = 0;
-vector<ParameterInfo*> currentMenuPage;
+//int selectedLane = 0;
+//int selectedPage = 0;
+//vector<ParameterInfo*> currentMenuPage;
 
 int val;
 int currentPotVals[] = {0,0,0,0};
+
 
 int nbLoopPasses=0;
 unsigned long startMillis=0;
@@ -82,8 +84,6 @@ unsigned long startMillis=0;
 std::map<String, int> profiling;
 std::map<String, int> moduleCounter;
 
-
-
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
 //const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
@@ -91,32 +91,27 @@ std::map<String, int> moduleCounter;
 const int rs = 12, en = 11, d4 = 38, d5 = 39, d6 = 40, d7 = 41;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
+GlobalState globalState(&engine, &lcd);
+
+//globalState.setup(); // intialise, so the Modes can call back into globalState
+
+
 void myNoteOn(byte channel, byte note, byte velocity) {
-  // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
-  // to read which of the virtual MIDI cables received this message.
-  Serial.print("Note On, ch=");
-  Serial.print(channel, DEC);
-  Serial.print(", note=");
-  Serial.print(note, DEC);
-  Serial.print(", velocity=");
-  Serial.println(velocity, DEC);
-  engine.noteOn(note, velocity);
-  
-  digitalWrite(led1Pin, HIGH);
+  globalState.myNoteOn(channel, note, velocity);
+}
+void myNoteOff(byte channel, byte note, byte velocity) {
+  globalState.myNoteOff(channel, note, velocity);
 }
 
-void myNoteOff(byte channel, byte note, byte velocity) {
-  // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
-  // to read which of the virtual MIDI cables received this message.
-  Serial.print("Note Off, ch=");
-  Serial.print(channel, DEC);
-  Serial.print(", note=");
-  Serial.print(note, DEC);
-  Serial.print(", velocity=");
-  Serial.println(velocity, DEC);
-  engine.noteOff(note, velocity);
 
-  digitalWrite(led1Pin, LOW);
+
+void lockPotentiometers(bool refreshReadingFirst) {
+  for(int pt = 0; pt < nbPots; pt++) {
+        
+        if(refreshReadingFirst)  currentPotVals[pt] = analogRead(potPins[pt]);
+        potsMoved[pt] = 0;
+        potValuesOnParamChange[pt] = currentPotVals[pt];
+      }
 }
 
 
@@ -125,7 +120,8 @@ void setup()
   Serial.begin(9600); // USB is always 12 Mbit/sec
   //waveform1.frequency(500);
   //engine.frequency(500);
-  engine.buildSynth(&menu2);
+  globalState.setup(); // intialise, so the Modes can call back into globalState
+  engine.buildSynth(&(globalState.synthMode.synthParameters));
 
   // Audio connections require memory to work.  For more
   // detailed information, see the MemoryAndCpuUsage example
@@ -152,11 +148,11 @@ void setup()
   }
 
   lcd.begin(16, 2);
-  lcd.print("hello, synth!");
+  lcd.print("hello, cookie!?");
 
-  Serial.println("getting initial page");
-  currentMenuPage = menu2.getPage(0,0);
-  Serial.println("got initial page");
+  globalState.synthMode.setup();
+  lockPotentiometers(true);
+
 
   if ( ARM_DWT_CYCCNT == ARM_DWT_CYCCNT ) {
 		// Enable CPU Cycle Count
@@ -222,17 +218,7 @@ void loop()
   for(int pt = 0; pt < nbPots; pt++) {
         currentPotVals[pt] = analogRead(potPins[pt]);
         if (potsMoved[pt] > 0) {
-
-          currentMenuPage.at(pt)->updateParameter(currentPotVals[pt]);
-
-          // TODO; make this more efficient, this is costly
-          // only refresh if value changed, and print all 4 digits in one go
-          if((now / 10 % 10) == 0) {
-            lcd.setCursor(4*pt,1);
-            lcd.print("    ");
-            lcd.setCursor(4*pt,1);
-            lcd.print(currentMenuPage.at(pt)->printableValue());
-          }
+          globalState.selectedMode->processPotValue(pt, currentPotVals[pt], ((now / 10 % 10) == 0));
 
         } else {
           if (abs(currentPotVals[pt]-potValuesOnParamChange[pt]) > 30 ) {
@@ -250,42 +236,9 @@ void loop()
       Serial.print(i);
       Serial.println("Button press, change param");
 
-      for(int pt = 0; pt < nbPots; pt++) {
-        potsMoved[pt] = 0;
-        potValuesOnParamChange[pt] = currentPotVals[pt];
-      }
-      if (selectedLane == i) { // already on that lane
-        selectedPage = (selectedPage + 1) % menu2.getNbPages(selectedLane);
-        
-      } else {
-        if (i < menu2.getNbLanes()) {
-          selectedLane = i;
-          selectedPage = 0;
-        }
-      }
-
-      if (menu2.existPage(selectedLane, selectedPage)) {
-        currentMenuPage = menu2.getPage(selectedLane, selectedPage);
-        Serial.print("Selected param:");
-        lcd.clear();
-        for(unsigned int p=0;p<currentMenuPage.size();p++) {
-          Serial.print(currentMenuPage.at(p)->getName());
-          Serial.print("__");
-          
-          lcd.setCursor(4*p,0);
-          lcd.print(currentMenuPage.at(p)->getName());
-          lcd.setCursor(4*p,1);
-          lcd.print(currentMenuPage.at(p)->printableValue());
-
-        }
-        Serial.println("");
-
-        
-      }
-
-      if(i==7) {
-          myNoteOn(1, 55, 127);
-      }
+      // TODO: only reset this if an actual page change has happened, But it is not totally broken like that...
+      lockPotentiometers(false);
+      globalState.selectedMode->pushButtonPressed(i);
 
       if(i==6) {
           Serial.println("Testing sd card");
@@ -310,15 +263,12 @@ void loop()
             entry = dir.openNextFile();
           }
           Serial.println("done listing files");
-
-
       }
 
     } else {
       Serial.println("Button release");
-      if(i==7) {
-          myNoteOff(1, 55, 127);
-        }
+      globalState.selectedMode->pushButtonReleased(i);
+
     }
   }
   }

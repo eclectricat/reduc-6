@@ -55,27 +55,6 @@ class ParameterInfoDiscrete: public ParameterInfo {
 * datastructure to keep all the info about the menu, how to navigate
 * e.g. parameter names, ranges, and StaticSignals to store their current value
 */
-class Menu {
-
-  public:
-    void addItem(ParameterInfo* newParam) {
-      items[nbItems++]=newParam;
-      // TODO check we don't exceed limits
-    }
-
-    ParameterInfo* getItem(int index) {
-      return items[index];
-    }
-
-    int getNbItems() {return nbItems;}
-
-  private:
-    const static int currentCapacity = 100;
-    int nbItems = 0;
-
-    ParameterInfo* items[currentCapacity];
-
-};
 
 class Menu2 {
 
