@@ -9,6 +9,7 @@
 #include <bits/stl_tree.h>
 #include <bits/stl_map.h>
 #include <arm_math.h>
+#include <vector>
 
 #include "Utils.h"
 #include <ArduinoJson.h>
@@ -18,9 +19,15 @@
 class Signal;  // fw dec
 class Registry;
 class Menu;
-class Menu2;
+class SynthParameters;
 class Env;
 typedef Signal* SignalPtr;
+
+extern unsigned long _heap_start;
+extern unsigned long _heap_end;
+extern char *__brkval;
+
+
 
 
 class Registry {
@@ -29,9 +36,16 @@ public:
   void enroll(SignalPtr newSignal) {
 
     signals[nbSignals] = newSignal;
+    partIds[nbSignals] = partId;
+    voiceIds[nbSignals] = voiceId;
     nbSignals++;
     Serial.print("Enrolled Signal; now in total ");
     Serial.println(nbSignals);
+    Serial.println(freeram());
+  }
+
+  int freeram() {
+    return (char *)&_heap_end - __brkval;
   }
 
   // debugging
@@ -42,9 +56,28 @@ public:
     return nbSignals;
   }
 
+  // signals registered after this call will be tagged with these ids
+  void setPartAndVoiceTag(int partId, int voiceId) {
+    this->partId = partId;
+    this->voiceId = voiceId;
+  }
+
 private:
-  SignalPtr signals[500];
-  int nbSignals = 0;
+  const static int maxNumSignals = 10000; 
+  SignalPtr signals[maxNumSignals]; // all signals
+  int partIds[maxNumSignals]; //for each signal: which part and voice does it belong to?
+  int voiceIds[maxNumSignals];
+  int nbSignals = 0; // total number of signals registered
+
+  // during registration of the signals, the signals will be tagged with the part/voice that is set here
+  // voice -1 means it always active, e.g. for global mixer signals etc
+  // this only works because there is no multithreading
+  int partId = 0;
+  int voiceId = 0;
+
+
+  SignalPtr activeSignals[maxNumSignals];
+  int nbActiveSignals = 0;
 
   friend class SynthEngine;
 };
@@ -57,7 +90,7 @@ extern JsonDocument jprofiling;
 class Signal {
 
 public:
-  Signal(Registry* r) {
+  Signal(Registry* r) { // part id and voice id
     if (r != NULL) {
       r->enroll(this);
     }
@@ -241,7 +274,7 @@ public:
 
 protected:
   int nbSignals;
-  SignalPtr signals[10];
+  SignalPtr signals[15];
   //float value = 0;
   float value1 = 0;  // for stereo
   float gain = 1;
@@ -782,84 +815,74 @@ private:
   double intermed = 0;
 };
 
-class SynthEngine : public AudioStream {
-public:
-  SynthEngine()
-    : AudioStream(0, NULL) {
-    // any extra initialization
+class Part {
+  public:
+    Part() {
 
-    // lru voice logic
-    for (int i = 0; i < nbVoices; i++) {
+      // lru voice logic
+    for (int i = 0; i < maxNbVoices; i++) {
       lru[i] = i;
     }
 
     // all voices available
-    nbAvailableVoices = nbVoices;
+    nbAvailableVoices = activeNbVoices;
     leastRecentlyReleasedVoiceId = 0;
-  }
 
-  // destruction:
-  // - destroy all Signals in registry
-  // - destroy all paramInfos in Menu
+    }
 
-  virtual void update(void);
+    SignalPtr buildSynth(Registry *registry, SynthParameters* menu, int partId);
 
-  void buildSynth(Menu2* menu);
+    void noteOn(int note, int velo);
+    void noteOff(int note, int velo);
 
-  void noteOn(int note, int velo);
-  void noteOff(int note, int velo);
+    float midiToFreq(int note) {
+      return (440.0f * pow(2, ((note)-69) / 12.0f));
+    }
 
-  float midiToFreq(int note) {
-    return (440.0f * pow(2, ((note)-69) / 12.0f));
-  }
+    void setActiveNbVoices(int n) {
+      activeNbVoices = n;
+      for (int i = 0; i < maxNbVoices; i++) {
+        lru[i] = i;
+      }
 
-  float getAndResetMaxLevel() {
-    float result = this->maxSignalLevel;
-    this->maxSignalLevel = 0;
-    return result;
-  }
+      // all voices available
+      nbAvailableVoices = activeNbVoices;
+      leastRecentlyReleasedVoiceId = 0;
+    }
+
+    int getActiveNbVoices() {
+      return activeNbVoices;
+    }
 
 
+  private:
 
+    int activeNbVoices = 0;
 
-  Registry registry;  // put it here for debugging
+    const static int maxNbVoices = 6;
+    void createSynthVoice(int i,  Registry *registry);
 
-private:
+    StaticSignal* baseFreqs[maxNbVoices];
+    Env* envs[maxNbVoices];
+    Env* fenvs[maxNbVoices];
 
-  void createSynthVoice(int i);
+    
 
-  // for each voice:
-  // the main outputsignal
-  const static int nbVoices = 6;
+    // the per voice signals that go into the last mixer
+    SignalPtr signals[maxNbVoices];
 
-  // the per voice signals that go into the last mixer
-  SignalPtr signals[nbVoices];
+    // remember which note each voice is playing
+    int notes[maxNbVoices];
 
-  // special signals that are controlled by midi events etc
-  //StaticSignal* baseFreq = NULL;
-  StaticSignal* baseFreqs[nbVoices];
-  Env* envs[nbVoices];
-  Env* fenvs[nbVoices];
-  //Env* env = NULL;
+    // for the key assignment logic, simple variant
+    int nextVoice = 0;
 
-  // remember which note each voice is playing
-  int notes[nbVoices];
+    // lru key assignment logic
+    int lru[maxNbVoices];                 // remember which voice was released least recently
+    int nbAvailableVoices;             // point into lru array, with wrap around, inclusive
+    int leastRecentlyReleasedVoiceId;  // point to last voice that was released, with wrap around
 
-  // for the key assignment logic, simple variant
-  int nextVoice = 0;
-
-  // lru key assignment logic
-  int lru[nbVoices];                 // remember which voice was released least recently
-  int nbAvailableVoices;             // point into lru array, with wrap around, inclusive
-  int leastRecentlyReleasedVoiceId;  // point to last voice that was released, with wrap around
-
-  // totaloutput
-  SignalPtr outputSignal = 0;
-
-  //
-  float maxSignalLevel = 0;
-
-  // store all parameters, so all the voices can access them:
+    // store all parameters, so all the voices can access them:
   StaticSignal* o1detune = NULL;
   StaticSignalDiscrete* o1Oct = NULL;
   StaticSignalDiscrete* o2Oct = NULL;
@@ -892,6 +915,90 @@ private:
   StaticSignal* lfoToCutoff = NULL;
   StaticSignal* lfoToPW1 = NULL;
   StaticSignal* lfoToPW2 = NULL;
+
+
+};
+
+class SynthEngine : public AudioStream {
+public:
+  SynthEngine()
+    : AudioStream(0, NULL) {
+    // any extra initialization
+  }
+
+  void buildEngine(std::vector<SynthParameters*>); 
+
+  // destruction:
+  // - destroy all Signals in registry
+  // - destroy all paramInfos in Menu
+
+  virtual void update(void);
+
+  int getNbParts() {
+    return nbParts;
+  }
+
+  void noteOn(byte channel, byte note, byte velocity) {
+    parts[channel-1]->noteOn(note, velocity); // TODO: proper routing and checking
+  }
+
+  void noteOff(byte channel, byte note, byte velocity) {
+    parts[channel-1]->noteOff(note, velocity);
+  }
+
+  float getAndResetMaxLevel() {
+    float result = this->maxSignalLevel;
+    this->maxSignalLevel = 0;
+    return result;
+  }
+
+  // mark those voices as active that are needed
+  void markRequiredSignals() {
+
+    Serial.println("markRequiredSignals");
+    Serial.print("number total registered signals: ");
+    Serial.println(registry.nbSignals);
+
+    registry.nbActiveSignals = 0;
+
+    for (int s=0; s<registry.getNbSignals();s++){
+      int part = registry.partIds[s];
+      if (parts[part]->getActiveNbVoices() > registry.voiceIds[s]) {
+        registry.activeSignals[registry.nbActiveSignals] = registry.signals[s];
+        registry.nbActiveSignals++;
+      }
+    }
+
+    Serial.print("number signals marked as active: ");
+    Serial.println(registry.nbActiveSignals);
+
+  }
+
+  Registry registry;  // put it here for debugging
+
+private:
+
+  // for each voice:
+  // the main outputsignal
+  //const static int nbVoices = 12;
+  const static int nbParts = 6;
+
+  // the per voice signals that go into the last mixer
+  SignalPtr signals[nbParts];
+
+  Part* parts[nbParts];
+
+  // special signals that are controlled by midi events etc
+  //StaticSignal* baseFreq = NULL;
+  
+  //Env* env = NULL;
+
+  // totaloutput
+  SignalPtr outputSignal = 0;
+
+  //
+  float maxSignalLevel = 0;
+  
 };
 
 

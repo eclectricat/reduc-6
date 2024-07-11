@@ -4,44 +4,45 @@
 
 using namespace std;
 
-void SynthEngine::buildSynth(Menu2 *menu) {
+SignalPtr Part::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
 
+  registry->setPartAndVoiceTag(partId,0);
 
   // 1.059 is the half tone detune
-  o1detune = new StaticSignal(&registry, 1.0f);
-  o1Oct = new StaticSignalDiscrete(&registry, 2.0f); 
-  o2Oct = new StaticSignalDiscrete(&registry, 2.0f);
-  o1vol = new StaticSignal(&registry, 1.0f);
-  o2vol = new StaticSignal(&registry, 1.0f);
-  o1wave = new StaticSignal(&registry, 1.0f);
-  o2wave = new StaticSignal(&registry, 1.0f);
-  o1pw = new StaticSignal(&registry, 0.5f);
-  o2pw = new StaticSignal(&registry, 0.5f);
+  o1detune = new StaticSignal(registry, 1.0f);
+  o1Oct = new StaticSignalDiscrete(registry, 2.0f); 
+  o2Oct = new StaticSignalDiscrete(registry, 2.0f);
+  o1vol = new StaticSignal(registry, 1.0f);
+  o2vol = new StaticSignal(registry, 1.0f);
+  o1wave = new StaticSignal(registry, 1.0f);
+  o2wave = new StaticSignal(registry, 1.0f);
+  o1pw = new StaticSignal(registry, 0.5f);
+  o2pw = new StaticSignal(registry, 0.5f);
 
-  subVol = new StaticSignal(&registry, 0.0f);
-  subPhase = new StaticSignal(&registry, 1.0f);
+  subVol = new StaticSignal(registry, 0.0f);
+  subPhase = new StaticSignal(registry, 1.0f);
 
-  envA = new StaticSignal(&registry, 0.0f);
-  envD = new StaticSignal(&registry, 68.0f);
-  envS = new StaticSignal(&registry, 0.5f);
-  envR = new StaticSignal(&registry, 68.0f);
-  fenvA = new StaticSignal(&registry, 13.0f);
-  fenvD = new StaticSignal(&registry, 71.0f);
-  fenvS = new StaticSignal(&registry, 0.3f);
-  fenvR = new StaticSignal(&registry, 71.0f);
-  cutoff = new StaticSignal(&registry, 0.1f);
-  resonance = new StaticSignal(&registry, 0.6f);
-  envFilterAmount = new StaticSignal(&registry, 0.49f);
+  envA = new StaticSignal(registry, 0.0f);
+  envD = new StaticSignal(registry, 68.0f);
+  envS = new StaticSignal(registry, 0.5f);
+  envR = new StaticSignal(registry, 68.0f);
+  fenvA = new StaticSignal(registry, 13.0f);
+  fenvD = new StaticSignal(registry, 71.0f);
+  fenvS = new StaticSignal(registry, 0.3f);
+  fenvR = new StaticSignal(registry, 71.0f);
+  cutoff = new StaticSignal(registry, 0.1f);
+  resonance = new StaticSignal(registry, 0.6f);
+  envFilterAmount = new StaticSignal(registry, 0.49f);
 
-  panSpread = new StaticSignal(&registry, 0.0f);
+  panSpread = new StaticSignal(registry, 0.0f);
 
-  lfoFreq = new StaticSignal(&registry, 1.f);
-  lfoWave = new StaticSignalDiscrete(&registry, 1);
-  lfo = new LFO(&registry, lfoFreq, lfoWave);
-  lfoToPitch = new StaticSignal(&registry, 0.f);
-  lfoToCutoff = new StaticSignal(&registry, 0.f);
-  lfoToPW1 = new StaticSignal(&registry, 0.f);
-  lfoToPW2 = new StaticSignal(&registry, 0.f);
+  lfoFreq = new StaticSignal(registry, 1.f);
+  lfoWave = new StaticSignalDiscrete(registry, 1);
+  lfo = new LFO(registry, lfoFreq, lfoWave);
+  lfoToPitch = new StaticSignal(registry, 0.f);
+  lfoToCutoff = new StaticSignal(registry, 0.f);
+  lfoToPW1 = new StaticSignal(registry, 0.f);
+  lfoToPW2 = new StaticSignal(registry, 0.f);
 
 
   ParameterInfo *pO1Oct = new ParameterInfoDiscrete("1Oct", 0.0f, 4.0f, o1Oct);
@@ -78,7 +79,7 @@ void SynthEngine::buildSynth(Menu2 *menu) {
   ParameterInfo *pLfoToPW2 = new ParameterInfo("PWM  ", 0, 1, lfoToPW2);
 
 
-  StaticSignal *dummyS = new StaticSignal(&registry, 1.0f);
+  StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
   ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
 
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pO1Wave, pO1Vol, pDetune }, 0);
@@ -95,70 +96,74 @@ void SynthEngine::buildSynth(Menu2 *menu) {
   menu->addPage(vector<ParameterInfo *>{ pPanSpread, pDummy, pDummy, pDummy }, 3);
 
 
-  for (int i = 0; i < nbVoices; i++) {
-    createSynthVoice(i);
+  for (int i = 0; i < maxNbVoices; i++) {
+    registry->setPartAndVoiceTag(partId,i);
+    createSynthVoice(i, registry);
   }
 
-  outputSignal = new MixerStereo(&registry, signals, nbVoices, 0.5f);
+  registry->setPartAndVoiceTag(partId,0);
+  Signal *outputSignal = new MixerStereo(registry, signals, maxNbVoices, 0.5f);
+
+  return outputSignal;
 }
 
-void SynthEngine::createSynthVoice(int i) {
+void Part::createSynthVoice(int i, Registry *registry) {
 
   // create the chain of 'Signals'
-  StaticSignal *baseFreq = new StaticSignal(&registry, midiToFreq(59));
+  StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
   this->baseFreqs[i] = baseFreq;
 
-  Signal *pwm1 = new VCA(&registry, lfo, lfoToPW1);
-  Signal *totalO1PW = new Mixer(&registry, {o1pw, pwm1}, 1.0f);
+  Signal *pwm1 = new VCA(registry, lfo, lfoToPW1);
+  Signal *totalO1PW = new Mixer(registry, {o1pw, pwm1}, 1.0f);
 
   // pitch
-  Signal *lfoFactor = new Mixer(&registry, {new StaticSignal(&registry, 1), new VCA(&registry, lfo, lfoToPitch)}, 1);
-  Signal *vibratoPitchFreq = new VCA(&registry, baseFreq, lfoFactor);
+  Signal *lfoFactor = new Mixer(registry, {new StaticSignal(registry, 1), new VCA(registry, lfo, lfoToPitch)}, 1);
+  Signal *vibratoPitchFreq = new VCA(registry, baseFreq, lfoFactor);
 
-  Signal *detunedPitchFreq = new VCA(&registry, vibratoPitchFreq, o1detune);
-  Signal *octavedFreq1 = new VCA(&registry, detunedPitchFreq, new Octaver(&registry, o1Oct));
+  Signal *detunedPitchFreq = new VCA(registry, vibratoPitchFreq, o1detune);
+  Signal *octavedFreq1 = new VCA(registry, detunedPitchFreq, new Octaver(registry, o1Oct));
   // lfo pitch mod: normally we would use 2^mod, but maybe we could use baseFreq * (1 + s * lfo)
 
-  SawOsc *osc = new SawOsc(&registry, octavedFreq1,totalO1PW, o1wave, subVol, subPhase);
+  SawOsc *osc = new SawOsc(registry, octavedFreq1,totalO1PW, o1wave, subVol, subPhase);
 
-  Signal *octavedFreq2 = new VCA(&registry, vibratoPitchFreq, new Octaver(&registry, o2Oct));
+  Signal *octavedFreq2 = new VCA(registry, vibratoPitchFreq, new Octaver(registry, o2Oct));
 
-  Signal *pwm2 = new VCA(&registry, lfo, lfoToPW2);
-  Signal *totalO2PW = new Mixer(&registry, {o2pw, pwm2}, 1.0f);
+  Signal *pwm2 = new VCA(registry, lfo, lfoToPW2);
+  Signal *totalO2PW = new Mixer(registry, {o2pw, pwm2}, 1.0f);
 
-  SawOsc *osc2 = new SawOsc(&registry, octavedFreq2, totalO2PW, o2wave, NULL, NULL);
+  SawOsc *osc2 = new SawOsc(registry, octavedFreq2, totalO2PW, o2wave, NULL, NULL);
 
-  VCA *scaledOsc1 = new VCA(&registry, osc, o1vol);
-  VCA *scaledOsc2 = new VCA(&registry, osc2, o2vol);
+  VCA *scaledOsc1 = new VCA(registry, osc, o1vol);
+  VCA *scaledOsc2 = new VCA(registry, osc2, o2vol);
 
-  Mixer *oscMixer = new Mixer(&registry, { scaledOsc1, scaledOsc2 }, 0.2f);  // scale down so it doesn't distort
-  //Mixer* oscMixer = new Mixer(&registry, {saw}, 0.1f); // scale down so it doesn't distort
+  Mixer *oscMixer = new Mixer(registry, { scaledOsc1, scaledOsc2 }, 0.2f);  // scale down so it doesn't distort
+  //Mixer* oscMixer = new Mixer(registry, {saw}, 0.1f); // scale down so it doesn't distort
 
-  Env *env = new Env(&registry, envA, envD, envS, envR);
+  Env *env = new Env(registry, envA, envD, envS, envR);
   this->envs[i] = env;
-  Env *fenv = new Env(&registry, fenvA, fenvD, fenvS, fenvR);
+  Env *fenv = new Env(registry, fenvA, fenvD, fenvS, fenvR);
   this->fenvs[i] = fenv;
 
-  Signal *totalCutoff = new Mixer(&registry, { cutoff, new VCA(&registry, fenv, envFilterAmount), new VCA(&registry, lfo, lfoToCutoff) }, 1);
+  Signal *totalCutoff = new Mixer(registry, { cutoff, new VCA(registry, fenv, envFilterAmount), new VCA(registry, lfo, lfoToCutoff) }, 1);
 
   // Filters:
-  //Digital2Pole*  filter= new Digital2Pole(&registry, oscMixer, totalCutoff, resonance);
-  //SimperSVF *filter = new SimperSVF(&registry, oscMixer, totalCutoff, resonance);
-  FourPole *filter = new FourPole(&registry, oscMixer, totalCutoff, resonance);
+  //Digital2Pole*  filter= new Digital2Pole(registry, oscMixer, totalCutoff, resonance);
+  //SimperSVF *filter = new SimperSVF(registry, oscMixer, totalCutoff, resonance);
+  FourPole *filter = new FourPole(registry, oscMixer, totalCutoff, resonance);
 
 
-  VCA *vca = new VCA(&registry, filter, env);
+  VCA *vca = new VCA(registry, filter, env);
 
   // distribute voices evenly over stereo width
-  float position = -1 + 2.0f * (float(i) / this->nbVoices);
-  Signal *sPosition = new VCA(&registry, new StaticSignal(&registry, position), panSpread);
-  Signal *pan = new Pan(&registry, vca, sPosition);
+  float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
+  Signal *sPosition = new VCA(registry, new StaticSignal(registry, position), panSpread);
+  Signal *pan = new Pan(registry, vca, sPosition);
 
   // store the last element of the chain -> output
   signals[i] = pan;
 }
 
-void SynthEngine::noteOn(int note, int velo) {
+void Part::noteOn(int note, int velo) {
   //baseFreq->setValue(midiToFreq(note));
   //env->retrigger();
 
@@ -201,7 +206,7 @@ void SynthEngine::noteOn(int note, int velo) {
   notes[selectedVoiceId] = note;
 
   lru[leastRecentlyReleasedVoiceId] = -lru[leastRecentlyReleasedVoiceId];
-  leastRecentlyReleasedVoiceId = (leastRecentlyReleasedVoiceId + 1) % nbVoices;
+  leastRecentlyReleasedVoiceId = (leastRecentlyReleasedVoiceId + 1) % activeNbVoices;
   nbAvailableVoices--;
 
   /* debug logging
@@ -217,16 +222,16 @@ void SynthEngine::noteOn(int note, int velo) {
   */
 }
 
-void SynthEngine::noteOff(int note, int velo) {
+void Part::noteOff(int note, int velo) {
 
   // polyphonic case: kill all voices that are currently playing this notes
-  for (int i = 0; i < nbVoices; i++) {
+  for (int i = 0; i < maxNbVoices; i++) {
     if (notes[i] == note) {
       envs[i]->release();
       fenvs[i]->release();
       notes[i] = -1;
 
-      int returnedVoiceSpot = (leastRecentlyReleasedVoiceId + nbAvailableVoices) % nbVoices;
+      int returnedVoiceSpot = (leastRecentlyReleasedVoiceId + nbAvailableVoices) % activeNbVoices;
       lru[returnedVoiceSpot] = i;  // mark which voice it was that just got released
       nbAvailableVoices++;
     }
@@ -264,9 +269,11 @@ void SynthEngine::update(void) {
   for (i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
 
     // update all Signals in order
-    for (int s = 0; s < registry.nbSignals; s++) {
+    //for (int s = 0; s < registry.nbSignals; s++) {
+    for (int s = 0; s < registry.nbActiveSignals; s++) {
       //registry.signals[s]->update();
-      registry.signals[s]->update_instrumented();
+      //registry.signals[s]->update_instrumented();
+      registry.activeSignals[s]->update_instrumented();
       
     }
 
@@ -298,6 +305,20 @@ void SynthEngine::update(void) {
 
   release(block);
   release(blockR);
+}
+
+void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
+  for (int i=0;i<nbParts;i++) {
+    parts[i] = new Part();
+    signals[i]=parts[i]->buildSynth(&registry, allParams[i], i);
+    Serial.println("created synth part");
+  }
+
+  registry.setPartAndVoiceTag(0,-1);
+  outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
+
+  parts[0]->setActiveNbVoices(3);
+  markRequiredSignals();
 }
 
 void SawOsc::update() {

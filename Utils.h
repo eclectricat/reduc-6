@@ -39,4 +39,6 @@ static inline float fast_tanh(float x)
 	return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
 
+
+
 #endif

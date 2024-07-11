@@ -121,11 +121,15 @@ void setup()
   //waveform1.frequency(500);
   //engine.frequency(500);
   globalState.setup(); // intialise, so the Modes can call back into globalState
-  engine.buildSynth(&(globalState.synthMode.synthParameters));
+  engine.buildEngine(globalState.synthMode.allSynthParameters);
+
+  Serial.println("BUILDENGINE DONE");
 
   // Audio connections require memory to work.  For more
   // detailed information, see the MemoryAndCpuUsage example
-  AudioMemory(10);
+  AudioMemory(100);
+
+  Serial.println("AUDIOMEM DONE");
   
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.8); // caution: very loud - use oscilloscope only!
@@ -178,6 +182,7 @@ void loop()
   // print some stats
   unsigned int now = millis();
   if (now > startMillis + 10000) {
+  //if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");
@@ -192,7 +197,7 @@ void loop()
     AudioProcessorUsageMaxReset();
 
     // profiling info
-    for (int s = 0; s < engine.registry.getNbSignals(); s++) {
+    /*for (int s = 0; s < engine.registry.getNbSignals(); s++) {
       Signal* as = engine.registry.getSignals()[s];
       profiling[as->signame()] = profiling[as->signame()] + as->getAndResetLastSpentTime();
       moduleCounter[as->signame()] = moduleCounter[as->signame()] + 1;
@@ -206,7 +211,7 @@ void loop()
       Serial.print(itr->second/1000000);
       Serial.print("... nbInstances ");
       Serial.println(moduleCounter[itr->first]);
-    }
+    }*/
 
     profiling.clear();
     moduleCounter.clear();

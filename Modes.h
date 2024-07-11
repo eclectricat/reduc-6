@@ -23,7 +23,7 @@ class SynthMode { //: public Mode {
   int selectedPage = 0;
   vector<ParameterInfo*> currentMenuPage;
 
-  Menu2 synthParameters;
+  std::vector<SynthParameters*> allSynthParameters;
 
 };
 
@@ -35,7 +35,7 @@ class GlobalState {
   SynthMode synthMode;
   SynthMode *selectedMode = &synthMode;
 
-  int selectedPart;
+  int selectedPart=0;
 
   void setup();
 

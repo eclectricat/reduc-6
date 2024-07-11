@@ -17,7 +17,7 @@ void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
-  engine->noteOn(note, velocity);
+  engine->noteOn(channel, note, velocity);
 
   //digitalWrite(led1Pin, HIGH);
 }
@@ -31,13 +31,17 @@ void GlobalState::myNoteOff(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
-  engine->noteOff(note, velocity);
+  engine->noteOff(channel, note, velocity);
 
   //digitalWrite(led1Pin, LOW);
 }
 
 void GlobalState::setup() {
   synthMode.globalState = this;
+  for(int i=0;i<this->engine->getNbParts();i++) {
+    synthMode.allSynthParameters.push_back(new SynthParameters());
+    Serial.println("created synth parameters");
+  }
 }
 
 SynthMode::SynthMode(LiquidCrystal *lcd) {
@@ -46,7 +50,7 @@ SynthMode::SynthMode(LiquidCrystal *lcd) {
 
 void SynthMode::setup() {
   Serial.println("getting initial page");
-  currentMenuPage = synthParameters.getPage(0, 0);
+  currentMenuPage = allSynthParameters[0]->getPage(0, 0);
   Serial.println("got initial page");
 }
 
@@ -66,18 +70,20 @@ void SynthMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
 
 void SynthMode::pushButtonPressed(int buttonIndex) {
 
+  SynthParameters* synthParameters = allSynthParameters[globalState->selectedPart];
+
   if (selectedLane == buttonIndex) {  // already on that lane
-    selectedPage = (selectedPage + 1) % synthParameters.getNbPages(selectedLane);
+    selectedPage = (selectedPage + 1) % synthParameters->getNbPages(selectedLane);
 
   } else {
-    if (buttonIndex < synthParameters.getNbLanes()) {
+    if (buttonIndex < synthParameters->getNbLanes()) {
       selectedLane = buttonIndex;
       selectedPage = 0;
     }
   }
 
-  if (synthParameters.existPage(selectedLane, selectedPage)) {
-    currentMenuPage = synthParameters.getPage(selectedLane, selectedPage);
+  if (synthParameters->existPage(selectedLane, selectedPage)) {
+    currentMenuPage = synthParameters->getPage(selectedLane, selectedPage);
     Serial.print("Selected param:");
     lcd->clear();
     for (unsigned int p = 0; p < currentMenuPage.size(); p++) {

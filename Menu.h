@@ -56,10 +56,10 @@ class ParameterInfoDiscrete: public ParameterInfo {
 * e.g. parameter names, ranges, and StaticSignals to store their current value
 */
 
-class Menu2 {
+class SynthParameters {
 
   public:
-    Menu2() {
+    SynthParameters() {
       for(int i=0;i<nbLanes; i++) {
         vector<vector<ParameterInfo*>> newLane;
         lanes.push_back(newLane);
