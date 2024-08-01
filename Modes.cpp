@@ -178,7 +178,7 @@ void SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
   if (buttonIndex == 7) {
-    globalState->myNoteOn(1, 55, 127);
+    globalState->myNoteOn(globalState->selectedPart+1, 55, 127);
   }
 
 }
@@ -198,7 +198,7 @@ void Mode::pushButtonReleased(int buttonIndex) {
 void SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
   if (buttonIndex == 7) {
-    globalState->myNoteOff(1, 55, 127);
+    globalState->myNoteOff(globalState->selectedPart+1, 55, 127);
   }
 }
 
