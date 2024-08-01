@@ -155,6 +155,7 @@ void setup()
   lcd.print("hello, cookie!?");
 
   globalState.synthMode.setup();
+  globalState.partConfigMode.setup();
   lockPotentiometers(true);
 
 
@@ -216,6 +217,14 @@ void loop()
     profiling.clear();
     moduleCounter.clear();
 
+  }
+
+  // delayed display update
+  if (globalState.delayedDisplayRefresh > 0) {
+    if (millis() > globalState.delayedDisplayRefresh) {
+      globalState.delayedDisplayRefresh = -1;
+      globalState.selectedMode->fullDisplayUpdate();
+    }
   }
 
   // check for pots moved

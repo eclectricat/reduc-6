@@ -57,6 +57,8 @@ public:
   }
 
   // signals registered after this call will be tagged with these ids
+  // partId needs to be valid
+  // voice id can be -1 (always active), a very large number, always inactive (but for static signals it does not matter)
   void setPartAndVoiceTag(int partId, int voiceId) {
     this->partId = partId;
     this->voiceId = voiceId;

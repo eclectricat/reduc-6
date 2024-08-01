@@ -10,8 +10,8 @@ SignalPtr Part::buildSynth(Registry* registry, SynthParameters *menu, int partId
 
   // 1.059 is the half tone detune
   o1detune = new StaticSignal(registry, 1.0f);
-  o1Oct = new StaticSignalDiscrete(registry, 2.0f); 
-  o2Oct = new StaticSignalDiscrete(registry, 2.0f);
+  o1Oct = new StaticSignalDiscrete(registry, 1.0f); 
+  o2Oct = new StaticSignalDiscrete(registry, 1.0f);
   o1vol = new StaticSignal(registry, 1.0f);
   o2vol = new StaticSignal(registry, 1.0f);
   o1wave = new StaticSignal(registry, 1.0f);
@@ -318,6 +318,8 @@ void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
   outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
 
   parts[0]->setActiveNbVoices(3);
+  parts[1]->setActiveNbVoices(1);
+
   markRequiredSignals();
 }
 

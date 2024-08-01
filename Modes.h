@@ -6,15 +6,14 @@ class SynthEngine;
 class GlobalState;
 //class Menu2;
 
+class Mode {
 
-class SynthMode { //: public Mode {
   public:
-
-  SynthMode(LiquidCrystal *lcd);
-  virtual void processPotValue(int potIndex, int potVal, bool updateDisplay);
+  virtual void processPotValue(int potIndex, int potVal,  bool updateDisplay);
   virtual void pushButtonPressed(int buttonIndex);
   virtual void pushButtonReleased(int buttonIndex);
-  void setup();
+
+  virtual void fullDisplayUpdate();
 
   GlobalState *globalState;
   LiquidCrystal *lcd;
@@ -27,12 +26,45 @@ class SynthMode { //: public Mode {
 
 };
 
+class SynthMode : public Mode {
+  public:
+
+  SynthMode(LiquidCrystal *lcd);
+  //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
+  virtual void pushButtonPressed(int buttonIndex) override;
+  virtual void pushButtonReleased(int buttonIndex) override;
+  void setup();
+
+};
+
+class PartConfigMode: public Mode {
+
+  public:
+  PartConfigMode(LiquidCrystal *lcd) {
+    this->lcd = lcd;
+  }
+
+  //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
+  //virtual void pushButtonPressed(int buttonIndex) override;
+  //virtual void pushButtonReleased(int buttonIndex) override;
+  void setup();
+
+  //int selectedLane = 0;
+  //int selectedPage = 0;
+  ///vector<ParameterInfo*> currentMenuPage;
+
+  //std::vector<SynthParameters*> allSynthParameters;
+
+
+};
+
 class GlobalState {
 
   public:
   GlobalState(SynthEngine *engine, LiquidCrystal *lcd); 
   
   SynthMode synthMode;
+  PartConfigMode partConfigMode;
   SynthMode *selectedMode = &synthMode;
 
   int selectedPart=0;
@@ -47,8 +79,14 @@ class GlobalState {
   //void processButtonPress();
   // the button positions are directly passed to the mode
 
-  private:
+  bool shiftPressed = false;
+  bool pPressed = false;
+
+  int delayedDisplayRefresh = -1;
+
   SynthEngine *engine;
+  private:
+  
 
 };
 
