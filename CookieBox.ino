@@ -156,6 +156,7 @@ void setup()
 
   globalState.synthMode.setup();
   globalState.partConfigMode.setup();
+  globalState.sequencerMode.setup();
   lockPotentiometers(true);
 
 
@@ -227,6 +228,9 @@ void loop()
     }
   }
 
+  // sequencer
+  if (globalState.seqPlaying) globalState.sequencerMode.maybePlay();
+
   // check for pots moved
 
   for(int pt = 0; pt < nbPots; pt++) {
@@ -251,6 +255,7 @@ void loop()
       Serial.println("Button press, change param");
 
       // TODO: only reset this if an actual page change has happened, But it is not totally broken like that...
+      // also for e.g. sequencermode, params need to be locked e.g. when step changes
       lockPotentiometers(false);
       globalState.selectedMode->pushButtonPressed(i);
 

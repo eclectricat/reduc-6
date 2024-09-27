@@ -4,7 +4,7 @@
 
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
-  : synthMode(lcd), partConfigMode(lcd) {
+  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd) {
   this->engine = engine;
 }
 
@@ -39,10 +39,12 @@ void GlobalState::myNoteOff(byte channel, byte note, byte velocity) {
 void GlobalState::setup() {
   synthMode.globalState = this;
   partConfigMode.globalState = this;
-  for(int i=0;i<this->engine->getNbParts();i++) {
+  sequencerMode.globalState = this;
+  for (int i = 0; i < this->engine->getNbParts(); i++) {
     synthMode.allSynthParameters.push_back(new SynthParameters());
     Serial.println("created synth parameters");
     partConfigMode.allSynthParameters.push_back(new SynthParameters());
+    sequences.push_back(new Sequence());
   }
   this->delayedDisplayRefresh = millis() + 2000;
 }
@@ -62,14 +64,14 @@ void PartConfigMode::setup() {
   // create all the synth params
   Registry *registry = &(globalState->engine->registry);
 
-  registry->setPartAndVoiceTag(0,0); // does not really matter - this signal does not need to be updated by the synth engine
+  registry->setPartAndVoiceTag(0, 0);  // does not really matter - this signal does not need to be updated by the synth engine
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
   ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
 
-  for(int p=0;p<globalState->engine->getNbParts();p++) {
+  for (int p = 0; p < globalState->engine->getNbParts(); p++) {
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pDummy, pDummy, pDummy, pDummy }, 0);
   }
-  
+
 
 
   Serial.println("Part info mode: getting initial page");
@@ -91,45 +93,69 @@ void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
   }
 }
 
+int Mode::handleGenericPushButtonEvents(int buttonIndex) {
+
+  if (buttonIndex == 7) {  // P
+    globalState->pPressed = true;
+    return 1;
+  }
+
+  if (buttonIndex == 6) {  // shift
+    globalState->shiftPressed = true;
+    return 1;
+  }
+
+  if (globalState->shiftPressed && globalState->pPressed) {  // mode switch
+    Serial.println("mode switch");
+
+    if (buttonIndex == 0) {
+      globalState->selectedMode = &(globalState->sequencerMode);
+      lcd->setCursor(0, 0);
+      lcd->print("  SEQUENCER         ");
+      // postPartOrModeSwitch(); // not necessary for this one
+    } else if (buttonIndex == 5) {
+      globalState->selectedMode = &(globalState->synthMode);
+      lcd->setCursor(0, 0);
+      lcd->print("  SYNTH         ");
+      globalState->selectedMode->postPartOrModeSwitch();
+    }
+
+    this->globalState->delayedDisplayRefresh = millis() + 1000;
+
+    return 1;
+  }
+
+  if (globalState->shiftPressed) {  // part switch
+    Serial.println("part switch");
+
+    globalState->selectedPart = buttonIndex;  // TODO check nbParts
+
+    postPartOrModeSwitch();  //this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
+    fullDisplayUpdate();
+    lcd->setCursor(0, 0);
+    lcd->print("Part ");
+    lcd->setCursor(5, 0);
+    lcd->print(buttonIndex + 1);
+    lcd->setCursor(6, 0);
+    lcd->print("               ");
+    this->globalState->delayedDisplayRefresh = millis() + 1000;
+
+    return 1;
+  }
+
+  return 0;
+}
+
 void Mode::pushButtonPressed(int buttonIndex) {
 
   // update state of shift,P
   // if other button: check if part or mode switch
   // otherwise parameter page switch
 
-  if (buttonIndex == 7) { // P
-    globalState->pPressed = true;
-    return;
-  }
+  int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
+  if (eventConsumed) return;
 
-  if (buttonIndex == 6) { // shift
-    globalState->shiftPressed = true;
-    return;
-  }
-
-  if(globalState->shiftPressed && globalState->pPressed) { // mode switch
-    Serial.println("mode switch");
-    return;
-  }
-
-   if(globalState->shiftPressed) { // part switch
-    Serial.println("part switch");
-
-    globalState->selectedPart = buttonIndex; // TODO check nbParts
-    this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
-    fullDisplayUpdate();
-    lcd->setCursor(0, 0);
-    lcd->print("Part ");
-    lcd->setCursor(5, 0);
-    lcd->print(buttonIndex+1);
-    lcd->setCursor(6, 0);
-    lcd->print("               ");
-    this->globalState->delayedDisplayRefresh = millis() + 1000;
-
-    return;
-  }
-
-  SynthParameters* synthParameters = allSynthParameters[globalState->selectedPart];
+  SynthParameters *synthParameters = allSynthParameters[globalState->selectedPart];
 
   if (selectedLane == buttonIndex) {  // already on that lane
     selectedPage = (selectedPage + 1) % synthParameters->getNbPages(selectedLane);
@@ -157,39 +183,36 @@ void Mode::pushButtonPressed(int buttonIndex) {
     fullDisplayUpdate();
     Serial.println("");
   }
-
-  
 }
 
 void Mode::fullDisplayUpdate() {
   lcd->clear();
-    for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
-      Serial.print(currentMenuPage.at(p)->getName());
-      Serial.print("__");
+  for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
+    Serial.print(currentMenuPage.at(p)->getName());
+    Serial.print("__");
 
-      lcd->setCursor(4 * p, 0);
-      lcd->print(currentMenuPage.at(p)->getName());
-      lcd->setCursor(4 * p, 1);
-      lcd->print(currentMenuPage.at(p)->printableValue());
-    }
+    lcd->setCursor(4 * p, 0);
+    lcd->print(currentMenuPage.at(p)->getName());
+    lcd->setCursor(4 * p, 1);
+    lcd->print(currentMenuPage.at(p)->printableValue());
+  }
 }
 
 void SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
-  if (buttonIndex == 7) {
-    globalState->myNoteOn(globalState->selectedPart+1, 55, 127);
+  if ((buttonIndex == 7)&&(!globalState->shiftPressed)) {
+    globalState->myNoteOn(globalState->selectedPart + 1, 55, 127);
   }
-
 }
 
 void Mode::pushButtonReleased(int buttonIndex) {
-  if (buttonIndex == 7) { // P
+  if (buttonIndex == 7) {  // P
     globalState->pPressed = false;
     return;
   }
 
-  if (buttonIndex == 6) { // shift
+  if (buttonIndex == 6) {  // shift
     globalState->shiftPressed = false;
     return;
   }
@@ -198,8 +221,153 @@ void Mode::pushButtonReleased(int buttonIndex) {
 void SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
   if (buttonIndex == 7) {
-    globalState->myNoteOff(globalState->selectedPart+1, 55, 127);
+    globalState->myNoteOff(globalState->selectedPart + 1, 55, 127);
   }
 }
 
+void SynthMode::postPartOrModeSwitch() {
+  this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
+}
 
+
+void SequencerMode::setup() {
+  for (int i = 0; i < globalState->engine->getNbParts(); i++) {
+    lastPlayedNote.push_back(-1);
+  }
+
+}
+
+void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
+  if (potIndex == 0) { // octave
+    int oct = std::lround(1 + (potVal/1024.0) * 4);
+    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    s->data[0][cursorPos] = oct;
+    displayOctAndNote();
+  }
+  if (potIndex == 1) { // note
+    int note = std::lround(0 + (potVal/1024.0) * 12);
+    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    s->data[1][cursorPos] = note;
+    displayOctAndNote();
+  }
+
+}
+
+void SequencerMode::pushButtonPressed(int buttonIndex) {
+
+  int consumed = handleGenericPushButtonEvents(buttonIndex);
+  if (consumed) return;
+
+  if (buttonIndex == 0) {
+    cursorPos = cursorPos - 1;
+    if (cursorPos < 0) cursorPos += nbSteps;
+    displayStep();
+    displayOctAndNote();
+  }
+
+  if (buttonIndex == 1) {
+    cursorPos = cursorPos + 1;
+    if (cursorPos >= nbSteps) cursorPos -= nbSteps;
+    displayStep();
+    displayOctAndNote();
+  }
+
+  if (buttonIndex == 2) {
+    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    int currentValue = s->data[2][cursorPos];
+    int newValue = 1 - currentValue;
+    
+    Serial.print("new value at position:");
+    Serial.print(cursorPos);
+    Serial.print(":");
+    Serial.println(newValue);
+    s->data[2][cursorPos] = newValue;
+    
+    displayOctAndNote();
+  }
+
+  if (buttonIndex == 5) { // play/stop
+    this->globalState->seqPlaying = !this->globalState->seqPlaying;
+    if(this->globalState->seqPlaying) {
+      this->playHead = 0;
+      this->nextTriggerTime = 0; // means: in the next call a note is going to be played
+    } else { // switch off current note
+      // of all parts
+      for(int i = 0;i<globalState->engine->getNbParts();i++) globalState->myNoteOff(i+1, lastPlayedNote[i], 0); // TODO: mapping from seq part to midi channel
+    }
+
+    displayPlayStatus();
+  }
+}
+
+void SequencerMode::fullDisplayUpdate() {
+  lcd->clear();
+  lcd->setCursor(0, 0);
+
+  
+  // Part
+  lcd->print(String("P")+(this->globalState->selectedPart+1));
+
+  displayStep();
+
+  displayOctAndNote();
+  displayPlayStatus();
+  
+}
+
+void SequencerMode::displayStep() {
+  // Step
+  lcd->setCursor(3, 0);// X,Y
+  lcd->print("S  ");
+  lcd->setCursor(4,0);
+  lcd->print(this->cursorPos);
+}
+
+void SequencerMode::displayOctAndNote() {
+  Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+  // oct and note
+  lcd->setCursor(0,1);
+  lcd->print(String("O")+String(s->data[0][cursorPos])+String(" N")+ String(s->data[1][cursorPos])+ String(" "));
+  lcd->setCursor(7,1);
+  lcd->print(s->data[2][cursorPos] ? "+":"-");
+}
+
+void SequencerMode::displayPlayStatus() {
+  // play status
+  lcd->setCursor(15,0);
+  lcd->print(globalState->seqPlaying ? "P" : "-");
+  lcd->setCursor(14,1);
+  lcd->print("__");
+  lcd->setCursor(14,1);
+  lcd->print(this->playHead);
+}
+
+
+void SequencerMode::maybePlay() {
+  if(millis() > nextTriggerTime) {
+    nextTriggerTime = millis() + interBeatMs;
+    Serial.print("playing step ");
+    Serial.println(playHead);
+
+    for (int part = 0; part < 2; part++) {
+
+    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
+    Sequence *s = this->globalState->sequences[part]; // for now only play part that is being edited
+    if(s->data[2][playHead]) {
+      // stop previous note
+      //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
+      globalState->myNoteOff(part+1, lastPlayedNote[part], 0);
+      int newNote = s->data[0][playHead] * 12 + s->data[1][playHead]; 
+      lastPlayedNote[part] = newNote;
+      // play
+      //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
+      globalState->myNoteOn(part+1, newNote, 127);
+      Serial.println(newNote);
+      
+    }
+    }
+
+    if((playHead % 4 == 0)&&(this->globalState->selectedMode == this)) displayPlayStatus();
+    playHead = (playHead + 1) % nbSteps;
+  }
+}

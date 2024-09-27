@@ -728,9 +728,6 @@ public:
 
     counter++;
 
-    double g2 = 0;
-    double g3 = 0;
-    double g4 = 0;
 
     //if (counter%128==0)
     if ((counter & ((1 << 8) - 1)) == 0)  // don't update every sample (only needed for audio rate modulation)
@@ -815,6 +812,9 @@ private:
   double g = 0;
   double k = 0;
   double intermed = 0;
+  double g2 = 0;
+  double g3 = 0;
+  double g4 = 0;
 };
 
 class Part {
