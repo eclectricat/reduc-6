@@ -65,6 +65,7 @@ class PartConfigMode: public Mode {
   //int selectedLane = 0;
   //int selectedPage = 0;
   ///vector<ParameterInfo*> currentMenuPage;
+  int partTypes[6] = {1,1,0,0,0,0}; /// TODO: control via parameters
 
   //std::vector<SynthParameters*> allSynthParameters;
 

@@ -4,7 +4,7 @@
 
 using namespace std;
 
-SignalPtr Part::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
+SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
 
   registry->setPartAndVoiceTag(partId,0);
 
@@ -107,7 +107,7 @@ SignalPtr Part::buildSynth(Registry* registry, SynthParameters *menu, int partId
   return outputSignal;
 }
 
-void Part::createSynthVoice(int i, Registry *registry) {
+void SynthPart::createSynthVoice(int i, Registry *registry) {
 
   // create the chain of 'Signals'
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
@@ -136,7 +136,7 @@ void Part::createSynthVoice(int i, Registry *registry) {
   VCA *scaledOsc1 = new VCA(registry, osc, o1vol);
   VCA *scaledOsc2 = new VCA(registry, osc2, o2vol);
 
-  Mixer *oscMixer = new Mixer(registry, { scaledOsc1, scaledOsc2 }, 0.2f);  // scale down so it doesn't distort
+  Mixer *oscMixer = new Mixer(registry, { scaledOsc1, scaledOsc2 }, 1.0f);  
   //Mixer* oscMixer = new Mixer(registry, {saw}, 0.1f); // scale down so it doesn't distort
 
   Env *env = new Env(registry, envA, envD, envS, envR);
@@ -161,6 +161,79 @@ void Part::createSynthVoice(int i, Registry *registry) {
 
   // store the last element of the chain -> output
   signals[i] = pan;
+}
+
+SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
+  registry->setPartAndVoiceTag(partId,0);
+
+
+  o1Oct = new StaticSignal(registry, 1.0f); 
+  pitchEnvDR = new StaticSignal(registry, 1.0f);
+  envPitchAmount = new StaticSignal(registry, 1.0f);
+
+  ampEnvDR = new StaticSignal(registry, 5.0f);
+
+  sinVol = new StaticSignal(registry, 0.5f);
+  noiseVol = new StaticSignal(registry, 0.5f);
+
+  hiPassCutoff = new StaticSignal(registry, 0.0f);
+  loPassCutoff = new StaticSignal(registry, 1.0f);
+
+
+
+  ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct);
+  ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR);
+  ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 1000, envPitchAmount);
+
+  ParameterInfo *pAmpEnvDR = new ParameterInfo("ADR ", 0, 30, ampEnvDR);
+
+  ParameterInfo *pNoiseVol = new ParameterInfo("Noi ", 0, 1, noiseVol);
+  ParameterInfo *pSinVol = new ParameterInfo("Sin ", 0, 1, sinVol);
+
+  ParameterInfo *pHiPassCutoff = new ParameterInfo("HP ", 0, 1, hiPassCutoff);
+  ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff);
+
+
+  StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
+  ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS);
+
+  // pages: (global decay, filter) (pitch, pitchenv, amount, sinVol) (noiseVol, [noiseDecay]), (click?, fm, )
+  menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);
+  menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
+
+  // create the chain of 'Signals'
+  StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
+  this->baseFreqs[0] = baseFreq;
+
+
+  // pitch
+  
+  Signal *octavedFreq1 = new VCA(registry, baseFreq, o1Oct);
+  // lfo pitch mod: normally we would use 2^mod, but maybe we could use baseFreq * (1 + s * lfo)
+
+  Env *pitchEnv = new Env(registry, dummyS, pitchEnvDR, dummyS, pitchEnvDR);
+  Env *ampEnv = new Env(registry, dummyS, ampEnvDR, dummyS, ampEnvDR);
+
+  Signal *totalFreq = new Mixer(registry, { octavedFreq1, new VCA(registry, pitchEnv, envPitchAmount)}, 1);
+
+  //Signal *osc = new SawOsc(registry, totalFreq,new StaticSignal(registry, 0.5f), new StaticSignal(registry, 0), dummyS, dummyS);
+  LFO* lfoAsOsc = new LFO(registry, totalFreq, new StaticSignalDiscrete(registry, 1));
+  lfoAsOsc->subsample = 1; // update at audio freq
+
+  Signal* osc = new VCA(registry, lfoAsOsc, sinVol);
+
+  Signal* noise = new VCA(registry, new NoiseOsc(registry),noiseVol);
+
+  noise = new DigitalHiPass(registry, noise, hiPassCutoff);
+  noise = new Digital2Pole(registry, noise, loPassCutoff, dummyS);
+  
+  this->envs[0] = ampEnv;
+  this->fenvs[0] = pitchEnv; // TODO: not all partTypes have both types on env, some also have pitch env, make a part specific callback for retriggerEnvs()
+  VCA *vca = new VCA(registry, new Mixer(registry, {noise, osc} , 1), ampEnv);
+
+  return vca;
+  
+
 }
 
 void Part::noteOn(int note, int velo) {
@@ -209,8 +282,8 @@ void Part::noteOn(int note, int velo) {
   leastRecentlyReleasedVoiceId = (leastRecentlyReleasedVoiceId + 1) % activeNbVoices;
   nbAvailableVoices--;
 
-  /* debug logging
-  for(int i=0;i<nbVoices;i++) {
+  // debug logging
+  for(int i=0;i<activeNbVoices;i++) {
     if (i==leastRecentlyReleasedVoiceId) {
       Serial.print("E");
     }
@@ -219,7 +292,7 @@ void Part::noteOn(int note, int velo) {
   }
   Serial.print("nbVoicesAvailable: ");
   Serial.println(nbAvailableVoices);
-  */
+  
 }
 
 void Part::noteOff(int note, int velo) {
@@ -237,8 +310,8 @@ void Part::noteOff(int note, int velo) {
     }
   }
 
-  /* debug logging
-  for(int i=0;i<nbVoices;i++) {
+  // debug logging
+  for(int i=0;i<activeNbVoices;i++) {
     if (i==leastRecentlyReleasedVoiceId) {
       Serial.print("E");
     }
@@ -247,7 +320,7 @@ void Part::noteOff(int note, int velo) {
   }
   Serial.print("nbVoicesAvailable: ");
   Serial.println(nbAvailableVoices);
-  */
+  
 }
 
 void SynthEngine::update(void) {
@@ -309,16 +382,25 @@ void SynthEngine::update(void) {
 
 void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
   for (int i=0;i<nbParts;i++) {
-    parts[i] = new Part();
+    parts[i] = new SynthPart();
+    parts[i+nbParts] = new DrumPart();
     signals[i]=parts[i]->buildSynth(&registry, allParams[i], i);
+    signals[i+nbParts]=parts[i+nbParts]->buildSynth(&registry, allParams[i+nbParts], i+nbParts);
     Serial.println("created synth part");
   }
 
   registry.setPartAndVoiceTag(0,-1);
-  outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
+  outputSignal = new MixerStereo(&registry, signals, nbParts*nbPartTypes, 0.5f);
+  //outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
 
-  parts[0]->setActiveNbVoices(3);
-  parts[1]->setActiveNbVoices(1);
+  //parts[0]->setActiveNbVoices(1);
+  parts[2]->setActiveNbVoices(1);
+  parts[3]->setActiveNbVoices(3);
+  parts[0 + 6]->setActiveNbVoices(1);
+  parts[1 + 6]->setActiveNbVoices(1);
+  //parts[2 + 6]->setActiveNbVoices(1);
+  //parts[3 + 6]->setActiveNbVoices(1);
+
 
   markRequiredSignals();
 }

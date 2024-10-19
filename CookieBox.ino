@@ -252,7 +252,7 @@ void loop()
   if (pushbuttons[i]->update()) {
     if (pushbuttons[i]->fallingEdge()) {
       Serial.print(i);
-      Serial.println("Button press, change param");
+      Serial.println(" Button press");
 
       // TODO: only reset this if an actual page change has happened, But it is not totally broken like that...
       // also for e.g. sequencermode, params need to be locked e.g. when step changes

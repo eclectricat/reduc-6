@@ -25,7 +25,7 @@ typedef Signal* SignalPtr;
 
 extern unsigned long _heap_start;
 extern unsigned long _heap_end;
-extern char *__brkval;
+extern char* __brkval;
 
 
 
@@ -45,7 +45,7 @@ public:
   }
 
   int freeram() {
-    return (char *)&_heap_end - __brkval;
+    return (char*)&_heap_end - __brkval;
   }
 
   // debugging
@@ -65,11 +65,11 @@ public:
   }
 
 private:
-  const static int maxNumSignals = 10000; 
-  SignalPtr signals[maxNumSignals]; // all signals
-  int partIds[maxNumSignals]; //for each signal: which part and voice does it belong to?
+  const static int maxNumSignals = 10000;
+  SignalPtr signals[maxNumSignals];  // all signals
+  int partIds[maxNumSignals];        //for each signal: which part and voice does it belong to?
   int voiceIds[maxNumSignals];
-  int nbSignals = 0; // total number of signals registered
+  int nbSignals = 0;  // total number of signals registered
 
   // during registration of the signals, the signals will be tagged with the part/voice that is set here
   // voice -1 means it always active, e.g. for global mixer signals etc
@@ -92,7 +92,7 @@ extern JsonDocument jprofiling;
 class Signal {
 
 public:
-  Signal(Registry* r) { // part id and voice id
+  Signal(Registry* r) {  // part id and voice id
     if (r != NULL) {
       r->enroll(this);
     }
@@ -397,6 +397,37 @@ private:
   //float value = 0;
 };
 
+class NoiseOsc : public Signal {
+public:
+  NoiseOsc(Registry* r)
+    : Signal(r) {
+    
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+   
+    double b_noiselast = b_noise;
+    b_noise = b_noise + 19;
+    b_noise = b_noise * b_noise;
+    b_noise = b_noise + ((-b_noise + b_noiselast) * 0.5);
+    int i_noise = (int)b_noise; // b_noise.floor.toInt;
+    b_noise = b_noise - i_noise;
+
+    value = ((float) b_noise) - 0.5f;
+  }
+
+  virtual String signame() const {
+    return "noiseOsc";
+  }
+
+private:
+  double b_noise = 19.1919191919191919191919191919191919191919;
+};
+
 // calculating power of 2
 class Octaver : public Signal {
 public:
@@ -489,6 +520,8 @@ public:
     return value;
   }
 
+  int subsample = 50;
+
 private:
   Signal* freq;
   StaticSignalDiscrete* wave;
@@ -496,7 +529,7 @@ private:
   float phase;
 
   int counter = 0;
-  int subsample = 50;
+
 };
 
 class Env : public Signal {
@@ -636,6 +669,36 @@ private:
   //float value = 0;
 };
 
+class DigitalHiPass : public Signal {
+public:
+  DigitalHiPass(Registry* r, Signal* in, Signal* cut)
+    : Signal(r) {
+    this->in = in;
+    this->cut = cut;
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float cut = this->cut->getValue();
+    cut = std::min(1.0f, std::max(0.0f, cut));
+    float in = this->in->getValue();
+    
+    v0 = v0 + cut * (in - v0);
+    v1 = v1 + cut * (v0 - v1);
+    value = in - v1;
+  }
+
+private:
+  Signal *in, *cut, *res;
+  float v0 = 0;
+  float v1 = 0;
+  float eps = 0.01f;
+  //float value = 0;
+};
+
 class SimperSVF : public Signal {
 public:
   SimperSVF(Registry* r, Signal* input, Signal* cutoff, Signal* reso)
@@ -749,10 +812,10 @@ public:
 
       //g = cut * 0.5f;
       //float k = 2 - 2 * res;
-      k = 3 * res; // above 3 it explodes...
+      k = 3 * res;  // above 3 it explodes...
 
       targetFreq = std::min(0.5, targetFreq);
-      g = std::tan(Pi * targetFreq); // targetfreq is at most 0.5
+      g = std::tan(Pi * targetFreq);  // targetfreq is at most 0.5
       //g = 2  * std::tan(Pi * 0.5f * targetFreq);
 
       g2 = g * g;
@@ -770,16 +833,16 @@ public:
 
 
 
-    double v1 = -((k * g3 + 2 * k * g2 + k * g) * ic4eq 
-                   + (k * g3 + k * g2) * ic3eq
-                   + k * g3 * ic2eq
-                     + (-g3 - 3 * g2 - 3 * g - 1) * ic1eq
-                     + (-g4 - 3 * g3 - 3 * g2 - g) * v0)
-               / ((k + 1) * g4 + 4 * g3 + 6 * g2 + 4 * g + 1);
+    double v1 = -((k * g3 + 2 * k * g2 + k * g) * ic4eq
+                  + (k * g3 + k * g2) * ic3eq
+                  + k * g3 * ic2eq
+                  + (-g3 - 3 * g2 - 3 * g - 1) * ic1eq
+                  + (-g4 - 3 * g3 - 3 * g2 - g) * v0)
+                / ((k + 1) * g4 + 4 * g3 + 6 * g2 + 4 * g + 1);
 
-    double v2 = (g * v1+ ic2eq) * intermed;
-    double v3 = (g * v2+ ic3eq) * intermed;
-    double v4 = (g * v3+ ic4eq) * intermed;
+    double v2 = (g * v1 + ic2eq) * intermed;
+    double v3 = (g * v2 + ic3eq) * intermed;
+    double v4 = (g * v3 + ic4eq) * intermed;
 
     //v4 = fast_tanh(v4); // this destroys all the math, but maybe helps to prevent explosion
 
@@ -818,10 +881,32 @@ private:
 };
 
 class Part {
-  public:
-    Part() {
 
-      // lru voice logic
+  public:
+  Part() {
+
+    // lru voice logic
+    for (int i = 0; i < maxNbVoices; i++) {
+      lru[i] = i;
+      notes[i] = -1; // a note that never receives a noteOff message, otherwise it messes up nbAvailableVoices etc.
+    }
+
+    // all voices available
+    nbAvailableVoices = activeNbVoices;
+    leastRecentlyReleasedVoiceId = 0;
+  }
+
+  virtual SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+
+  void noteOn(int note, int velo);
+  void noteOff(int note, int velo);
+
+  float midiToFreq(int note) {
+    return (440.0f * pow(2, ((note)-69) / 12.0f));
+  }
+
+  void setActiveNbVoices(int n) {
+    activeNbVoices = n;
     for (int i = 0; i < maxNbVoices; i++) {
       lru[i] = i;
     }
@@ -829,62 +914,51 @@ class Part {
     // all voices available
     nbAvailableVoices = activeNbVoices;
     leastRecentlyReleasedVoiceId = 0;
+  }
 
-    }
-
-    SignalPtr buildSynth(Registry *registry, SynthParameters* menu, int partId);
-
-    void noteOn(int note, int velo);
-    void noteOff(int note, int velo);
-
-    float midiToFreq(int note) {
-      return (440.0f * pow(2, ((note)-69) / 12.0f));
-    }
-
-    void setActiveNbVoices(int n) {
-      activeNbVoices = n;
-      for (int i = 0; i < maxNbVoices; i++) {
-        lru[i] = i;
-      }
-
-      // all voices available
-      nbAvailableVoices = activeNbVoices;
-      leastRecentlyReleasedVoiceId = 0;
-    }
-
-    int getActiveNbVoices() {
-      return activeNbVoices;
-    }
-
+  int getActiveNbVoices() {
+    return activeNbVoices;
+  }
 
   private:
+  int activeNbVoices = 0;
 
-    int activeNbVoices = 0;
+  const static int maxNbVoices = 6;
+  
 
-    const static int maxNbVoices = 6;
-    void createSynthVoice(int i,  Registry *registry);
+  StaticSignal* baseFreqs[maxNbVoices];
+  Env* envs[maxNbVoices];
+  Env* fenvs[maxNbVoices];
 
-    StaticSignal* baseFreqs[maxNbVoices];
-    Env* envs[maxNbVoices];
-    Env* fenvs[maxNbVoices];
+  // the per voice signals that go into the last mixer
+  SignalPtr signals[maxNbVoices];
 
-    
+  // remember which note each voice is playing
+  int notes[maxNbVoices];
 
-    // the per voice signals that go into the last mixer
-    SignalPtr signals[maxNbVoices];
+  // for the key assignment logic, simple variant
+  int nextVoice = 0;
 
-    // remember which note each voice is playing
-    int notes[maxNbVoices];
+  // lru key assignment logic
+  int lru[maxNbVoices];              // remember which voice was released least recently
+  int nbAvailableVoices;             // point into lru array, with wrap around, inclusive
+  int leastRecentlyReleasedVoiceId;  // point to last voice that was released, with wrap around
 
-    // for the key assignment logic, simple variant
-    int nextVoice = 0;
+  friend class SynthPart;
+  friend class DrumPart;
 
-    // lru key assignment logic
-    int lru[maxNbVoices];                 // remember which voice was released least recently
-    int nbAvailableVoices;             // point into lru array, with wrap around, inclusive
-    int leastRecentlyReleasedVoiceId;  // point to last voice that was released, with wrap around
+};
 
-    // store all parameters, so all the voices can access them:
+class SynthPart :  public Part {
+
+public:
+  SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+
+private:
+
+  void createSynthVoice(int i, Registry* registry); 
+
+  // store all parameters, so all the voices can access them:
   StaticSignal* o1detune = NULL;
   StaticSignalDiscrete* o1Oct = NULL;
   StaticSignalDiscrete* o2Oct = NULL;
@@ -917,8 +991,31 @@ class Part {
   StaticSignal* lfoToCutoff = NULL;
   StaticSignal* lfoToPW1 = NULL;
   StaticSignal* lfoToPW2 = NULL;
+};
 
+class DrumPart :  public Part {
 
+public:
+  SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+
+private:
+
+  //void createSynthVoice(int i, Registry* registry); 
+
+  // store all parameters, so all the voices can access them:
+  
+  StaticSignal* o1Oct = NULL;
+  StaticSignal* pitchEnvDR = NULL;
+  StaticSignal* ampEnvDR = NULL;
+  
+  StaticSignal* envPitchAmount = NULL;
+
+  StaticSignal *sinVol = NULL;
+  StaticSignal *noiseVol = NULL;
+
+  StaticSignal* hiPassCutoff = NULL;
+  StaticSignal* loPassCutoff = NULL;
+  
 };
 
 class SynthEngine : public AudioStream {
@@ -928,7 +1025,7 @@ public:
     // any extra initialization
   }
 
-  void buildEngine(std::vector<SynthParameters*>); 
+  void buildEngine(std::vector<SynthParameters*>);
 
   // destruction:
   // - destroy all Signals in registry
@@ -940,12 +1037,16 @@ public:
     return nbParts;
   }
 
+  int getNbPartTypes() {
+    return nbPartTypes;
+  }
+
   void noteOn(byte channel, byte note, byte velocity) {
-    parts[channel-1]->noteOn(note, velocity); // TODO: proper routing and checking
+    parts[channel - 1]->noteOn(note, velocity);  // TODO: proper routing and checking
   }
 
   void noteOff(byte channel, byte note, byte velocity) {
-    parts[channel-1]->noteOff(note, velocity);
+    parts[channel - 1]->noteOff(note, velocity);
   }
 
   float getAndResetMaxLevel() {
@@ -963,7 +1064,7 @@ public:
 
     registry.nbActiveSignals = 0;
 
-    for (int s=0; s<registry.getNbSignals();s++){
+    for (int s = 0; s < registry.getNbSignals(); s++) {
       int part = registry.partIds[s];
       if (parts[part]->getActiveNbVoices() > registry.voiceIds[s]) {
         registry.activeSignals[registry.nbActiveSignals] = registry.signals[s];
@@ -973,7 +1074,6 @@ public:
 
     Serial.print("number signals marked as active: ");
     Serial.println(registry.nbActiveSignals);
-
   }
 
   Registry registry;  // put it here for debugging
@@ -984,23 +1084,23 @@ private:
   // the main outputsignal
   //const static int nbVoices = 12;
   const static int nbParts = 6;
+  const static int nbPartTypes = 2; // type of engines (synth, drum)
 
-  // the per voice signals that go into the last mixer
-  SignalPtr signals[nbParts];
-
-  Part* parts[nbParts];
-
-  // special signals that are controlled by midi events etc
-  //StaticSignal* baseFreq = NULL;
-  
-  //Env* env = NULL;
+  /*
+  For each of the 6 logical parts we alreadz instantiate all of the possible sound engines (i.e. part types)
+  The resulting signals and parts are stored in the following fields:
+  currently we have 2 part types (synth and drum), the fields contain first the synth parts and then the drum parts
+  When accessing the parts, depending on the selected part type we need to offset the access by nbParts...
+  */
+  // the per voice signals that go into the last mixer, nbParts * nbPartTypes
+  SignalPtr signals[nbParts*nbPartTypes];
+  Part* parts[nbParts*nbPartTypes];
 
   // totaloutput
   SignalPtr outputSignal = 0;
 
   //
   float maxSignalLevel = 0;
-  
 };
 
 

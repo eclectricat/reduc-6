@@ -11,12 +11,14 @@ GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
 void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
+  channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; //
   Serial.print("Note On, ch=");
   Serial.print(channel, DEC);
   Serial.print(", note=");
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
+    
   engine->noteOn(channel, note, velocity);
 
   //digitalWrite(led1Pin, HIGH);
@@ -25,6 +27,7 @@ void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
 void GlobalState::myNoteOff(byte channel, byte note, byte velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
+  channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; //
   Serial.print("Note Off, ch=");
   Serial.print(channel, DEC);
   Serial.print(", note=");
@@ -41,7 +44,10 @@ void GlobalState::setup() {
   partConfigMode.globalState = this;
   sequencerMode.globalState = this;
   for (int i = 0; i < this->engine->getNbParts(); i++) {
-    synthMode.allSynthParameters.push_back(new SynthParameters());
+
+    for (int type=0;type < this->engine->getNbPartTypes(); type++)
+      synthMode.allSynthParameters.push_back(new SynthParameters());
+
     Serial.println("created synth parameters");
     partConfigMode.allSynthParameters.push_back(new SynthParameters());
     sequences.push_back(new Sequence());
@@ -155,7 +161,8 @@ void Mode::pushButtonPressed(int buttonIndex) {
   int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
   if (eventConsumed) return;
 
-  SynthParameters *synthParameters = allSynthParameters[globalState->selectedPart];
+  int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
+  SynthParameters *synthParameters = allSynthParameters[partId];
 
   if (selectedLane == buttonIndex) {  // already on that lane
     selectedPage = (selectedPage + 1) % synthParameters->getNbPages(selectedLane);
@@ -226,7 +233,8 @@ void SynthMode::pushButtonReleased(int buttonIndex) {
 }
 
 void SynthMode::postPartOrModeSwitch() {
-  this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
+  int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
+  this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
 }
 
 
@@ -239,7 +247,7 @@ void SequencerMode::setup() {
 
 void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
   if (potIndex == 0) { // octave
-    int oct = std::lround(1 + (potVal/1024.0) * 4);
+    int oct = std::lround(1 + (potVal/1024.0) * 4) - 2;
     Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
     s->data[0][cursorPos] = oct;
     displayOctAndNote();
@@ -290,7 +298,7 @@ void SequencerMode::pushButtonPressed(int buttonIndex) {
     this->globalState->seqPlaying = !this->globalState->seqPlaying;
     if(this->globalState->seqPlaying) {
       this->playHead = 0;
-      this->nextTriggerTime = 0; // means: in the next call a note is going to be played
+      this->nextTriggerTime = millis(); // 0; // means: in the next call a step 0 is going to be played
     } else { // switch off current note
       // of all parts
       for(int i = 0;i<globalState->engine->getNbParts();i++) globalState->myNoteOff(i+1, lastPlayedNote[i], 0); // TODO: mapping from seq part to midi channel
@@ -345,19 +353,20 @@ void SequencerMode::displayPlayStatus() {
 
 void SequencerMode::maybePlay() {
   if(millis() > nextTriggerTime) {
-    nextTriggerTime = millis() + interBeatMs;
+    nextTriggerTime = nextTriggerTime + interBeatMs; 
     Serial.print("playing step ");
     Serial.println(playHead);
 
-    for (int part = 0; part < 2; part++) {
+    for (int part = 0; part < 4; part++) { // TODO: play all parts
 
     //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
-    Sequence *s = this->globalState->sequences[part]; // for now only play part that is being edited
+    Sequence *s = this->globalState->sequences[part]; 
     if(s->data[2][playHead]) {
       // stop previous note
       //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
-      globalState->myNoteOff(part+1, lastPlayedNote[part], 0);
-      int newNote = s->data[0][playHead] * 12 + s->data[1][playHead]; 
+
+      if (lastPlayedNote[part] > -1) globalState->myNoteOff(part+1, lastPlayedNote[part], 0);
+      int newNote = 24 + s->data[0][playHead] * 12 + s->data[1][playHead]; 
       lastPlayedNote[part] = newNote;
       // play
       //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
