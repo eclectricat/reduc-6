@@ -145,6 +145,10 @@ class GlobalState {
 
 }*/
 
+class ParameterLock {
+  
+}
+
 
 class Sequence {
 
@@ -157,5 +161,6 @@ class Sequence {
     }
     //std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3); // , std::vector<int>(NB_STEPS, 0));
     std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3, std::vector<int>(NB_STEPS, 0));
+    std:vector<>
 };
 

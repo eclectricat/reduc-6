@@ -209,7 +209,7 @@ void SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
   if ((buttonIndex == 7)&&(!globalState->shiftPressed)) {
-    globalState->myNoteOn(globalState->selectedPart + 1, 55, 127);
+    globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
 }
 
@@ -228,7 +228,7 @@ void Mode::pushButtonReleased(int buttonIndex) {
 void SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
   if (buttonIndex == 7) {
-    globalState->myNoteOff(globalState->selectedPart + 1, 55, 127);
+    globalState->myNoteOff(globalState->selectedPart + 1, 36, 127);
   }
 }
 
@@ -366,7 +366,7 @@ void SequencerMode::maybePlay() {
       //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
 
       if (lastPlayedNote[part] > -1) globalState->myNoteOff(part+1, lastPlayedNote[part], 0);
-      int newNote = 24 + s->data[0][playHead] * 12 + s->data[1][playHead]; 
+      int newNote = 36 + s->data[0][playHead] * 12 + s->data[1][playHead]; 
       lastPlayedNote[part] = newNote;
       // play
       //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);

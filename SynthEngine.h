@@ -671,10 +671,11 @@ private:
 
 class DigitalHiPass : public Signal {
 public:
-  DigitalHiPass(Registry* r, Signal* in, Signal* cut)
+  DigitalHiPass(Registry* r, Signal* in, Signal* cut, Signal* res)
     : Signal(r) {
     this->in = in;
     this->cut = cut;
+    this->res = res;
   }
 
   float getValue(int channel = 0) {
@@ -685,8 +686,11 @@ public:
     float cut = this->cut->getValue();
     cut = std::min(1.0f, std::max(0.0f, cut));
     float in = this->in->getValue();
-    
-    v0 = v0 + cut * (in - v0);
+    float fb = this->res->getValue();
+    fb = std::min(2.0f, std::max(0.0f, fb));
+    fb = fb + fb / (1.0f - cut + eps);
+    v0 = v0 + cut * (in - v0 + fb * (v0 - v1));
+    //v0 = v0 + cut * (in - v0);
     v1 = v1 + cut * (v0 - v1);
     value = in - v1;
   }
@@ -1014,6 +1018,7 @@ private:
   StaticSignal *noiseVol = NULL;
 
   StaticSignal* hiPassCutoff = NULL;
+  StaticSignal* hiPassRes = NULL;
   StaticSignal* loPassCutoff = NULL;
   
 };

@@ -32,6 +32,7 @@ class ParameterInfo {
     virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
 
     float getValue() {return param->getValue();}
+    
 
   protected:
     String name;

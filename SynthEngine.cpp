@@ -177,6 +177,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   noiseVol = new StaticSignal(registry, 0.5f);
 
   hiPassCutoff = new StaticSignal(registry, 0.0f);
+  hiPassRes = new StaticSignal(registry, 0.0f);
+  //hiPassCutoff2 = new StaticSignal(registry, 0.0f);
   loPassCutoff = new StaticSignal(registry, 1.0f);
 
 
@@ -191,6 +193,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pSinVol = new ParameterInfo("Sin ", 0, 1, sinVol);
 
   ParameterInfo *pHiPassCutoff = new ParameterInfo("HP ", 0, 1, hiPassCutoff);
+  ParameterInfo *pHiPassRes = new ParameterInfo("HPR ", 0, 1, hiPassRes);
+  //ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2);
   ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff);
 
 
@@ -198,8 +202,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS);
 
   // pages: (global decay, filter) (pitch, pitchenv, amount, sinVol) (noiseVol, [noiseDecay]), (click?, fm, )
-  menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);
-  menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
+  //menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);
+  //menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
+  menu->addPage(vector<ParameterInfo *>{ pSinVol, pNoiseVol, pAmpEnvDR, pDummy }, 0);
+  menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pDummy }, 1);
+  menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pDummy }, 2);
+
 
   // create the chain of 'Signals'
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
@@ -224,7 +232,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   Signal* noise = new VCA(registry, new NoiseOsc(registry),noiseVol);
 
-  noise = new DigitalHiPass(registry, noise, hiPassCutoff);
+  noise = new DigitalHiPass(registry, noise, hiPassCutoff, hiPassRes);
   noise = new Digital2Pole(registry, noise, loPassCutoff, dummyS);
   
   this->envs[0] = ampEnv;
