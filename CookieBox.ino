@@ -256,8 +256,9 @@ void loop()
 
       // TODO: only reset this if an actual page change has happened, But it is not totally broken like that...
       // also for e.g. sequencermode, params need to be locked e.g. when step changes
-      lockPotentiometers(false);
-      globalState.selectedMode->pushButtonPressed(i);
+      
+      bool needToLock = globalState.selectedMode->pushButtonPressed(i);
+      if (needToLock) lockPotentiometers(false); // typically after changing parameter pages. 
 
       if(i==6) {
           Serial.println("Testing sd card");
@@ -286,7 +287,8 @@ void loop()
 
     } else {
       Serial.println("Button release");
-      globalState.selectedMode->pushButtonReleased(i);
+      bool needToLock = globalState.selectedMode->pushButtonReleased(i);
+      if (needToLock) lockPotentiometers(false); // e.g. after editing parameterLock, we need to reset/lock the pots again 
 
     }
   }

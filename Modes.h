@@ -11,8 +11,8 @@ class Mode {
 
   public:
   virtual void processPotValue(int potIndex, int potVal,  bool updateDisplay);
-  virtual void pushButtonPressed(int buttonIndex);
-  virtual void pushButtonReleased(int buttonIndex);
+  virtual bool pushButtonPressed(int buttonIndex);
+  virtual bool pushButtonReleased(int buttonIndex);
 
   virtual void fullDisplayUpdate();
 
@@ -38,8 +38,8 @@ class SynthMode : public Mode {
 
   SynthMode(LiquidCrystal *lcd);
   //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
-  virtual void pushButtonPressed(int buttonIndex) override;
-  virtual void pushButtonReleased(int buttonIndex) override;
+  virtual bool pushButtonPressed(int buttonIndex) override;
+  virtual bool pushButtonReleased(int buttonIndex) override;
   virtual void postPartOrModeSwitch() override;
   void setup();
 
@@ -85,9 +85,9 @@ class SequencerMode: public Mode {
   }
 
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
-  virtual void pushButtonPressed(int buttonIndex) override;
-  virtual void pushButtonReleased(int buttonIndex) override;
-  //virtual void pushButtonReleased(int buttonIndex) override;
+  virtual bool pushButtonPressed(int buttonIndex) override;
+  virtual bool pushButtonReleased(int buttonIndex) override;
+ 
   void setup();
   virtual void fullDisplayUpdate();
   void displayLockingParams();

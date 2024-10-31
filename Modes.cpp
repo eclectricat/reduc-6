@@ -62,7 +62,7 @@ SynthMode::SynthMode(LiquidCrystal *lcd) {
 
 void SynthMode::setup() {
   Serial.println("getting initial page");
-  currentMenuPage = allSynthParameters[0]->getPage(0, 0);
+  currentMenuPage = allSynthParameters[effectivePartId(0)]->getPage(0, 0);
   Serial.println("got initial page");
 }
 
@@ -160,14 +160,14 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
   return 0;
 }
 
-void Mode::pushButtonPressed(int buttonIndex) {
+bool Mode::pushButtonPressed(int buttonIndex) {
 
   // update state of shift,P
   // if other button: check if part or mode switch
   // otherwise parameter page switch
 
   int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
-  if (eventConsumed) return;
+  if (eventConsumed) return true;
 
   int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
   SynthParameters *synthParameters = allSynthParameters[partId];
@@ -198,6 +198,8 @@ void Mode::pushButtonPressed(int buttonIndex) {
     fullDisplayUpdate();
     Serial.println("");
   }
+
+  return true;
 }
 
 void Mode::fullDisplayUpdate() {
@@ -213,31 +215,36 @@ void Mode::fullDisplayUpdate() {
   }
 }
 
-void SynthMode::pushButtonPressed(int buttonIndex) {
+bool SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
   if ((buttonIndex == 7)&&(!globalState->shiftPressed)) {
     globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
+
+  return true;
 }
 
-void Mode::pushButtonReleased(int buttonIndex) {
+bool Mode::pushButtonReleased(int buttonIndex) {
   if (buttonIndex == 7) {  // P
     globalState->pPressed = false;
-    return;
+    return false;
   }
 
   if (buttonIndex == 6) {  // shift
     globalState->shiftPressed = false;
-    return;
+    return false;
   }
+
+  return false;
 }
 
-void SynthMode::pushButtonReleased(int buttonIndex) {
+bool SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
   if (buttonIndex == 7) {
     globalState->myNoteOff(globalState->selectedPart + 1, 36, 127);
   }
+  return false;
 }
 
 void SynthMode::postPartOrModeSwitch() {
@@ -304,7 +311,7 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
 
 }
 
-void SequencerMode::pushButtonPressed(int buttonIndex) {
+bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
   int consumed = handleGenericPushButtonEvents(buttonIndex);
   if (consumed) return;
@@ -365,16 +372,21 @@ void SequencerMode::pushButtonPressed(int buttonIndex) {
 
     displayPlayStatus();
   }
+
+  return true; // TODO: do we really need to lock pots after all buttons here?
 }
 
-void SequencerMode::pushButtonReleased(int buttonIndex) {
-  Mode::pushButtonReleased(buttonIndex);
-
+bool SequencerMode::pushButtonReleased(int buttonIndex) {
+  //Serial.print("pushButtonReleased seq mode:");
+  bool needToLock = Mode::pushButtonReleased(buttonIndex);
+  //Serial.println(buttonIndex);
   if(buttonIndex == 4) {
     this->paramLockMode = 0;
 
     fullDisplayUpdate();
+    needToLock = true;
   }
+  return needToLock;
 }
 
 void SequencerMode::fullDisplayUpdate() {
