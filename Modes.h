@@ -112,7 +112,7 @@ class SequencerMode: public Mode {
   int paramLockMode = 0;
   int patternSelectMode = 0;
 
-  float valuesToReset[4 * 6] ; // TODO: don't hardcode
+  //float valuesToReset[4 * 6] ; // TODO: don't hardcode
   ParameterInfo *parametersToReset[4 * 6];
 
 };

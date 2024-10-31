@@ -279,15 +279,10 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   int effectivePartId = this->effectivePartId(globalState->selectedPart);
   ParameterInfo *lockParam = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage)[potIndex];
 
-  float oldValue = lockParam->getValue();
-
   // display locked value
-  lockParam->updateParameter(potVal);
   lcd->setCursor(4 * potIndex, 1);
-  lcd->print(lockParam->printableValue());
+  lcd->print(lockParam->printableValueFromPotValue(potVal));
 
-  // restore original parameter value
-  lockParam->setValue(oldValue);
 
   // store parameter value in sequence
   int selectedPart = this->globalState->selectedPart;
@@ -356,7 +351,16 @@ void SequencerMode::pushButtonPressed(int buttonIndex) {
       this->nextTriggerTime = millis(); // 0; // means: in the next call a step 0 is going to be played
     } else { // switch off current note
       // of all parts
-      for(int i = 0;i<globalState->engine->getNbParts();i++) globalState->myNoteOff(i+1, lastPlayedNote[i], 0); // TODO: mapping from seq part to midi channel
+      for(int i = 0;i<globalState->engine->getNbParts();i++) {
+         globalState->myNoteOff(i+1, lastPlayedNote[i], 0); // TODO: mapping from seq part to midi channel
+         for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+          if (this->parametersToReset[i*4 + lockPosition] != NULL) {
+            this->parametersToReset[i*4 + lockPosition]->unlock();
+            this->parametersToReset[i*4 + lockPosition] = NULL;
+
+          }
+         }
+      }
     }
 
     displayPlayStatus();
@@ -463,14 +467,18 @@ void SequencerMode::maybePlay() {
       
       for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
 
-        if (this->parametersToReset[part*4 + lockPosition] != NULL) {
-          this->parametersToReset[part*4 + lockPosition]->setValue(valuesToReset[part*4 + lockPosition]);
+        if (this->parametersToReset[part*4 + lockPosition] != NULL) { // for the first note in the sequence after a restart, we will call unlock here, even though it is unlocked
+          this->parametersToReset[part*4 + lockPosition]->unlock();
+          
         }
 
-        this->parametersToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead];
+        this->parametersToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]; // also copy NULLs from lockedParameters
         if (s->lockedParameters[lockPosition][playHead] != NULL) {
-          this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
-          s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
+
+          //this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
+          //s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
+          s->lockedParameters[lockPosition][playHead]->lock(s->lockedValues[lockPosition][playHead]);
+          
           
         }
       }

@@ -183,8 +183,8 @@ void loop()
 
   // print some stats
   unsigned int now = millis();
-  if (now > startMillis + 10000) {
-  //if (false) {
+  //if (now > startMillis + 10000) {
+  if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");
