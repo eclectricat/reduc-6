@@ -20,6 +20,8 @@ class Mode {
 
   int handleGenericPushButtonEvents(int buttonIndex);
 
+  int effectivePartId(int partId); 
+
   GlobalState *globalState;
   LiquidCrystal *lcd;
 
@@ -67,6 +69,9 @@ class PartConfigMode: public Mode {
   ///vector<ParameterInfo*> currentMenuPage;
   int partTypes[6] = {1,1,0,0,0,0}; /// TODO: control via parameters
 
+  // TODO: should be nbParts * nbPartTypes * 4, and values should not be hardcoded 
+  //ParameterInfo* lockParameters[4*6]; // 4 params, 6 parts, get it with (partId * 4 + paramId) //= {NULL, NULL, NULL, NULL};
+
   //std::vector<SynthParameters*> allSynthParameters;
 
 
@@ -81,9 +86,12 @@ class SequencerMode: public Mode {
 
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
   virtual void pushButtonPressed(int buttonIndex) override;
+  virtual void pushButtonReleased(int buttonIndex) override;
   //virtual void pushButtonReleased(int buttonIndex) override;
   void setup();
   virtual void fullDisplayUpdate();
+  void displayLockingParams();
+  void processLockParameter(int potIndex, int value);
 
   void maybePlay();
   void displayPlayStatus();
@@ -91,13 +99,21 @@ class SequencerMode: public Mode {
   void displayStep();
 
   int cursorPos = 0;
-  int nbSteps = 8;
+  int nbSteps = 16;
 
   int playHead = 0;
   int nextTriggerTime = 0;
-  int interBeatMs = 250; // tempo, 8th notes when quarter is at 120 BPM
+  //int interBeatMs = 250; // tempo, 8th notes when quarter is at 120 BPM
+  int interBeatMs = 125; // tempo, 16th notes when quarter is at 120 BPM
 
   std::vector<int> lastPlayedNote; // to be able to stop notes: todo: keep note length etc
+
+  // state: temporary sub-modes, pattern change, parameter lock
+  int paramLockMode = 0;
+  int patternSelectMode = 0;
+
+  float valuesToReset[4 * 6] ; // TODO: don't hardcode
+  ParameterInfo *parametersToReset[4 * 6];
 
 };
 
@@ -145,10 +161,6 @@ class GlobalState {
 
 }*/
 
-class ParameterLock {
-  
-}
-
 
 class Sequence {
 
@@ -160,7 +172,8 @@ class Sequence {
       // TODO
     }
     //std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3); // , std::vector<int>(NB_STEPS, 0));
-    std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3, std::vector<int>(NB_STEPS, 0));
-    std:vector<>
+    std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3, std::vector<int>(NB_STEPS, 0)); // 3 x nbsteps
+    std::vector<std::vector<ParameterInfo*>> lockedParameters = std::vector<std::vector<ParameterInfo*> >(4, std::vector<ParameterInfo*>(NB_STEPS, NULL)); // 4 automated params
+    std::vector<std::vector<float>> lockedValues = std::vector<std::vector<float> >(4, std::vector<float>(NB_STEPS, 0)); // 4 automated params
 };
 

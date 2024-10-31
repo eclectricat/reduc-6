@@ -291,6 +291,7 @@ void Part::noteOn(int note, int velo) {
   nbAvailableVoices--;
 
   // debug logging
+  /*
   for(int i=0;i<activeNbVoices;i++) {
     if (i==leastRecentlyReleasedVoiceId) {
       Serial.print("E");
@@ -300,6 +301,7 @@ void Part::noteOn(int note, int velo) {
   }
   Serial.print("nbVoicesAvailable: ");
   Serial.println(nbAvailableVoices);
+  */
   
 }
 
@@ -319,6 +321,7 @@ void Part::noteOff(int note, int velo) {
   }
 
   // debug logging
+  /*
   for(int i=0;i<activeNbVoices;i++) {
     if (i==leastRecentlyReleasedVoiceId) {
       Serial.print("E");
@@ -328,6 +331,7 @@ void Part::noteOff(int note, int velo) {
   }
   Serial.print("nbVoicesAvailable: ");
   Serial.println(nbAvailableVoices);
+  */
   
 }
 

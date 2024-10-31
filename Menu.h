@@ -32,7 +32,7 @@ class ParameterInfo {
     virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
 
     float getValue() {return param->getValue();}
-    
+    void setValue(float newValue) {param->setValue(newValue);} // directly set the parameter value (used internally e.g. for parameter automation)
 
   protected:
     String name;

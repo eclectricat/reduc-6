@@ -11,7 +11,8 @@ GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
 void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
-  channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; //
+  //channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; // TODO: hardcoded 6
+  channel = synthMode.effectivePartId(channel -1) + 1;
   Serial.print("Note On, ch=");
   Serial.print(channel, DEC);
   Serial.print(", note=");
@@ -76,13 +77,20 @@ void PartConfigMode::setup() {
 
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pDummy, pDummy, pDummy, pDummy }, 0);
-  }
 
+
+  }
 
 
   Serial.println("Part info mode: getting initial page");
   currentMenuPage = allSynthParameters[0]->getPage(0, 0);
   Serial.println("got initial page");
+
+  
+}
+
+int Mode::effectivePartId(int partId) { // map from logical part id 0-5 to effective partId for synthEngine
+    return partId + globalState->engine->getNbParts() * globalState->partConfigMode.partTypes[partId];
 }
 
 void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
@@ -233,7 +241,8 @@ void SynthMode::pushButtonReleased(int buttonIndex) {
 }
 
 void SynthMode::postPartOrModeSwitch() {
-  int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
+  //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart]; // TODO: hardcoded
+  int partId = effectivePartId(globalState->selectedPart);
   this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
 }
 
@@ -246,6 +255,9 @@ void SequencerMode::setup() {
 }
 
 void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
+
+  if (this->paramLockMode) return processLockParameter(potIndex, potVal);
+
   if (potIndex == 0) { // octave
     int oct = std::lround(1 + (potVal/1024.0) * 4) - 2;
     Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
@@ -258,6 +270,42 @@ void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay
     s->data[1][cursorPos] = note;
     displayOctAndNote();
   }
+
+}
+
+void SequencerMode::processLockParameter(int potIndex, int potVal) {
+  // potVal is 0-3, referring to selected parameter or last used parameters
+  // initial implementatino, just take the parameters that are currently active in synth mode
+  int effectivePartId = this->effectivePartId(globalState->selectedPart);
+  ParameterInfo *lockParam = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage)[potIndex];
+
+  float oldValue = lockParam->getValue();
+
+  // display locked value
+  lockParam->updateParameter(potVal);
+  lcd->setCursor(4 * potIndex, 1);
+  lcd->print(lockParam->printableValue());
+
+  // restore original parameter value
+  lockParam->setValue(oldValue);
+
+  // store parameter value in sequence
+  int selectedPart = this->globalState->selectedPart;
+  Sequence *s = this->globalState->sequences[selectedPart];
+  
+  for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+    if ((s->lockedParameters[lockPosition][cursorPos] == NULL) || (s->lockedParameters[lockPosition][cursorPos] == lockParam)) {
+      s->lockedParameters[lockPosition][cursorPos] = lockParam;
+      s->lockedValues[lockPosition][cursorPos] = potVal;
+      Serial.print("locking parameter ");
+      Serial.print(lockParam->getName());
+      Serial.print(" in position ");
+      Serial.println(lockPosition);
+      return;
+    }
+  }
+  Serial.println("all locking slots occupied");
+
 
 }
 
@@ -294,6 +342,13 @@ void SequencerMode::pushButtonPressed(int buttonIndex) {
     displayOctAndNote();
   }
 
+  if (buttonIndex == 4) { // parameter lock (experimental)
+    this->paramLockMode = 1;
+
+    displayLockingParams();
+
+  }
+
   if (buttonIndex == 5) { // play/stop
     this->globalState->seqPlaying = !this->globalState->seqPlaying;
     if(this->globalState->seqPlaying) {
@@ -305,6 +360,16 @@ void SequencerMode::pushButtonPressed(int buttonIndex) {
     }
 
     displayPlayStatus();
+  }
+}
+
+void SequencerMode::pushButtonReleased(int buttonIndex) {
+  Mode::pushButtonReleased(buttonIndex);
+
+  if(buttonIndex == 4) {
+    this->paramLockMode = 0;
+
+    fullDisplayUpdate();
   }
 }
 
@@ -321,6 +386,29 @@ void SequencerMode::fullDisplayUpdate() {
   displayOctAndNote();
   displayPlayStatus();
   
+}
+
+void SequencerMode::displayLockingParams() {
+  lcd->clear();
+  lcd->setCursor(0, 0);
+  lcd->print("Locking parameters");
+
+  lcd->clear();
+
+  
+  for (unsigned int p = 0; p < 4; p++) {
+    int effectivePartId = this->effectivePartId(globalState->selectedPart);
+    //ParameterInfo *pinfo = this->globalState->partConfigMode.lockParameters[partId * 4 + p];
+    ParameterInfo *lockParam = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage)[p];
+
+    Serial.print(lockParam->getName());
+    Serial.print("__");
+
+    lcd->setCursor(4 * p, 0);
+    lcd->print(lockParam->getName());
+    lcd->setCursor(4 * p, 1);
+    lcd->print(lockParam->printableValue()); // TODO: if there is already a parameter lock, print this value instead
+  }
 }
 
 void SequencerMode::displayStep() {
@@ -370,6 +458,22 @@ void SequencerMode::maybePlay() {
       lastPlayedNote[part] = newNote;
       // play
       //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
+
+      // automate locked parameter and/or reset original parameter values
+      
+      for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+
+        if (this->parametersToReset[part*4 + lockPosition] != NULL) {
+          this->parametersToReset[part*4 + lockPosition]->setValue(valuesToReset[part*4 + lockPosition]);
+        }
+
+        this->parametersToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead];
+        if (s->lockedParameters[lockPosition][playHead] != NULL) {
+          this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
+          s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
+          
+        }
+      }
       globalState->myNoteOn(part+1, newNote, 127);
       Serial.println(newNote);
       
