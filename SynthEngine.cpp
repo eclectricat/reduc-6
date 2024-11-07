@@ -156,6 +156,7 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
 
   // distribute voices evenly over stereo width
   float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
+  //float position = -1 + 2.0f * (float(i) / this->activeNbVoices);
   Signal *sPosition = new VCA(registry, new StaticSignal(registry, position), panSpread);
   Signal *pan = new Pan(registry, vca, sPosition);
 
@@ -181,6 +182,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //hiPassCutoff2 = new StaticSignal(registry, 0.0f);
   loPassCutoff = new StaticSignal(registry, 1.0f);
 
+  overdriveGain = new StaticSignal(registry, 1.0f);
+
+  StaticSignal* stutterFraction = new StaticSignalDiscrete(registry, 0);
+  StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120);
+
+
 
 
   ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct);
@@ -197,6 +204,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2);
   ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff);
 
+  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain);
+
+  ParameterInfo *pStutterFraction = new ParameterInfoDiscrete("STU", 0, 16, stutterFraction);
+
+
+
 
   StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
   ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS);
@@ -206,7 +219,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
   menu->addPage(vector<ParameterInfo *>{ pSinVol, pNoiseVol, pAmpEnvDR, pDummy }, 0);
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pDummy }, 1);
-  menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pDummy }, 2);
+  menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pOverdriveGain }, 2);
+  menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pDummy, pDummy, pDummy }, 3);
 
 
   // create the chain of 'Signals'
@@ -236,10 +250,13 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   noise = new Digital2Pole(registry, noise, loPassCutoff, dummyS);
   
   this->envs[0] = ampEnv;
-  this->fenvs[0] = pitchEnv; // TODO: not all partTypes have both types on env, some also have pitch env, make a part specific callback for retriggerEnvs()
-  VCA *vca = new VCA(registry, new Mixer(registry, {noise, osc} , 1), ampEnv);
+  this->fenvs[0] = pitchEnv; // TODO: misusing filter env slot for pitch env here
 
-  return vca;
+  VCA *vca = new VCA(registry, new Overdrive(registry, new Mixer(registry, {noise, osc} , 1), overdriveGain), ampEnv);
+
+  this->stutter = new Stutter(registry, vca, stutterFraction, bpmTemp);
+
+  return this->stutter;
   
 
 }
@@ -282,8 +299,9 @@ void Part::noteOn(int note, int velo) {
 
   int selectedVoiceId = lru[leastRecentlyReleasedVoiceId];
   baseFreqs[selectedVoiceId]->setValue(midiToFreq(note));
-  envs[selectedVoiceId]->retrigger();
-  fenvs[selectedVoiceId]->retrigger();
+  //envs[selectedVoiceId]->retrigger();
+  //fenvs[selectedVoiceId]->retrigger();
+  retriggerVoice(selectedVoiceId);
   notes[selectedVoiceId] = note;
 
   lru[leastRecentlyReleasedVoiceId] = -lru[leastRecentlyReleasedVoiceId];
@@ -406,12 +424,12 @@ void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
   //outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
 
   //parts[0]->setActiveNbVoices(1);
-  parts[2]->setActiveNbVoices(1);
-  parts[3]->setActiveNbVoices(3);
+  //parts[2]->setActiveNbVoices(1);
+  //parts[3]->setActiveNbVoices(3);
   parts[0 + 6]->setActiveNbVoices(1);
   parts[1 + 6]->setActiveNbVoices(1);
-  //parts[2 + 6]->setActiveNbVoices(1);
-  //parts[3 + 6]->setActiveNbVoices(1);
+  parts[2 + 6]->setActiveNbVoices(1);
+  parts[3 + 6]->setActiveNbVoices(1);
 
 
   markRequiredSignals();

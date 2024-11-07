@@ -1,6 +1,7 @@
 #ifndef SYNTHENGINE_H
 #define SYNTHENGINE_H
 
+
 #include <Arduino.h>
 #include <AudioStream.h>
 #include <initializer_list>
@@ -27,7 +28,8 @@ extern unsigned long _heap_start;
 extern unsigned long _heap_end;
 extern char* __brkval;
 
-
+#define NB_PARTS 6
+#define NB_PART_TYPES 2
 
 
 class Registry {
@@ -621,6 +623,8 @@ public:
     return "env";
   }
 
+  
+
 private:
   Signal *a, *d, *s, *r;
   //float value = 0;
@@ -634,6 +638,7 @@ private:
   float rSecs = 1;
   float fDecay = 1;
   float fRelease = 1;
+  
 };
 
 class Digital2Pole : public Signal {
@@ -701,6 +706,72 @@ private:
   float v1 = 0;
   float eps = 0.01f;
   //float value = 0;
+};
+
+class Overdrive : public Signal {
+public:
+  Overdrive(Registry* r, Signal* in, Signal* gain)
+    : Signal(r) {
+    this->in = in;
+    this->gain = gain;
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float in = this->in->getValue();
+    float gain = this->gain->getValue();
+    value = fast_tanh(in * gain) * 0.5f; // * (1/gain);
+  }
+
+private:
+  Signal *in, *gain;
+};
+
+class Stutter : public Signal {
+public:
+  Stutter(Registry* r, Signal* in, Signal* fraction, Signal* bpm)
+    : Signal(r) {
+    this->in = in;
+    this->fraction = fraction;
+    this->bpm = bpm;
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float in = this->in->getValue();
+    float frac = fraction->getValue();
+    float bpm = this->bpm->getValue();
+
+    if (frac < 2) { // skip
+      value = in;
+      return;
+    }
+
+    int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
+    
+    if (samplecounter < loopLength) samples[samplecounter]=in;
+    value = samples[samplecounter % loopLength];
+    samplecounter++;
+
+  }
+
+  void retrigger() {
+    samplecounter = 0;
+  }
+
+  //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
+
+private:
+  Signal *in, *fraction, *bpm;
+  float samples[2800]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
+  int samplecounter = 0;
+  //int loopLength = (int) (60.0f / (120 * 16) * 44100);
 };
 
 class SimperSVF : public Signal {
@@ -905,6 +976,11 @@ class Part {
   void noteOn(int note, int velo);
   void noteOff(int note, int velo);
 
+  virtual void retriggerVoice(int voiceId) {
+    this->envs[voiceId]->retrigger();
+    this->fenvs[voiceId]->retrigger();
+  }
+
   float midiToFreq(int note) {
     return (440.0f * pow(2, ((note)-69) / 12.0f));
   }
@@ -1001,6 +1077,10 @@ class DrumPart :  public Part {
 
 public:
   SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+  virtual void retriggerVoice(int voiceId) {
+    Part::retriggerVoice(voiceId);
+    this->stutter->retrigger();
+  }
 
 private:
 
@@ -1020,6 +1100,11 @@ private:
   StaticSignal* hiPassCutoff = NULL;
   StaticSignal* hiPassRes = NULL;
   StaticSignal* loPassCutoff = NULL;
+
+  StaticSignal* overdriveGain = NULL;
+  StaticSignal* stutterFraction = NULL;
+
+  Stutter *stutter = NULL;
   
 };
 
@@ -1088,8 +1173,8 @@ private:
   // for each voice:
   // the main outputsignal
   //const static int nbVoices = 12;
-  const static int nbParts = 6;
-  const static int nbPartTypes = 2; // type of engines (synth, drum)
+  const static int nbParts = NB_PARTS;
+  const static int nbPartTypes = NB_PART_TYPES; // type of engines (synth, drum)
 
   /*
   For each of the 6 logical parts we alreadz instantiate all of the possible sound engines (i.e. part types)

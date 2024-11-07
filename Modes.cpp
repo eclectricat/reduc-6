@@ -4,7 +4,7 @@
 
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
-  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd) {
+  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine) {
   this->engine = engine;
 }
 
@@ -47,10 +47,10 @@ void GlobalState::setup() {
   for (int i = 0; i < this->engine->getNbParts(); i++) {
 
     for (int type=0;type < this->engine->getNbPartTypes(); type++)
-      synthMode.allSynthParameters.push_back(new SynthParameters());
+      synthMode.allSynthParameters.push_back(new SynthParameters()); // one for every effective part
 
     Serial.println("created synth parameters");
-    partConfigMode.allSynthParameters.push_back(new SynthParameters());
+    partConfigMode.allSynthParameters.push_back(new SynthParameters()); // one for every logical part
     sequences.push_back(new Sequence());
   }
   this->delayedDisplayRefresh = millis() + 2000;
@@ -76,7 +76,9 @@ void PartConfigMode::setup() {
   ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
 
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
-    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pDummy, pDummy, pDummy, pDummy }, 0);
+
+    ParameterInfo *pPatternLength = new ParameterInfoDiscrete("len", 1, 64, globalState->sequencerMode.patternLengths[p]);
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{globalState->sequencerMode.pBPM, pPatternLength, pDummy, pDummy }, 0);
 
 
   }
@@ -127,6 +129,11 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
       lcd->setCursor(0, 0);
       lcd->print("  SEQUENCER         ");
       // postPartOrModeSwitch(); // not necessary for this one
+    } else if (buttonIndex == 2) {
+      globalState->selectedMode = &(globalState->partConfigMode);
+      lcd->setCursor(0, 0);
+      lcd->print("  PART CONFIG      ");
+      globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 5) {
       globalState->selectedMode = &(globalState->synthMode);
       lcd->setCursor(0, 0);
@@ -253,6 +260,11 @@ void SynthMode::postPartOrModeSwitch() {
   this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
 }
 
+void PartConfigMode::postPartOrModeSwitch() {
+  int partId = globalState->selectedPart;
+  this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
+}
+
 
 void SequencerMode::setup() {
   for (int i = 0; i < globalState->engine->getNbParts(); i++) {
@@ -314,7 +326,7 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
   int consumed = handleGenericPushButtonEvents(buttonIndex);
-  if (consumed) return;
+  if (consumed) return true;
 
   if (buttonIndex == 0) {
     cursorPos = cursorPos - 1;
@@ -451,7 +463,7 @@ void SequencerMode::displayPlayStatus() {
   lcd->setCursor(14,1);
   lcd->print("__");
   lcd->setCursor(14,1);
-  lcd->print(this->playHead);
+  lcd->print(this->playHead % nbSteps);
 }
 
 
@@ -464,13 +476,16 @@ void SequencerMode::maybePlay() {
     for (int part = 0; part < 4; part++) { // TODO: play all parts
 
     //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
+
+    int wrappedPlayHead = playHead % patternLengths[part]->getValueDiscrete();
+
     Sequence *s = this->globalState->sequences[part]; 
-    if(s->data[2][playHead]) {
+    if(s->data[2][wrappedPlayHead]) {
       // stop previous note
       //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
 
       if (lastPlayedNote[part] > -1) globalState->myNoteOff(part+1, lastPlayedNote[part], 0);
-      int newNote = 36 + s->data[0][playHead] * 12 + s->data[1][playHead]; 
+      int newNote = 36 + s->data[0][wrappedPlayHead] * 12 + s->data[1][wrappedPlayHead]; 
       lastPlayedNote[part] = newNote;
       // play
       //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
@@ -484,12 +499,12 @@ void SequencerMode::maybePlay() {
           
         }
 
-        this->parametersToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]; // also copy NULLs from lockedParameters
-        if (s->lockedParameters[lockPosition][playHead] != NULL) {
+        this->parametersToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][wrappedPlayHead]; // also copy NULLs from lockedParameters
+        if (s->lockedParameters[lockPosition][wrappedPlayHead] != NULL) {
 
           //this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
           //s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
-          s->lockedParameters[lockPosition][playHead]->lock(s->lockedValues[lockPosition][playHead]);
+          s->lockedParameters[lockPosition][wrappedPlayHead]->lock(s->lockedValues[lockPosition][wrappedPlayHead]);
           
           
         }
@@ -500,7 +515,12 @@ void SequencerMode::maybePlay() {
     }
     }
 
-    if((playHead % 4 == 0)&&(this->globalState->selectedMode == this)) displayPlayStatus();
-    playHead = (playHead + 1) % nbSteps;
+    if((playHead % 4 == 0)&&(this->globalState->selectedMode == this)) {
+      displayPlayStatus(); 
+    }
+    playHead = (playHead + 1); // % nbSteps;
+
+    // recalculate tempo: TODO, can we do that more rarely?
+    interBeatMs = 60000 / (bpm->value * 4);
   }
 }

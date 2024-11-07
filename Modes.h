@@ -63,11 +63,12 @@ class PartConfigMode: public Mode {
   //virtual void pushButtonPressed(int buttonIndex) override;
   //virtual void pushButtonReleased(int buttonIndex) override;
   void setup();
+  virtual void postPartOrModeSwitch();
 
   //int selectedLane = 0;
   //int selectedPage = 0;
   ///vector<ParameterInfo*> currentMenuPage;
-  int partTypes[6] = {1,1,0,0,0,0}; /// TODO: control via parameters
+  int partTypes[6] = {1,1,1,1,0,0}; /// TODO: control via parameters
 
   // TODO: should be nbParts * nbPartTypes * 4, and values should not be hardcoded 
   //ParameterInfo* lockParameters[4*6]; // 4 params, 6 parts, get it with (partId * 4 + paramId) //= {NULL, NULL, NULL, NULL};
@@ -80,8 +81,15 @@ class PartConfigMode: public Mode {
 class SequencerMode: public Mode {
 
   public: 
-  SequencerMode(LiquidCrystal *lcd) {
+  SequencerMode(LiquidCrystal *lcd, SynthEngine *engine) {
     this->lcd = lcd;
+
+    for (int p = 0; p<NB_PARTS; p++) {
+      patternLengths[p] = new StaticSignalDiscrete(&(engine->registry), 16);
+    }
+
+    bpm = new StaticSignalDiscrete(&(engine->registry), 120);
+    pBPM = new ParameterInfoDiscrete("BPM", 70, 180, bpm);
   }
 
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
@@ -99,7 +107,7 @@ class SequencerMode: public Mode {
   void displayStep();
 
   int cursorPos = 0;
-  int nbSteps = 16;
+  int nbSteps = 64;
 
   int playHead = 0;
   int nextTriggerTime = 0;
@@ -113,7 +121,11 @@ class SequencerMode: public Mode {
   int patternSelectMode = 0;
 
   //float valuesToReset[4 * 6] ; // TODO: don't hardcode
-  ParameterInfo *parametersToReset[4 * 6];
+  ParameterInfo *parametersToReset[4 * NB_PARTS];
+  StaticSignalDiscrete* patternLengths[NB_PARTS];
+
+  StaticSignalDiscrete* bpm;
+  ParameterInfo *pBPM;
 
 };
 
@@ -149,6 +161,8 @@ class GlobalState {
   std::vector<Sequence*> sequences;
 
   SynthEngine *engine;
+
+  
   private:
   
 
@@ -164,7 +178,7 @@ class GlobalState {
 
 class Sequence {
 
-  const int NB_STEPS = 16 ;
+  const int NB_STEPS = 64 ;
   // stored: octave, note, on/off, (length, velo)
 
   public:
