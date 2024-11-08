@@ -155,8 +155,8 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
   VCA *vca = new VCA(registry, filter, env);
 
   // distribute voices evenly over stereo width
-  float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
-  //float position = -1 + 2.0f * (float(i) / this->activeNbVoices);
+  //float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
+  float position = -1 + 2.0f * (float(i) / this->activeNbVoices);
   Signal *sPosition = new VCA(registry, new StaticSignal(registry, position), panSpread);
   Signal *pan = new Pan(registry, vca, sPosition);
 
@@ -184,8 +184,14 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   overdriveGain = new StaticSignal(registry, 1.0f);
 
+  StaticSignal *hiPassCutoff2 = new StaticSignal(registry, 0.0f);
+  StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
+
   StaticSignal* stutterFraction = new StaticSignalDiscrete(registry, 0);
-  StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120);
+  StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
+
+  StaticSignalDiscrete *noiseType = new StaticSignalDiscrete(registry, 0);
+
 
 
 
@@ -206,7 +212,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain);
 
+  ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2);
+  ParameterInfo *pHiPassRes2 = new ParameterInfo("HPR ", 0, 1, hiPassRes2);
+
   ParameterInfo *pStutterFraction = new ParameterInfoDiscrete("STU", 0, 16, stutterFraction);
+
+  ParameterInfo *pNoiseType = new ParameterInfoDiscrete("TYP", 0, 2, noiseType);
 
 
 
@@ -219,8 +230,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
   menu->addPage(vector<ParameterInfo *>{ pSinVol, pNoiseVol, pAmpEnvDR, pDummy }, 0);
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pDummy }, 1);
-  menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pOverdriveGain }, 2);
-  menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pDummy, pDummy, pDummy }, 3);
+  menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pNoiseType }, 2);
+  menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
 
 
   // create the chain of 'Signals'
@@ -244,7 +255,9 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   Signal* osc = new VCA(registry, lfoAsOsc, sinVol);
 
-  Signal* noise = new VCA(registry, new NoiseOsc(registry),noiseVol);
+  //Signal* noise = new VCA(registry, new NoiseOsc(registry),noiseVol);
+  //Signal* noise = new VCA(registry, new Noise808(registry),noiseVol);
+  Signal* noise = new VCA(registry, new MultiNoise(registry, noiseType),noiseVol);
 
   noise = new DigitalHiPass(registry, noise, hiPassCutoff, hiPassRes);
   noise = new Digital2Pole(registry, noise, loPassCutoff, dummyS);
@@ -252,7 +265,10 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   this->envs[0] = ampEnv;
   this->fenvs[0] = pitchEnv; // TODO: misusing filter env slot for pitch env here
 
-  VCA *vca = new VCA(registry, new Overdrive(registry, new Mixer(registry, {noise, osc} , 1), overdriveGain), ampEnv);
+  Signal *over = new Overdrive(registry, new Mixer(registry, {noise, osc} , 1), overdriveGain);
+  over = new DigitalHiPass(registry, over, hiPassCutoff2, hiPassRes2);
+
+  VCA *vca = new VCA(registry, over, ampEnv);
 
   this->stutter = new Stutter(registry, vca, stutterFraction, bpmTemp);
 

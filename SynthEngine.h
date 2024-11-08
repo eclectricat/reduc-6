@@ -22,6 +22,7 @@ class Registry;
 class Menu;
 class SynthParameters;
 class Env;
+class LFO;
 typedef Signal* SignalPtr;
 
 extern unsigned long _heap_start;
@@ -430,6 +431,48 @@ private:
   double b_noise = 19.1919191919191919191919191919191919191919;
 };
 
+class Noise808 : public Signal {
+public:
+  Noise808(Registry* r)
+    : Signal(r) {
+    
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+
+    value = 0;
+
+    for (int i=0;i<nbOscs;i++) {
+      float p = seconds_since_start * 100 * frequencies[i]; // cycles since start
+      p = p - (long)p; // phase
+      value = value + (p < 0.5f);
+    }
+    value = value * 0.8f;
+    seconds_since_start += seconds_per_sample; // I think if this grows too much it is not precise enough anymore, so reset it every once in a while
+    if(seconds_since_start > 10) seconds_since_start = 0;
+    
+  }
+
+  virtual String signame() const {
+    return "noise808";
+  }
+
+private:
+  float frequencies[6] = {1.0f, 1.1414f, 1.1962f, 2.1430f, 2.4961f, 2.0558f}; // * 100 Hz
+  int nbOscs = 6;
+  //float values[6];
+  float seconds_since_start=0;
+  float seconds_per_sample = 1.0f/AUDIO_SAMPLE_RATE;
+};
+
+
+
+
+
 // calculating power of 2
 class Octaver : public Signal {
 public:
@@ -492,12 +535,13 @@ public:
 
     counter++;
 
-    if (counter > subsample) {
+    if (counter >= subsample) {
       counter = 0;
 
       float increment = freq->getValue() * rateInverse;
       phase = phase + increment * subsample;
       if (phase > 1) phase -= 1;
+      if (phase < 0) phase += 1; // to support through zero mod
 
       switch (wave->getValueDiscrete()) {
         case 0:
@@ -531,6 +575,66 @@ private:
   float phase;
 
   int counter = 0;
+
+};
+
+class MultiNoise : public Signal {
+public:
+  MultiNoise(Registry* r, StaticSignalDiscrete *type)
+    : Signal(r) {
+      this->type = type;
+
+      // TODO: not sure if this works with triangle waves
+      modulator = new LFO(NULL, new StaticSignal(NULL, 233.0f), new StaticSignalDiscrete(NULL, 1));
+      vca = new VCA(NULL, new StaticSignal(NULL, 4000.0f),  modulator);
+      mixer = new Mixer(NULL, {vca, new StaticSignal(NULL, 200.0f)}, 1);
+      carrier = new LFO(NULL, mixer, new StaticSignalDiscrete(NULL, 1)); 
+      modulator->subsample=1;
+      carrier->subsample=1;
+
+      noise = new NoiseOsc(NULL);
+      noise808 = new Noise808(NULL);
+
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+
+    //value = 0;
+    if (type->getValueDiscrete() == 0) {
+      noise->update();
+      value = noise->value;
+    } else if (type->getValueDiscrete() == 1) {
+      noise808->update();
+      value = noise808->value;
+    } else {
+    modulator->update();
+    vca->update();
+    mixer->update();
+    carrier->update();
+    value = carrier->value * 2;
+    }
+     
+  }
+
+  virtual String signame() const {
+    return "multiNoise";
+  }
+
+private:
+  StaticSignalDiscrete *type;
+
+  NoiseOsc *noise;
+  Noise808 *noise808;
+
+  LFO *carrier;
+  LFO *modulator;
+  Signal *vca;
+  Mixer *mixer;
+
 
 };
 
