@@ -394,11 +394,38 @@ public:
     return "vca";
   }
 
-private:
+protected:
   Signal* signal;
   Signal* gain;
   //float value = 0;
 };
+
+
+class VcaStereo : public VCA {
+  public:
+   VcaStereo(Registry* r, Signal* signal, Signal* gain): VCA(r, signal, gain) {}
+
+  float getValue(int channel = 0) {
+    if (channel == 0 ) {
+      return value;
+      } else {
+      return valueR;
+    }
+  }
+
+  void update() {
+    value = signal->getValue(0) * gain->getValue(0);
+    valueR = signal->getValue(1) * gain->getValue(0);
+  }
+
+  virtual String signame() const {
+    return "vcaStereo";
+  }
+
+  private:
+  float valueR = 0;
+};
+
 
 class NoiseOsc : public Signal {
 public:
@@ -878,6 +905,34 @@ private:
   //int loopLength = (int) (60.0f / (120 * 16) * 44100);
 };
 
+class Click : public Signal {
+public:
+  Click(Registry* r)
+    : Signal(r) {
+    value = 1;
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    counter++;
+    if (counter > 100)
+      value = 0;
+    
+  }
+
+  void retrigger() {
+    value = 1;
+    counter = 0;
+  }
+
+  private:
+  int counter = 0;
+
+};
+
 class SimperSVF : public Signal {
 public:
   SimperSVF(Registry* r, Signal* input, Signal* cutoff, Signal* reso)
@@ -1062,7 +1117,10 @@ private:
 class Part {
 
   public:
-  Part() {
+  Part(StaticSignal *partVolume) {
+  //  Part() {
+
+    this->partVolume = partVolume;
 
     // lru voice logic
     for (int i = 0; i < maxNbVoices; i++) {
@@ -1117,6 +1175,8 @@ class Part {
   // the per voice signals that go into the last mixer
   SignalPtr signals[maxNbVoices];
 
+  StaticSignal *partVolume; 
+
   // remember which note each voice is playing
   int notes[maxNbVoices];
 
@@ -1136,6 +1196,7 @@ class Part {
 class SynthPart :  public Part {
 
 public:
+  SynthPart(StaticSignal *partVolume): Part(partVolume) {}
   SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
 
 private:
@@ -1180,10 +1241,15 @@ private:
 class DrumPart :  public Part {
 
 public:
+  DrumPart(StaticSignal *partVolume, StaticSignal *bpm): Part(partVolume) {
+  //DrumPart(StaticSignal *bpm): Part() {  
+    this->bpm=bpm;
+  }
   SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
   virtual void retriggerVoice(int voiceId) {
     Part::retriggerVoice(voiceId);
     this->stutter->retrigger();
+    this->click->retrigger();
   }
 
 private:
@@ -1209,6 +1275,9 @@ private:
   StaticSignal* stutterFraction = NULL;
 
   Stutter *stutter = NULL;
+  Click *click = NULL;
+
+  StaticSignal *bpm;
   
 };
 
@@ -1219,7 +1288,8 @@ public:
     // any extra initialization
   }
 
-  void buildEngine(std::vector<SynthParameters*>);
+  void buildEngine(std::vector<SynthParameters*>, StaticSignal *bpm);
+  //void buildEngine(std::vector<SynthParameters*> allParams);
 
   // destruction:
   // - destroy all Signals in registry
@@ -1272,6 +1342,8 @@ public:
 
   Registry registry;  // put it here for debugging
 
+  StaticSignal* partVolumes[NB_PARTS]; // the drum part and the synth part on the same voice will share the volume
+
 private:
 
   // for each voice:
@@ -1289,6 +1361,8 @@ private:
   // the per voice signals that go into the last mixer, nbParts * nbPartTypes
   SignalPtr signals[nbParts*nbPartTypes];
   Part* parts[nbParts*nbPartTypes];
+
+  
 
   // totaloutput
   SignalPtr outputSignal = 0;

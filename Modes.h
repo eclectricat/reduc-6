@@ -68,7 +68,7 @@ class PartConfigMode: public Mode {
   //int selectedLane = 0;
   //int selectedPage = 0;
   ///vector<ParameterInfo*> currentMenuPage;
-  int partTypes[6] = {1,1,1,1,0,0}; /// TODO: control via parameters
+  int partTypes[6] = {0,1,1,1,0,0}; /// TODO: control via parameters
 
   // TODO: should be nbParts * nbPartTypes * 4, and values should not be hardcoded 
   //ParameterInfo* lockParameters[4*6]; // 4 params, 6 parts, get it with (partId * 4 + paramId) //= {NULL, NULL, NULL, NULL};
@@ -76,6 +76,17 @@ class PartConfigMode: public Mode {
   //std::vector<SynthParameters*> allSynthParameters;
 
 
+};
+
+class MixMuteMode: public Mode {
+
+  public:
+  MixMuteMode(LiquidCrystal *lcd) {
+    this->lcd = lcd;
+  }
+  void setup();
+  virtual void postPartOrModeSwitch();
+  virtual bool pushButtonPressed(int buttonIndex);
 };
 
 class SequencerMode: public Mode {
@@ -137,7 +148,9 @@ class GlobalState {
   SynthMode synthMode;
   PartConfigMode partConfigMode;
   SequencerMode sequencerMode;
+  MixMuteMode mixMuteMode;
   Mode *selectedMode = &synthMode;
+
 
   int selectedPart=0;
 
@@ -159,6 +172,8 @@ class GlobalState {
   int delayedDisplayRefresh = -1;
 
   std::vector<Sequence*> sequences;
+
+  StaticSignal* playingProb[NB_PARTS]; // 16 for all possible midi channels
 
   SynthEngine *engine;
 

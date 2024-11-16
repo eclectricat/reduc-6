@@ -121,7 +121,8 @@ void setup()
   //waveform1.frequency(500);
   //engine.frequency(500);
   globalState.setup(); // intialise, so the Modes can call back into globalState
-  engine.buildEngine(globalState.synthMode.allSynthParameters);
+  engine.buildEngine(globalState.synthMode.allSynthParameters, globalState.sequencerMode.bpm);
+  //engine.buildEngine(globalState.synthMode.allSynthParameters);
 
   Serial.println("BUILDENGINE DONE");
 
@@ -157,6 +158,7 @@ void setup()
   globalState.synthMode.setup();
   globalState.partConfigMode.setup();
   globalState.sequencerMode.setup();
+  globalState.mixMuteMode.setup();
   lockPotentiometers(true);
 
 
@@ -183,8 +185,8 @@ void loop()
 
   // print some stats
   unsigned int now = millis();
-  //if (now > startMillis + 10000) {
-  if (false) {
+  if (now > startMillis + 10000) {
+  //if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");
@@ -220,6 +222,23 @@ void loop()
 
   }
 
+  // do high prio stuff first
+
+  // sequencer
+  if (globalState.seqPlaying) globalState.sequencerMode.maybePlay();
+
+   //for (int i=0;i<30;i++) {
+    int received = usbMIDI.read();
+    /*if(received) {
+      Serial.print(usbMIDI.getType());
+      Serial.print("-");
+      Serial.print(usbMIDI.getData1());
+      Serial.print("-");
+      Serial.println(usbMIDI.getData2());
+    }*/
+    
+  //}
+
   // delayed display update
   if (globalState.delayedDisplayRefresh > 0) {
     if (millis() > globalState.delayedDisplayRefresh) {
@@ -228,8 +247,9 @@ void loop()
     }
   }
 
-  // sequencer
-  if (globalState.seqPlaying) globalState.sequencerMode.maybePlay();
+  
+  if (nbLoopPasses%7 == 0) { // do lo prio stuff
+
 
   // check for pots moved
 
@@ -294,17 +314,9 @@ void loop()
   }
   }
 
-  //for (int i=0;i<30;i++) {
-    int received = usbMIDI.read();
-    /*if(received) {
-      Serial.print(usbMIDI.getType());
-      Serial.print("-");
-      Serial.print(usbMIDI.getData1());
-      Serial.print("-");
-      Serial.println(usbMIDI.getData2());
-    }*/
-    
-  //}
+  } // low prio throttling
+
+ 
 
   delay(5);  // do not print too fast!
 }

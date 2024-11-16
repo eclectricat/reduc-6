@@ -4,14 +4,25 @@
 
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
-  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine) {
+  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd) {
   this->engine = engine;
+
+  for(int p=0;p<NB_PARTS;p++) {
+    this->playingProb[p] = new StaticSignal(NULL, 1);
+  }
 }
 
 void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
   //channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; // TODO: hardcoded 6
+
+  float dice = ((float)rand())/((float)RAND_MAX);
+
+  if (dice > playingProb[channel-1]->value) {
+    return;
+  }
+
   channel = synthMode.effectivePartId(channel -1) + 1;
   Serial.print("Note On, ch=");
   Serial.print(channel, DEC);
@@ -19,9 +30,7 @@ void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
-    
   engine->noteOn(channel, note, velocity);
-
   //digitalWrite(led1Pin, HIGH);
 }
 
@@ -44,6 +53,7 @@ void GlobalState::setup() {
   synthMode.globalState = this;
   partConfigMode.globalState = this;
   sequencerMode.globalState = this;
+  mixMuteMode.globalState = this;
   for (int i = 0; i < this->engine->getNbParts(); i++) {
 
     for (int type=0;type < this->engine->getNbPartTypes(); type++)
@@ -91,6 +101,34 @@ void PartConfigMode::setup() {
   
 }
 
+void MixMuteMode::setup() {
+
+  // create all the synth params
+  Registry *registry = &(globalState->engine->registry);
+
+  registry->setPartAndVoiceTag(0, 0);  // does not really matter - this signal does not need to be updated by the synth engine
+  StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
+  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
+
+  allSynthParameters.push_back(new SynthParameters()); // we only need 1 SynthParameters, not one per part (the different lanes are the different part params)
+  
+  for (int p = 0; p < globalState->engine->getNbParts(); p++) {
+
+    //char[] name = "Vx  ";
+    //sprintf(name[1], "%d", p);
+    ParameterInfo *pPatternVolume = new ParameterInfo("V"+String(p), 0, 1, globalState->engine->partVolumes[p]);
+    ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p]);
+    allSynthParameters[0]->addPage(vector<ParameterInfo *>{pPatternVolume, pDummy, pDummy, pPlayingProb }, p);
+
+  }
+  
+  Serial.println("MixMuteMode info mode: getting initial page");
+  currentMenuPage = allSynthParameters[0]->getPage(0, 0);
+  Serial.println("got initial page");
+  
+
+}
+
 int Mode::effectivePartId(int partId) { // map from logical part id 0-5 to effective partId for synthEngine
     return partId + globalState->engine->getNbParts() * globalState->partConfigMode.partTypes[partId];
 }
@@ -129,15 +167,20 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
       lcd->setCursor(0, 0);
       lcd->print("  SEQUENCER         ");
       // postPartOrModeSwitch(); // not necessary for this one
-    } else if (buttonIndex == 2) {
+    } else if (buttonIndex == 3) {
       globalState->selectedMode = &(globalState->partConfigMode);
       lcd->setCursor(0, 0);
       lcd->print("  PART CONFIG      ");
       globalState->selectedMode->postPartOrModeSwitch();
-    } else if (buttonIndex == 5) {
+    } else if (buttonIndex == 1) {
       globalState->selectedMode = &(globalState->synthMode);
       lcd->setCursor(0, 0);
       lcd->print("  SYNTH         ");
+      globalState->selectedMode->postPartOrModeSwitch();
+    } else if (buttonIndex == 2) {
+      globalState->selectedMode = &(globalState->mixMuteMode);
+      lcd->setCursor(0, 0);
+      lcd->print("  MIX/MUTE      ");
       globalState->selectedMode->postPartOrModeSwitch();
     }
 
@@ -178,6 +221,46 @@ bool Mode::pushButtonPressed(int buttonIndex) {
 
   int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
   SynthParameters *synthParameters = allSynthParameters[partId];
+
+  if (selectedLane == buttonIndex) {  // already on that lane
+    selectedPage = (selectedPage + 1) % synthParameters->getNbPages(selectedLane);
+
+  } else {
+    if (buttonIndex < synthParameters->getNbLanes()) {
+      selectedLane = buttonIndex;
+      selectedPage = 0;
+    }
+  }
+
+  if (synthParameters->existPage(selectedLane, selectedPage)) {
+    currentMenuPage = synthParameters->getPage(selectedLane, selectedPage);
+    Serial.print("Selected param:");
+    /*lcd->clear();
+    for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
+      Serial.print(currentMenuPage.at(p)->getName());
+      Serial.print("__");
+
+      lcd->setCursor(4 * p, 0);
+      lcd->print(currentMenuPage.at(p)->getName());
+      lcd->setCursor(4 * p, 1);
+      lcd->print(currentMenuPage.at(p)->printableValue());
+    }*/
+    fullDisplayUpdate();
+    Serial.println("");
+  }
+
+  return true;
+}
+
+bool MixMuteMode::pushButtonPressed(int buttonIndex) {
+
+  // when doing parameter switch, respect the fact that we have only one synthparameter here
+
+  int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
+  if (eventConsumed) return true;
+
+  //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
+  SynthParameters *synthParameters = allSynthParameters[0];
 
   if (selectedLane == buttonIndex) {  // already on that lane
     selectedPage = (selectedPage + 1) % synthParameters->getNbPages(selectedLane);
@@ -263,6 +346,11 @@ void SynthMode::postPartOrModeSwitch() {
 void PartConfigMode::postPartOrModeSwitch() {
   int partId = globalState->selectedPart;
   this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
+}
+
+void MixMuteMode::postPartOrModeSwitch() {
+  int partId = globalState->selectedPart;
+  this->currentMenuPage = allSynthParameters[0]->getPage(partId, 0);
 }
 
 

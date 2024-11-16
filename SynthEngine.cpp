@@ -103,6 +103,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
   registry->setPartAndVoiceTag(partId,0);
   Signal *outputSignal = new MixerStereo(registry, signals, maxNbVoices, 0.5f);
+  outputSignal = new VcaStereo(registry, outputSignal, this->partVolume);
 
   return outputSignal;
 }
@@ -155,8 +156,8 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
   VCA *vca = new VCA(registry, filter, env);
 
   // distribute voices evenly over stereo width
-  //float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
-  float position = -1 + 2.0f * (float(i) / this->activeNbVoices);
+  float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
+  //float position = -1 + 2.0f * (float(i) / this->activeNbVoices); // division by zero?
   Signal *sPosition = new VCA(registry, new StaticSignal(registry, position), panSpread);
   Signal *pan = new Pan(registry, vca, sPosition);
 
@@ -167,6 +168,8 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
 SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
   registry->setPartAndVoiceTag(partId,0);
 
+  StaticSignal *clickLPF = new StaticSignal(registry, 0.5f);
+  StaticSignal *clickVol = new StaticSignal(registry, 1.0f);
 
   o1Oct = new StaticSignal(registry, 1.0f); 
   pitchEnvDR = new StaticSignal(registry, 1.0f);
@@ -188,13 +191,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
 
   StaticSignal* stutterFraction = new StaticSignalDiscrete(registry, 0);
-  StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
-
+  //StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
   StaticSignalDiscrete *noiseType = new StaticSignalDiscrete(registry, 0);
-
-
-
-
 
   ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct);
   ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR);
@@ -219,7 +217,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   ParameterInfo *pNoiseType = new ParameterInfoDiscrete("TYP", 0, 2, noiseType);
 
-
+  ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol);
+  ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF);
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
@@ -228,8 +227,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   // pages: (global decay, filter) (pitch, pitchenv, amount, sinVol) (noiseVol, [noiseDecay]), (click?, fm, )
   //menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);
   //menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
-  menu->addPage(vector<ParameterInfo *>{ pSinVol, pNoiseVol, pAmpEnvDR, pDummy }, 0);
-  menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pDummy }, 1);
+  menu->addPage(vector<ParameterInfo *>{ pSinVol, pNoiseVol, pClickVol, pAmpEnvDR }, 0);
+  menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pClickLPF }, 1);
   menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pNoiseType }, 2);
   menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
 
@@ -238,9 +237,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
   this->baseFreqs[0] = baseFreq;
 
-
   // pitch
-  
   Signal *octavedFreq1 = new VCA(registry, baseFreq, o1Oct);
   // lfo pitch mod: normally we would use 2^mod, but maybe we could use baseFreq * (1 + s * lfo)
 
@@ -265,16 +262,22 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   this->envs[0] = ampEnv;
   this->fenvs[0] = pitchEnv; // TODO: misusing filter env slot for pitch env here
 
-  Signal *over = new Overdrive(registry, new Mixer(registry, {noise, osc} , 1), overdriveGain);
+  this->click = new Click(registry);
+  Signal *clickLP = new Digital2Pole(registry, click, clickLPF, new StaticSignal(NULL, 0));
+  Signal *clickVCA = new VCA(registry, clickLP, clickVol);
+
+  Signal *over = new Overdrive(registry, new Mixer(registry, {noise, osc, clickVCA} , 1), overdriveGain);
   over = new DigitalHiPass(registry, over, hiPassCutoff2, hiPassRes2);
 
   VCA *vca = new VCA(registry, over, ampEnv);
 
-  this->stutter = new Stutter(registry, vca, stutterFraction, bpmTemp);
+  this->stutter = new Stutter(registry, vca, stutterFraction, this->bpm);
+  //this->stutter = new Stutter(registry, vca, stutterFraction, bpmTemp);
 
-  return this->stutter;
-  
+  Signal *output = new VCA(registry, this->stutter, this->partVolume);
+  //Signal *output = this->stutter;
 
+  return output;
 }
 
 void Part::noteOn(int note, int velo) {
@@ -426,23 +429,31 @@ void SynthEngine::update(void) {
   release(blockR);
 }
 
-void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
+void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSignal *bpm) {
+//void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
   for (int i=0;i<nbParts;i++) {
-    parts[i] = new SynthPart();
-    parts[i+nbParts] = new DrumPart();
+
+    this->partVolumes[i] = new StaticSignal(NULL, 1);
+    parts[i] = new SynthPart(partVolumes[i]);
+    parts[i+nbParts] = new DrumPart(partVolumes[i], bpm);
+    //parts[i] = new SynthPart();
+    //parts[i+nbParts] = new DrumPart(bpm);
+    //parts[i+nbParts] = new DrumPart();
     signals[i]=parts[i]->buildSynth(&registry, allParams[i], i);
     signals[i+nbParts]=parts[i+nbParts]->buildSynth(&registry, allParams[i+nbParts], i+nbParts);
     Serial.println("created synth part");
+
+    
   }
 
   registry.setPartAndVoiceTag(0,-1);
   outputSignal = new MixerStereo(&registry, signals, nbParts*nbPartTypes, 0.5f);
   //outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
 
-  //parts[0]->setActiveNbVoices(1);
+  parts[0]->setActiveNbVoices(3);
   //parts[2]->setActiveNbVoices(1);
   //parts[3]->setActiveNbVoices(3);
-  parts[0 + 6]->setActiveNbVoices(1);
+  //parts[0 + 6]->setActiveNbVoices(1);
   parts[1 + 6]->setActiveNbVoices(1);
   parts[2 + 6]->setActiveNbVoices(1);
   parts[3 + 6]->setActiveNbVoices(1);

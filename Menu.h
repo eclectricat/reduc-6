@@ -40,6 +40,7 @@ class ParameterInfo {
     }
 
     void lock(int potValue) {
+      if (locked) return; // in case its accidentally called twice in a row
       locked = true;
       storedValue = param->getValue();
       float targetValue = this->min + (potValue/1024.0) * (this->max - this->min);
@@ -49,6 +50,7 @@ class ParameterInfo {
     }
 
     void unlock() {
+      if (!locked) return;
       locked = false;
       param->setValue(storedValue);
       Serial.print("unlock");
