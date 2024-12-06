@@ -1,29 +1,31 @@
 #include "Modes.h"
 #include "SynthEngine.h"
 #include <LiquidCrystal.h>
+#include <ArduinoJson.h>
+#include <SD.h>
 
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
   : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd) {
   this->engine = engine;
 
-  for(int p=0;p<NB_PARTS;p++) {
+  for (int p = 0; p < NB_PARTS; p++) {
     this->playingProb[p] = new StaticSignal(NULL, 1);
   }
 }
 
-void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
+void GlobalState::myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
   //channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; // TODO: hardcoded 6
 
-  float dice = ((float)rand())/((float)RAND_MAX);
+  float dice = ((float)rand()) / ((float)RAND_MAX);
 
-  if (dice > playingProb[channel-1]->value) {
+  if (dice > playingProb[channel - 1]->value) {
     return;
   }
 
-  channel = synthMode.effectivePartId(channel -1) + 1;
+  channel = synthMode.effectivePartId(channel - 1) + 1;
   Serial.print("Note On, ch=");
   Serial.print(channel, DEC);
   Serial.print(", note=");
@@ -34,10 +36,10 @@ void GlobalState::myNoteOn(byte channel, byte note, byte velocity) {
   //digitalWrite(led1Pin, HIGH);
 }
 
-void GlobalState::myNoteOff(byte channel, byte note, byte velocity) {
+void GlobalState::myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
-  channel = channel + 6 * this->partConfigMode.partTypes[channel-1]; //
+  channel = channel + 6 * this->partConfigMode.partTypes[channel - 1];  //
   Serial.print("Note Off, ch=");
   Serial.print(channel, DEC);
   Serial.print(", note=");
@@ -56,11 +58,11 @@ void GlobalState::setup() {
   mixMuteMode.globalState = this;
   for (int i = 0; i < this->engine->getNbParts(); i++) {
 
-    for (int type=0;type < this->engine->getNbPartTypes(); type++)
-      synthMode.allSynthParameters.push_back(new SynthParameters()); // one for every effective part
+    for (int type = 0; type < this->engine->getNbPartTypes(); type++)
+      synthMode.allSynthParameters.push_back(new SynthParameters());  // one for every effective part
 
     Serial.println("created synth parameters");
-    partConfigMode.allSynthParameters.push_back(new SynthParameters()); // one for every logical part
+    partConfigMode.allSynthParameters.push_back(new SynthParameters());  // one for every logical part
     sequences.push_back(new Sequence());
   }
   this->delayedDisplayRefresh = millis() + 2000;
@@ -82,14 +84,23 @@ void PartConfigMode::setup() {
   Registry *registry = &(globalState->engine->registry);
 
   registry->setPartAndVoiceTag(0, 0);  // does not really matter - this signal does not need to be updated by the synth engine
-  StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
+  StaticSignal *dummyS = new StaticSignal(registry, 0);
+  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  selectedBank = new StaticSignalDiscrete(NULL, 0);
+  selectedPatch = new StaticSignalDiscrete(NULL, 0);
+  ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
+  ParameterInfo *pLoad = new ParameterInfoDiscrete("LOD", 0, 9, dummyS, "LOD");
+  ParameterInfo *pQuestion = new ParameterInfo("?", 0, 10, dummyS, "?");
+  ParameterInfo *pBank = new ParameterInfoDiscrete("BNK", 0, 10, selectedBank, "BNK");
+  ParameterInfo *pPatch = new ParameterInfoDiscrete("PTC", 0, 10, selectedPatch, "PTC");
 
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
 
-    ParameterInfo *pPatternLength = new ParameterInfoDiscrete("len", 1, 64, globalState->sequencerMode.patternLengths[p]);
-    allSynthParameters[p]->addPage(vector<ParameterInfo *>{globalState->sequencerMode.pBPM, pPatternLength, pDummy, pDummy }, 0);
+    ParameterInfo *pPatternLength = new ParameterInfoDiscrete("len", 1, 64, globalState->sequencerMode.patternLengths[p], "patternLen");
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ globalState->sequencerMode.pBPM, pPatternLength, pDummy, pDummy }, 0);
 
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoad, pBank, pPatch, pQuestion }, 4);
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSave, pBank, pPatch, pQuestion }, 5);
 
   }
 
@@ -97,8 +108,6 @@ void PartConfigMode::setup() {
   Serial.println("Part info mode: getting initial page");
   currentMenuPage = allSynthParameters[0]->getPage(0, 0);
   Serial.println("got initial page");
-
-  
 }
 
 void MixMuteMode::setup() {
@@ -108,29 +117,26 @@ void MixMuteMode::setup() {
 
   registry->setPartAndVoiceTag(0, 0);  // does not really matter - this signal does not need to be updated by the synth engine
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
+  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
 
-  allSynthParameters.push_back(new SynthParameters()); // we only need 1 SynthParameters, not one per part (the different lanes are the different part params)
-  
+  allSynthParameters.push_back(new SynthParameters());  // we only need 1 SynthParameters, not one per part (the different lanes are the different part params)
+
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
 
     //char[] name = "Vx  ";
     //sprintf(name[1], "%d", p);
-    ParameterInfo *pPatternVolume = new ParameterInfo("V"+String(p), 0, 1, globalState->engine->partVolumes[p]);
-    ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p]);
-    allSynthParameters[0]->addPage(vector<ParameterInfo *>{pPatternVolume, pDummy, pDummy, pPlayingProb }, p);
-
+    ParameterInfo *pPatternVolume = new ParameterInfo("V" + String(p), 0, 1, globalState->engine->partVolumes[p], "partVolume"+String(p));
+    ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p], "playProb"+String(p));
+    allSynthParameters[0]->addPage(vector<ParameterInfo *>{ pPatternVolume, pDummy, pDummy, pPlayingProb }, p);
   }
-  
+
   Serial.println("MixMuteMode info mode: getting initial page");
   currentMenuPage = allSynthParameters[0]->getPage(0, 0);
   Serial.println("got initial page");
-  
-
 }
 
-int Mode::effectivePartId(int partId) { // map from logical part id 0-5 to effective partId for synthEngine
-    return partId + globalState->engine->getNbParts() * globalState->partConfigMode.partTypes[partId];
+int Mode::effectivePartId(int partId) {  // map from logical part id 0-5 to effective partId for synthEngine
+  return partId + globalState->engine->getNbParts() * globalState->partConfigMode.partTypes[partId];
 }
 
 void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
@@ -219,7 +225,8 @@ bool Mode::pushButtonPressed(int buttonIndex) {
   int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
   if (eventConsumed) return true;
 
-  int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
+  //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
+  int partId = effectivePartId(globalState->selectedPart);
   SynthParameters *synthParameters = allSynthParameters[partId];
 
   if (selectedLane == buttonIndex) {  // already on that lane
@@ -247,9 +254,10 @@ bool Mode::pushButtonPressed(int buttonIndex) {
     }*/
     fullDisplayUpdate();
     Serial.println("");
+    return true;
   }
 
-  return true;
+  return false;
 }
 
 bool MixMuteMode::pushButtonPressed(int buttonIndex) {
@@ -292,6 +300,93 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
   return true;
 }
 
+bool PartConfigMode::pushButtonPressed(int buttonIndex) {
+
+  int selectedLaneBefore = this->selectedLane;
+
+  int eventConsumed = Mode::pushButtonPressed(buttonIndex);
+  //if (eventConsumed) return true;
+
+  if ((buttonIndex == 5)&&(selectedLaneBefore == 5)) {  // save current state
+
+    JsonDocument doc;
+    //doc["PartParameters"] = JsonObject();
+    JsonObject obj = doc["PartParameters"].to<JsonObject>();
+
+    globalState->synthMode.serializeSynthPart(&obj, globalState->selectedPart);
+
+    char output[2560];
+    int nbBytes = serializeJson(doc, output);
+
+    String filename = String("Patch_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
+    Serial.println(filename);
+
+    SD.remove(filename.c_str()); // don't append to existing file
+
+    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
+
+    Serial.print(output);
+
+    Serial.print("number bytes: ");
+    Serial.println(nbBytes);
+
+    // if the file is available, write the contents of datastring to it
+    if (dataFile) {
+      dataFile.println(output);
+
+      dataFile.close();
+      Serial.println("wrote file");
+    } else {
+      Serial.println("error opening file for write");
+    }
+  }
+
+  // when already on load lane, and pressing load again -> actually load
+  if ((buttonIndex == 4)&&(selectedLaneBefore == 4)) {  // load saved state
+
+    Serial.println("listing files");
+    File dir = SD.open("/");
+    File entry = dir.openNextFile();
+    while (entry) {
+      Serial.println(entry.name());
+      entry.close();
+      entry = dir.openNextFile();
+    }
+    Serial.println("done listing files");
+
+    JsonDocument doc;
+    //JsonObject obj = doc["PartParameters"].to<JsonObject>();
+    String filename = String("Patch_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
+    Serial.println(filename);
+
+    File dataFile = SD.open(filename.c_str());
+    if (dataFile) {
+      Serial.println("reading patch file:");
+      /*while (dataFile.available()) {
+        Serial.write(dataFile.read());
+      }*/
+      deserializeJson(doc, dataFile);
+
+      //Serial.println("read file:");
+      //Serial.println("Deserialize, this is what we got");
+      //serializeJson(doc["PartParameters"], Serial);
+
+      JsonObject obj = doc["PartParameters"]; //.to<JsonObject>();
+      //Serial.println(doc["PartParameters"].to<JsonObject>());
+      globalState->synthMode.deserializeSynthPart(&obj, globalState->selectedPart);
+      // close the file:
+      dataFile.close();
+
+    } else {
+      Serial.println("error opening - patch does not exist");
+    }
+  }
+
+  return true;
+}
+
+
+
 void Mode::fullDisplayUpdate() {
   lcd->clear();
   for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
@@ -308,7 +403,7 @@ void Mode::fullDisplayUpdate() {
 bool SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
-  if ((buttonIndex == 7)&&(!globalState->shiftPressed)) {
+  if ((buttonIndex == 7) && (!globalState->shiftPressed)) {
     globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
 
@@ -358,26 +453,24 @@ void SequencerMode::setup() {
   for (int i = 0; i < globalState->engine->getNbParts(); i++) {
     lastPlayedNote.push_back(-1);
   }
-
 }
 
 void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
 
   if (this->paramLockMode) return processLockParameter(potIndex, potVal);
 
-  if (potIndex == 0) { // octave
-    int oct = std::lround(1 + (potVal/1024.0) * 4) - 2;
+  if (potIndex == 0) {  // octave
+    int oct = std::lround(1 + (potVal / 1024.0) * 4) - 2;
     Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
     s->data[0][cursorPos] = oct;
     displayOctAndNote();
   }
-  if (potIndex == 1) { // note
-    int note = std::lround(0 + (potVal/1024.0) * 12);
+  if (potIndex == 1) {  // note
+    int note = std::lround(0 + (potVal / 1024.0) * 12);
     Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
     s->data[1][cursorPos] = note;
     displayOctAndNote();
   }
-
 }
 
 void SequencerMode::processLockParameter(int potIndex, int potVal) {
@@ -394,7 +487,7 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   // store parameter value in sequence
   int selectedPart = this->globalState->selectedPart;
   Sequence *s = this->globalState->sequences[selectedPart];
-  
+
   for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
     if ((s->lockedParameters[lockPosition][cursorPos] == NULL) || (s->lockedParameters[lockPosition][cursorPos] == lockParam)) {
       s->lockedParameters[lockPosition][cursorPos] = lockParam;
@@ -407,8 +500,6 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
     }
   }
   Serial.println("all locking slots occupied");
-
-
 }
 
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
@@ -434,53 +525,51 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
     Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
     int currentValue = s->data[2][cursorPos];
     int newValue = 1 - currentValue;
-    
+
     Serial.print("new value at position:");
     Serial.print(cursorPos);
     Serial.print(":");
     Serial.println(newValue);
     s->data[2][cursorPos] = newValue;
-    
+
     displayOctAndNote();
   }
 
-  if (buttonIndex == 4) { // parameter lock (experimental)
+  if (buttonIndex == 4) {  // parameter lock (experimental)
     this->paramLockMode = 1;
 
     displayLockingParams();
-
   }
 
-  if (buttonIndex == 5) { // play/stop
+  if (buttonIndex == 5) {  // play/stop
     this->globalState->seqPlaying = !this->globalState->seqPlaying;
-    if(this->globalState->seqPlaying) {
+    if (this->globalState->seqPlaying) {
       this->playHead = 0;
-      this->nextTriggerTime = millis(); // 0; // means: in the next call a step 0 is going to be played
-    } else { // switch off current note
+      this->nextTriggerTime = millis();  // 0; // means: in the next call a step 0 is going to be played
+    } else {                             // switch off current note
       // of all parts
-      for(int i = 0;i<globalState->engine->getNbParts();i++) {
-         globalState->myNoteOff(i+1, lastPlayedNote[i], 0); // TODO: mapping from seq part to midi channel
-         for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
-          if (this->parametersToReset[i*4 + lockPosition] != NULL) {
-            this->parametersToReset[i*4 + lockPosition]->unlock();
-            this->parametersToReset[i*4 + lockPosition] = NULL;
-
+      for (int i = 0; i < globalState->engine->getNbParts(); i++) {
+        globalState->myNoteOff(i + 1, lastPlayedNote[i], 0);  // TODO: mapping from seq part to midi channel
+        for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+          if (this->parametersToReset[i * 4 + lockPosition] != NULL) {
+            this->parametersToReset[i * 4 + lockPosition]->unlock();
+            this->parametersToReset[i * 4 + lockPosition] = NULL;
           }
-         }
+        }
       }
     }
 
     displayPlayStatus();
   }
 
-  return true; // TODO: do we really need to lock pots after all buttons here?
+  return true;  // TODO: do we really need to lock pots after all buttons here?
 }
 
 bool SequencerMode::pushButtonReleased(int buttonIndex) {
   //Serial.print("pushButtonReleased seq mode:");
   bool needToLock = Mode::pushButtonReleased(buttonIndex);
   //Serial.println(buttonIndex);
-  if(buttonIndex == 4) {
+  if (buttonIndex == 4) {
     this->paramLockMode = 0;
 
     fullDisplayUpdate();
@@ -493,15 +582,14 @@ void SequencerMode::fullDisplayUpdate() {
   lcd->clear();
   lcd->setCursor(0, 0);
 
-  
+
   // Part
-  lcd->print(String("P")+(this->globalState->selectedPart+1));
+  lcd->print(String("P") + (this->globalState->selectedPart + 1));
 
   displayStep();
 
   displayOctAndNote();
   displayPlayStatus();
-  
 }
 
 void SequencerMode::displayLockingParams() {
@@ -511,7 +599,7 @@ void SequencerMode::displayLockingParams() {
 
   lcd->clear();
 
-  
+
   for (unsigned int p = 0; p < 4; p++) {
     int effectivePartId = this->effectivePartId(globalState->selectedPart);
     //ParameterInfo *pinfo = this->globalState->partConfigMode.lockParameters[partId * 4 + p];
@@ -523,92 +611,134 @@ void SequencerMode::displayLockingParams() {
     lcd->setCursor(4 * p, 0);
     lcd->print(lockParam->getName());
     lcd->setCursor(4 * p, 1);
-    lcd->print(lockParam->printableValue()); // TODO: if there is already a parameter lock, print this value instead
+    lcd->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
   }
 }
 
 void SequencerMode::displayStep() {
   // Step
-  lcd->setCursor(3, 0);// X,Y
+  lcd->setCursor(3, 0);  // X,Y
   lcd->print("S  ");
-  lcd->setCursor(4,0);
+  lcd->setCursor(4, 0);
   lcd->print(this->cursorPos);
 }
 
 void SequencerMode::displayOctAndNote() {
   Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
   // oct and note
-  lcd->setCursor(0,1);
-  lcd->print(String("O")+String(s->data[0][cursorPos])+String(" N")+ String(s->data[1][cursorPos])+ String(" "));
-  lcd->setCursor(7,1);
-  lcd->print(s->data[2][cursorPos] ? "+":"-");
+  lcd->setCursor(0, 1);
+  lcd->print(String("O") + String(s->data[0][cursorPos]) + String(" N") + String(s->data[1][cursorPos]) + String(" "));
+  lcd->setCursor(7, 1);
+  lcd->print(s->data[2][cursorPos] ? "+" : "-");
 }
 
 void SequencerMode::displayPlayStatus() {
   // play status
-  lcd->setCursor(15,0);
+  lcd->setCursor(15, 0);
   lcd->print(globalState->seqPlaying ? "P" : "-");
-  lcd->setCursor(14,1);
+  lcd->setCursor(14, 1);
   lcd->print("__");
-  lcd->setCursor(14,1);
+  lcd->setCursor(14, 1);
   lcd->print(this->playHead % nbSteps);
 }
 
 
 void SequencerMode::maybePlay() {
-  if(millis() > nextTriggerTime) {
-    nextTriggerTime = nextTriggerTime + interBeatMs; 
+  if (millis() > nextTriggerTime) {
+    nextTriggerTime = nextTriggerTime + interBeatMs;
     Serial.print("playing step ");
     Serial.println(playHead);
 
-    for (int part = 0; part < 4; part++) { // TODO: play all parts
+    for (int part = 0; part < 4; part++) {  // TODO: play all parts
 
-    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
+      //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
 
-    int wrappedPlayHead = playHead % patternLengths[part]->getValueDiscrete();
+      int wrappedPlayHead = playHead % patternLengths[part]->getValueDiscrete();
 
-    Sequence *s = this->globalState->sequences[part]; 
-    if(s->data[2][wrappedPlayHead]) {
-      // stop previous note
-      //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
+      Sequence *s = this->globalState->sequences[part];
+      if (s->data[2][wrappedPlayHead]) {
+        // stop previous note
+        //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
 
-      if (lastPlayedNote[part] > -1) globalState->myNoteOff(part+1, lastPlayedNote[part], 0);
-      int newNote = 36 + s->data[0][wrappedPlayHead] * 12 + s->data[1][wrappedPlayHead]; 
-      lastPlayedNote[part] = newNote;
-      // play
-      //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
+        if (lastPlayedNote[part] > -1) globalState->myNoteOff(part + 1, lastPlayedNote[part], 0);
+        int newNote = 36 + s->data[0][wrappedPlayHead] * 12 + s->data[1][wrappedPlayHead];
+        lastPlayedNote[part] = newNote;
+        // play
+        //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
 
-      // automate locked parameter and/or reset original parameter values
-      
-      for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+        // automate locked parameter and/or reset original parameter values
 
-        if (this->parametersToReset[part*4 + lockPosition] != NULL) { // for the first note in the sequence after a restart, we will call unlock here, even though it is unlocked
-          this->parametersToReset[part*4 + lockPosition]->unlock();
-          
+        for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+
+          if (this->parametersToReset[part * 4 + lockPosition] != NULL) {  // for the first note in the sequence after a restart, we will call unlock here, even though it is unlocked
+            this->parametersToReset[part * 4 + lockPosition]->unlock();
+          }
+
+          this->parametersToReset[part * 4 + lockPosition] = s->lockedParameters[lockPosition][wrappedPlayHead];  // also copy NULLs from lockedParameters
+          if (s->lockedParameters[lockPosition][wrappedPlayHead] != NULL) {
+
+            //this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
+            //s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
+            s->lockedParameters[lockPosition][wrappedPlayHead]->lock(s->lockedValues[lockPosition][wrappedPlayHead]);
+          }
         }
-
-        this->parametersToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][wrappedPlayHead]; // also copy NULLs from lockedParameters
-        if (s->lockedParameters[lockPosition][wrappedPlayHead] != NULL) {
-
-          //this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
-          //s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
-          s->lockedParameters[lockPosition][wrappedPlayHead]->lock(s->lockedValues[lockPosition][wrappedPlayHead]);
-          
-          
-        }
+        globalState->myNoteOn(part + 1, newNote, 127);
+        Serial.println(newNote);
       }
-      globalState->myNoteOn(part+1, newNote, 127);
-      Serial.println(newNote);
-      
-    }
     }
 
-    if((playHead % 4 == 0)&&(this->globalState->selectedMode == this)) {
-      displayPlayStatus(); 
+    if ((playHead % 4 == 0) && (this->globalState->selectedMode == this)) {
+      displayPlayStatus();
     }
-    playHead = (playHead + 1); // % nbSteps;
+    playHead = (playHead + 1);  // % nbSteps;
 
     // recalculate tempo: TODO, can we do that more rarely?
     interBeatMs = 60000 / (bpm->value * 4);
+  }
+}
+
+void SynthMode::serializeSynthPart(JsonObject *jsonObject, int partId) {
+
+  
+
+  SynthParameters *params = this->allSynthParameters[partId];
+  int nbLanes = params->getNbLanes();
+  for (int lane = 0; lane < nbLanes; lane++) {
+
+    int nbPages = params->getNbPages(lane);
+    for (int page = 0; page < nbPages; page++) {
+      std::vector<ParameterInfo *> pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage.size(); elementId++) {
+        ParameterInfo *pinfo = pOnPage[elementId];
+        (*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
+        Serial.print("Serializing ");
+        Serial.print(pinfo->getName());
+        Serial.println(pinfo->getValue());
+
+      }
+    }
+  }
+}
+
+void SynthMode::deserializeSynthPart(JsonObject *jsonObject,  int partId) {
+  
+  
+  SynthParameters *params = this->allSynthParameters[partId];
+  int nbLanes = params->getNbLanes();
+  for (int lane = 0; lane < nbLanes; lane++) {
+
+    int nbPages = params->getNbPages(lane);
+    for (int page = 0; page < nbPages; page++) {
+      std::vector<ParameterInfo *> pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage.size(); elementId++) {
+        ParameterInfo *pinfo = pOnPage[elementId];
+        //(*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
+        float extractedValue = (*jsonObject)[pinfo->getUniqueName()];
+        pinfo->setValue(extractedValue);
+        //Serial.print("Deserialized ");
+        //Serial.print(pinfo->getName());
+        //Serial.println(extractedValue);
+      }
+    }
   }
 }

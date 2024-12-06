@@ -22,11 +22,12 @@ using namespace std;
 class ParameterInfo {
 
   public: 
-    ParameterInfo(String name, float min, float max, StaticSignal* param)  {
+    ParameterInfo(String name, float min, float max, StaticSignal* param, String uniqueName)  {
       this->name = name;
       this->min = min;
       this->max = max;
       this->param = param;
+      this->uniqueName = uniqueName;
     }
 
     // update the parameter given the current pot value
@@ -45,19 +46,20 @@ class ParameterInfo {
       storedValue = param->getValue();
       float targetValue = this->min + (potValue/1024.0) * (this->max - this->min);
       param->setValue(targetValue);
-      Serial.print("lock");
-      Serial.println(this->getName());
+      //Serial.print("lock");
+      //Serial.println(this->getName());
     }
 
     void unlock() {
       if (!locked) return;
       locked = false;
       param->setValue(storedValue);
-      Serial.print("unlock");
-      Serial.println(this->getName());
+      //Serial.print("unlock");
+      //Serial.println(this->getName());
     }
 
     String getName() {return name;}
+    String getUniqueName() {return uniqueName;}
     
     // we only really have 3 digits, so map the value back to a 0..100 scale
     virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
@@ -67,10 +69,11 @@ class ParameterInfo {
     }
 
     float getValue() {return param->getValue();}
-    //void setValue(float newValue) {param->setValue(newValue);} // directly set the parameter value (used internally e.g. for parameter automation)
+    void setValue(float newValue) {param->setValue(newValue);} // directly set the parameter value (used internally e.g. for load functionality)
 
   protected:
     String name;
+    String uniqueName; // name that is unique within a synth patch (not across parts), so we can use it for save and load
     float min;
     float max;
     StaticSignal* param;
@@ -82,7 +85,7 @@ class ParameterInfo {
 class ParameterInfoDiscrete: public ParameterInfo {
   
   public:
-  ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param):ParameterInfo(name, min, max, param) {
+  ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param, String uniqueName):ParameterInfo(name, min, max, param, uniqueName) {
   }
 
   int printableValue() override {
@@ -93,6 +96,8 @@ class ParameterInfoDiscrete: public ParameterInfo {
       return (int) (this->min + (potValue/1024.0) * (this->max - this->min));
   }
 };
+
+
 
 /**
 * datastructure to keep all the info about the menu, how to navigate

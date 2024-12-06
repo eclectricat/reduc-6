@@ -45,42 +45,42 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   lfoToPW2 = new StaticSignal(registry, 0.f);
 
 
-  ParameterInfo *pO1Oct = new ParameterInfoDiscrete("1Oct", 0.0f, 4.0f, o1Oct);
-  ParameterInfo *pO2Oct = new ParameterInfoDiscrete("2Oct", 0.0f, 4.0f, o2Oct);
-  ParameterInfo *pDetune = new ParameterInfo(" Det", 0.931f, 1.059f, o1detune);
-  ParameterInfo *pO1Vol = new ParameterInfo(" Vol", 0.0f, 1.0f, o1vol);
-  ParameterInfo *pO2Vol = new ParameterInfo(" Vol", 0.0f, 1.0f, o2vol);
-  ParameterInfo *pO1Wave = new ParameterInfo(" Wav", 0.0f, 1.0f, o1wave);
-  ParameterInfo *pO2Wave = new ParameterInfo(" Wav", 0.0f, 1.0f, o2wave);
-  ParameterInfo *pO1Pw = new ParameterInfo("1PW", 0.01f, 0.99f, o1pw);
-  ParameterInfo *pO2Pw = new ParameterInfo("2PW", 0.01f, 0.99f, o2pw);
-  ParameterInfo *pSubVol = new ParameterInfo(" Sub", 0.0f, 1.0f, subVol);
-  ParameterInfo *pSubPhase = new ParameterInfo(" sPh", 0.0f, 1.0f, subPhase);
+  ParameterInfo *pO1Oct = new ParameterInfoDiscrete("1Oct", 0.0f, 4.0f, o1Oct, "o1Oct");
+  ParameterInfo *pO2Oct = new ParameterInfoDiscrete("2Oct", 0.0f, 4.0f, o2Oct, "o2Oct");
+  ParameterInfo *pDetune = new ParameterInfo(" Det", 0.931f, 1.059f, o1detune, "o1detune");
+  ParameterInfo *pO1Vol = new ParameterInfo(" Vol", 0.0f, 1.0f, o1vol, "o1vol");
+  ParameterInfo *pO2Vol = new ParameterInfo(" Vol", 0.0f, 1.0f, o2vol, "o2vol");
+  ParameterInfo *pO1Wave = new ParameterInfo(" Wav", 0.0f, 1.0f, o1wave, "o1wave");
+  ParameterInfo *pO2Wave = new ParameterInfo(" Wav", 0.0f, 1.0f, o2wave, "o2wave");
+  ParameterInfo *pO1Pw = new ParameterInfo("1PW", 0.01f, 0.99f, o1pw, "o1pw");
+  ParameterInfo *pO2Pw = new ParameterInfo("2PW", 0.01f, 0.99f, o2pw, "o2pw");
+  ParameterInfo *pSubVol = new ParameterInfo(" Sub", 0.0f, 1.0f, subVol, "subVol");
+  ParameterInfo *pSubPhase = new ParameterInfo(" sPh", 0.0f, 1.0f, subPhase, "subPhase");
 
-  ParameterInfo *pCutoff = new ParameterInfo("Cut ", 0, 1, cutoff);
-  ParameterInfo *pResonance = new ParameterInfo("Res ", 0, 1, resonance);
-  ParameterInfo *pEnvFilterAmount = new ParameterInfo("Env ", 0, 1, envFilterAmount);
-  ParameterInfo *pEnvA = new ParameterInfo("ampA", 0, 100, envA);
-  ParameterInfo *pEnvD = new ParameterInfo(" D  ", 0, 100, envD);
-  ParameterInfo *pEnvS = new ParameterInfo(" S  ", 0, 1, envS);
-  ParameterInfo *pEnvR = new ParameterInfo(" R  ", 0, 100, envR);
-  ParameterInfo *pFEnvA = new ParameterInfo("filA", 0, 100, fenvA);
-  ParameterInfo *pFEnvD = new ParameterInfo(" D  ", 0, 100, fenvD);
-  ParameterInfo *pFEnvS = new ParameterInfo(" S  ", 0, 1, fenvS);
-  ParameterInfo *pFEnvR = new ParameterInfo(" R  ", 0, 100, fenvR);
+  ParameterInfo *pCutoff = new ParameterInfo("Cut ", 0, 1, cutoff, "cutoff");
+  ParameterInfo *pResonance = new ParameterInfo("Res ", 0, 1, resonance, "resonance");
+  ParameterInfo *pEnvFilterAmount = new ParameterInfo("Env ", 0, 1, envFilterAmount, "l");
+  ParameterInfo *pEnvA = new ParameterInfo("ampA", 0, 100, envA, "envA");
+  ParameterInfo *pEnvD = new ParameterInfo(" D  ", 0, 100, envD, "envD");
+  ParameterInfo *pEnvS = new ParameterInfo(" S  ", 0, 1, envS, "envS");
+  ParameterInfo *pEnvR = new ParameterInfo(" R  ", 0, 100, envR, "envR");
+  ParameterInfo *pFEnvA = new ParameterInfo("filA", 0, 100, fenvA, "fenvA");
+  ParameterInfo *pFEnvD = new ParameterInfo(" D  ", 0, 100, fenvD, "fenvD");
+  ParameterInfo *pFEnvS = new ParameterInfo(" S  ", 0, 1, fenvS, "fenvS");
+  ParameterInfo *pFEnvR = new ParameterInfo(" R  ", 0, 100, fenvR, "fenvR");
 
-  ParameterInfo *pPanSpread = new ParameterInfo("Pan  ", 0, 1, panSpread);
+  ParameterInfo *pPanSpread = new ParameterInfo("Pan  ", 0, 1, panSpread, "panSpread");
 
-  ParameterInfo *pLfoWave = new ParameterInfoDiscrete("LFO  ", 0, 1, lfoWave);
-  ParameterInfo *pLfoFreq = new ParameterInfo("Frq  ", 0.1, 10, lfoFreq);
-  ParameterInfo *pLfoToPitch = new ParameterInfo("Vib  ", -0.12, 0.12, lfoToPitch); // TODO: try to avoid exp function
-  ParameterInfo *pLfoToCutoff = new ParameterInfo("Cut  ", -1, 1, lfoToCutoff);
-  ParameterInfo *pLfoToPW1 = new ParameterInfo("PWM  ", 0, 1, lfoToPW1);
-  ParameterInfo *pLfoToPW2 = new ParameterInfo("PWM  ", 0, 1, lfoToPW2);
+  ParameterInfo *pLfoWave = new ParameterInfoDiscrete("LFO  ", 0, 1, lfoWave, "lfoWave");
+  ParameterInfo *pLfoFreq = new ParameterInfo("Frq  ", 0.1, 10, lfoFreq, "lfoFreq");
+  ParameterInfo *pLfoToPitch = new ParameterInfo("Vib  ", -0.12, 0.12, lfoToPitch, "lfoToPitch"); // TODO: try to avoid exp function
+  ParameterInfo *pLfoToCutoff = new ParameterInfo("Cut  ", -1, 1, lfoToCutoff, "lfoToCutoff");
+  ParameterInfo *pLfoToPW1 = new ParameterInfo("PWM  ", 0, 1, lfoToPW1, "lfoToPW1");
+  ParameterInfo *pLfoToPW2 = new ParameterInfo("PWM  ", 0, 1, lfoToPW2, "lfoToPW2");
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS);
+  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
 
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pO1Wave, pO1Vol, pDetune }, 0);
   menu->addPage(vector<ParameterInfo *>{ pO1Pw, pLfoToPW1, pSubVol, pSubPhase}, 0);
@@ -194,35 +194,34 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
   StaticSignalDiscrete *noiseType = new StaticSignalDiscrete(registry, 0);
 
-  ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct);
-  ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR);
-  ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 1000, envPitchAmount);
+  ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct, "o1Oct");
+  ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR, "pitchEnvDR");
+  ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 1000, envPitchAmount, "envPitchAmount");
 
-  ParameterInfo *pAmpEnvDR = new ParameterInfo("ADR ", 0, 30, ampEnvDR);
+  ParameterInfo *pAmpEnvDR = new ParameterInfo("ADR ", 0, 30, ampEnvDR, "ampEnvDR");
 
-  ParameterInfo *pNoiseVol = new ParameterInfo("Noi ", 0, 1, noiseVol);
-  ParameterInfo *pSinVol = new ParameterInfo("Sin ", 0, 1, sinVol);
+  ParameterInfo *pNoiseVol = new ParameterInfo("Noi ", 0, 1, noiseVol, "noiseVol");
+  ParameterInfo *pSinVol = new ParameterInfo("Sin ", 0, 1, sinVol, "sinVol");
 
-  ParameterInfo *pHiPassCutoff = new ParameterInfo("HP ", 0, 1, hiPassCutoff);
-  ParameterInfo *pHiPassRes = new ParameterInfo("HPR ", 0, 1, hiPassRes);
-  //ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2);
-  ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff);
+  ParameterInfo *pHiPassCutoff = new ParameterInfo("HP ", 0, 1, hiPassCutoff, "hiPassCutoff");
+  ParameterInfo *pHiPassRes = new ParameterInfo("HPR ", 0, 1, hiPassRes, "hiPassRes");
+  ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff, "loPassCutoff");
 
-  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain);
+  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "overdriveGain");
 
-  ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2);
-  ParameterInfo *pHiPassRes2 = new ParameterInfo("HPR ", 0, 1, hiPassRes2);
+  ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2, "hiPassCutoff2");
+  ParameterInfo *pHiPassRes2 = new ParameterInfo("HPR ", 0, 1, hiPassRes2, "hiPassRes2");
 
-  ParameterInfo *pStutterFraction = new ParameterInfoDiscrete("STU", 0, 16, stutterFraction);
+  ParameterInfo *pStutterFraction = new ParameterInfoDiscrete("STU", 0, 16, stutterFraction, "stutterFraction");
 
-  ParameterInfo *pNoiseType = new ParameterInfoDiscrete("TYP", 0, 2, noiseType);
+  ParameterInfo *pNoiseType = new ParameterInfoDiscrete("TYP", 0, 2, noiseType, "noiseType");
 
-  ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol);
-  ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF);
+  ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol, "clickVol");
+  ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF, "clickLPF");
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS);
+  ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS, "dummyS");
 
   // pages: (global decay, filter) (pitch, pitchenv, amount, sinVol) (noiseVol, [noiseDecay]), (click?, fm, )
   //menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);

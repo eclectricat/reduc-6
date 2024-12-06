@@ -20,7 +20,7 @@ class Mode {
 
   int handleGenericPushButtonEvents(int buttonIndex);
 
-  int effectivePartId(int partId); 
+  virtual int effectivePartId(int partId); 
 
   GlobalState *globalState;
   LiquidCrystal *lcd;
@@ -43,6 +43,9 @@ class SynthMode : public Mode {
   virtual void postPartOrModeSwitch() override;
   void setup();
 
+  void serializeSynthPart(JsonObject *jsonObject, int partId);
+  void deserializeSynthPart(JsonObject *jsonObject, int partId);
+
 };
 
 class PartConfig {
@@ -60,15 +63,20 @@ class PartConfigMode: public Mode {
   }
 
   //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
-  //virtual void pushButtonPressed(int buttonIndex) override;
+  virtual bool pushButtonPressed(int buttonIndex) override;
   //virtual void pushButtonReleased(int buttonIndex) override;
   void setup();
   virtual void postPartOrModeSwitch();
+
+  int effectivePartId(int partId) {return partId;} // used for page switch
 
   //int selectedLane = 0;
   //int selectedPage = 0;
   ///vector<ParameterInfo*> currentMenuPage;
   int partTypes[6] = {0,1,1,1,0,0}; /// TODO: control via parameters
+
+  StaticSignalDiscrete *selectedBank;
+  StaticSignalDiscrete *selectedPatch;
 
   // TODO: should be nbParts * nbPartTypes * 4, and values should not be hardcoded 
   //ParameterInfo* lockParameters[4*6]; // 4 params, 6 parts, get it with (partId * 4 + paramId) //= {NULL, NULL, NULL, NULL};
@@ -100,7 +108,7 @@ class SequencerMode: public Mode {
     }
 
     bpm = new StaticSignalDiscrete(&(engine->registry), 120);
-    pBPM = new ParameterInfoDiscrete("BPM", 70, 180, bpm);
+    pBPM = new ParameterInfoDiscrete("BPM", 70, 180, bpm, "BPM");
   }
 
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
@@ -156,8 +164,8 @@ class GlobalState {
 
   void setup();
 
-  void myNoteOn(byte channel, byte note, byte velocity);
-  void myNoteOff(byte channel, byte note, byte velocity);
+  void myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
+  void myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 
   //void switchToMode(int mode);
   // change mode, or pass button on the active mode

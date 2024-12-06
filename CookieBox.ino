@@ -21,7 +21,7 @@
 
 #include <stdlib.h>
 
-#include <usb_audio.h>
+//#include <usb_audio.h>
 
 //#include <LiquidCrystal_I2C.h>
 //#include <LiquidCrystal_PCF8574.h>
@@ -96,10 +96,10 @@ GlobalState globalState(&engine, &lcd);
 //globalState.setup(); // intialise, so the Modes can call back into globalState
 
 
-void myNoteOn(byte channel, byte note, byte velocity) {
+void myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
   globalState.myNoteOn(channel, note, velocity);
 }
-void myNoteOff(byte channel, byte note, byte velocity) {
+void myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
   globalState.myNoteOff(channel, note, velocity);
 }
 
@@ -185,8 +185,8 @@ void loop()
 
   // print some stats
   unsigned int now = millis();
-  if (now > startMillis + 10000) {
-  //if (false) {
+  //if (now > startMillis + 10000) {
+  if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");
@@ -248,7 +248,7 @@ void loop()
   }
 
   
-  if (nbLoopPasses%7 == 0) { // do lo prio stuff
+  if (nbLoopPasses%5 == 0) { // do lo prio stuff
 
 
   // check for pots moved
