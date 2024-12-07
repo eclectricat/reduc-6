@@ -19,6 +19,10 @@ class Mode {
   virtual void postPartOrModeSwitch() {};
 
   int handleGenericPushButtonEvents(int buttonIndex);
+  bool handleConfirmModeButtonPressed(int buttonIndex); // returns if pots should be locked
+  void confirmationDisplayNotification();
+  virtual void handleConfirmed();
+  virtual void handleCancelled();
 
   virtual int effectivePartId(int partId); 
 
@@ -28,6 +32,9 @@ class Mode {
   int selectedLane = 0;
   int selectedPage = 0;
   vector<ParameterInfo*> currentMenuPage;
+
+  ParameterInfo *parameterRequestingConfirmation = NULL;
+  int lastConfDisplayUpdate = 0;
 
   std::vector<SynthParameters*> allSynthParameters;
 
@@ -63,10 +70,11 @@ class PartConfigMode: public Mode {
   }
 
   //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
-  virtual bool pushButtonPressed(int buttonIndex) override;
+  //virtual bool pushButtonPressed(int buttonIndex) override;
   //virtual void pushButtonReleased(int buttonIndex) override;
   void setup();
   virtual void postPartOrModeSwitch();
+  virtual void handleConfirmed();
 
   int effectivePartId(int partId) {return partId;} // used for page switch
 

@@ -32,7 +32,7 @@ class ParameterInfo {
 
     // update the parameter given the current pot value
     // scale and convert to flow
-    void updateParameter(int potValue) {
+    virtual void updateParameter(int potValue) {
       // 1024 is the max pot value
       float targetValue = this->min + (potValue/1024.0) * (this->max - this->min);
 
@@ -95,6 +95,25 @@ class ParameterInfoDiscrete: public ParameterInfo {
   virtual int printableValueFromPotValue(int potValue) {
       return (int) (this->min + (potValue/1024.0) * (this->max - this->min));
   }
+};
+
+class ParameterInfoDiscreteConfirmation: public ParameterInfoDiscrete {
+
+  public:
+  ParameterInfoDiscreteConfirmation(String name, float min, float max, StaticSignal* param, String uniqueName, ParameterInfo **confirmationNotification):ParameterInfoDiscrete(name, min, max, param, uniqueName) {
+    this->confirmationNotification = confirmationNotification;
+  }
+
+  virtual void updateParameter(int potValue) { 
+    ParameterInfoDiscrete::updateParameter(potValue);
+    *confirmationNotification = this;
+
+  }
+
+
+  ParameterInfo **confirmationNotification = NULL;
+  
+
 };
 
 

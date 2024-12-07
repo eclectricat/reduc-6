@@ -90,17 +90,19 @@ void PartConfigMode::setup() {
   selectedPatch = new StaticSignalDiscrete(NULL, 0);
   ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
   ParameterInfo *pLoad = new ParameterInfoDiscrete("LOD", 0, 9, dummyS, "LOD");
-  ParameterInfo *pQuestion = new ParameterInfo("?", 0, 10, dummyS, "?");
-  ParameterInfo *pBank = new ParameterInfoDiscrete("BNK", 0, 10, selectedBank, "BNK");
-  ParameterInfo *pPatch = new ParameterInfoDiscrete("PTC", 0, 10, selectedPatch, "PTC");
+  ParameterInfo *pQuestion = new ParameterInfo(" ", 0, 10, dummyS, "?");
+  ParameterInfo *pBankSave = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKSave", &(this->parameterRequestingConfirmation));
+  ParameterInfo *pPatchSave = new ParameterInfoDiscreteConfirmation("PTC", 0, 10, selectedPatch, "PTCSave", &(this->parameterRequestingConfirmation));
+  ParameterInfo *pBankLoad = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKLoad", &(this->parameterRequestingConfirmation));
+  ParameterInfo *pPatchLoad = new ParameterInfoDiscreteConfirmation("PTC", 0, 10, selectedPatch, "PTCLoad", &(this->parameterRequestingConfirmation));
 
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
 
     ParameterInfo *pPatternLength = new ParameterInfoDiscrete("len", 1, 64, globalState->sequencerMode.patternLengths[p], "patternLen");
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ globalState->sequencerMode.pBPM, pPatternLength, pDummy, pDummy }, 0);
 
-    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoad, pBank, pPatch, pQuestion }, 4);
-    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSave, pBank, pPatch, pQuestion }, 5);
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoad, pBankLoad, pPatchLoad, pQuestion }, 4);
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSave, pBankSave, pPatchSave, pQuestion }, 5);
 
   }
 
@@ -218,6 +220,10 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
 
 bool Mode::pushButtonPressed(int buttonIndex) {
 
+  if (parameterRequestingConfirmation != NULL) {
+    return handleConfirmModeButtonPressed(buttonIndex);
+  }
+
   // update state of shift,P
   // if other button: check if part or mode switch
   // otherwise parameter page switch
@@ -260,6 +266,45 @@ bool Mode::pushButtonPressed(int buttonIndex) {
   return false;
 }
 
+void Mode::confirmationDisplayNotification() {
+   int now = millis()/500; // in half seconds
+  if (now != this->lastConfDisplayUpdate) {
+    lcd->setCursor(4 * 3, 0);
+    if (2*(now / 2) == now) {
+      lcd->print("    ");
+    } else {
+      lcd->print("???");
+    }
+  }
+}
+
+void Mode::handleConfirmed() {
+    parameterRequestingConfirmation = NULL;
+    Serial.println("Confirmed");
+    lcd->setCursor(4 * 3, 0);
+    lcd->print("proc");
+  }
+void Mode::handleCancelled() {
+    parameterRequestingConfirmation = NULL;
+    Serial.println("Cancelled");
+    lcd->setCursor(4 * 3, 0);
+    lcd->print("    ");
+  }
+
+bool Mode::handleConfirmModeButtonPressed(int buttonIndex) {
+
+  if (buttonIndex == 6) {// cancel
+    handleCancelled();
+    return true;
+  } else if (buttonIndex == 7) { // confirm
+    handleConfirmed();
+    return true;
+  }
+  return false;
+}
+
+
+
 bool MixMuteMode::pushButtonPressed(int buttonIndex) {
 
   // when doing parameter switch, respect the fact that we have only one synthparameter here
@@ -300,13 +345,104 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
   return true;
 }
 
+// confirmed, can be either load or save
+void PartConfigMode::handleConfirmed() {
+  // find out WHAT was confirmed
+  // we can look at the lane, or at the parameter that was asking for confirmation
+  String paramName = this->parameterRequestingConfirmation->getUniqueName();
+  Mode::handleConfirmed();
+
+  //if ((buttonIndex == 5)&&(selectedLaneBefore == 5)) {  // save current state
+  if((paramName == "PTCSave") || (paramName == "BNKSave")) {
+
+    JsonDocument doc;
+    //doc["PartParameters"] = JsonObject();
+    JsonObject obj = doc["PartParameters"].to<JsonObject>();
+
+    globalState->synthMode.serializeSynthPart(&obj, globalState->selectedPart);
+
+    char output[2560];
+    int nbBytes = serializeJson(doc, output);
+
+    String filename = String("Patch_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
+    Serial.println(filename);
+
+    SD.remove(filename.c_str()); // don't append to existing file
+
+    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
+
+    Serial.print(output);
+
+    Serial.print("number bytes: ");
+    Serial.println(nbBytes);
+
+    // if the file is available, write the contents of datastring to it
+    if (dataFile) {
+      dataFile.println(output);
+
+      dataFile.close();
+      Serial.println("wrote file");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("w-ok");
+    } else {
+      Serial.println("error opening file for write");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+    }
+  }
+
+  //if ((buttonIndex == 4)&&(selectedLaneBefore == 4)) {  // load saved state
+  if((paramName == "PTCLoad") || (paramName == "BNKLoad")) {
+    Serial.println("listing files");
+    File dir = SD.open("/");
+    File entry = dir.openNextFile();
+    while (entry) {
+      Serial.println(entry.name());
+      entry.close();
+      entry = dir.openNextFile();
+    }
+    Serial.println("done listing files");
+
+    JsonDocument doc;
+    //JsonObject obj = doc["PartParameters"].to<JsonObject>();
+    String filename = String("Patch_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
+    Serial.println(filename);
+
+    File dataFile = SD.open(filename.c_str());
+    if (dataFile) {
+      Serial.println("reading patch file:");
+
+      deserializeJson(doc, dataFile);
+
+      //Serial.println("read file:");
+      //Serial.println("Deserialize, this is what we got");
+      //serializeJson(doc["PartParameters"], Serial);
+
+      JsonObject obj = doc["PartParameters"]; //.to<JsonObject>();
+      //Serial.println(doc["PartParameters"].to<JsonObject>());
+      globalState->synthMode.deserializeSynthPart(&obj, globalState->selectedPart);
+      // close the file:
+      dataFile.close();
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("l-ok");
+
+    } else {
+      Serial.println("error opening - patch does not exist");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+    }
+  }
+}
+
+/*
 bool PartConfigMode::pushButtonPressed(int buttonIndex) {
 
   int selectedLaneBefore = this->selectedLane;
 
   int eventConsumed = Mode::pushButtonPressed(buttonIndex);
   //if (eventConsumed) return true;
-
+  
+  
   if ((buttonIndex == 5)&&(selectedLaneBefore == 5)) {  // save current state
 
     JsonDocument doc;
@@ -362,9 +498,7 @@ bool PartConfigMode::pushButtonPressed(int buttonIndex) {
     File dataFile = SD.open(filename.c_str());
     if (dataFile) {
       Serial.println("reading patch file:");
-      /*while (dataFile.available()) {
-        Serial.write(dataFile.read());
-      }*/
+
       deserializeJson(doc, dataFile);
 
       //Serial.println("read file:");
@@ -381,9 +515,11 @@ bool PartConfigMode::pushButtonPressed(int buttonIndex) {
       Serial.println("error opening - patch does not exist");
     }
   }
-
+  
   return true;
 }
+
+*/
 
 
 

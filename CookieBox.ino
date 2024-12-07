@@ -247,6 +247,11 @@ void loop()
     }
   }
 
+  // waiting for confirmation display update
+  if(globalState.selectedMode->parameterRequestingConfirmation != NULL) {
+    globalState.selectedMode->confirmationDisplayNotification();
+  }
+
   
   if (nbLoopPasses%5 == 0) { // do lo prio stuff
 
@@ -280,7 +285,8 @@ void loop()
       bool needToLock = globalState.selectedMode->pushButtonPressed(i);
       if (needToLock) lockPotentiometers(false); // typically after changing parameter pages. 
 
-      if(i==6) {
+      //if(i==6) {
+      if(false) {
           Serial.println("Testing sd card");
 
           File dataFile = SD.open("test.txt", FILE_WRITE);
