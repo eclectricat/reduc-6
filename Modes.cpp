@@ -90,11 +90,19 @@ void PartConfigMode::setup() {
   selectedPatch = new StaticSignalDiscrete(NULL, 0);
   ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
   ParameterInfo *pLoad = new ParameterInfoDiscrete("LOD", 0, 9, dummyS, "LOD");
+  ParameterInfo *pSaveGlobal = new ParameterInfoDiscrete("GSV", 0, 9, dummyS, "GSV");
+  ParameterInfo *pLoadGlobal = new ParameterInfoDiscrete("GLD", 0, 9, dummyS, "GLD");
   ParameterInfo *pQuestion = new ParameterInfo(" ", 0, 10, dummyS, "?");
   ParameterInfo *pBankSave = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKSave", &(this->parameterRequestingConfirmation));
   ParameterInfo *pPatchSave = new ParameterInfoDiscreteConfirmation("PTC", 0, 10, selectedPatch, "PTCSave", &(this->parameterRequestingConfirmation));
   ParameterInfo *pBankLoad = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKLoad", &(this->parameterRequestingConfirmation));
   ParameterInfo *pPatchLoad = new ParameterInfoDiscreteConfirmation("PTC", 0, 10, selectedPatch, "PTCLoad", &(this->parameterRequestingConfirmation));
+
+  ParameterInfo *pGlobalBankSave = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "GlobalBNKSave", &(this->parameterRequestingConfirmation));
+  ParameterInfo *pGlobalProgSave = new ParameterInfoDiscreteConfirmation("PRG", 0, 10, selectedPatch, "GlobalPRGSave", &(this->parameterRequestingConfirmation));
+  ParameterInfo *pGlobalBankLoad = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "GlobalBNKLoad", &(this->parameterRequestingConfirmation));
+  ParameterInfo *pGlobalProgLoad = new ParameterInfoDiscreteConfirmation("PRG", 0, 10, selectedPatch, "GlobalPRGLoad", &(this->parameterRequestingConfirmation));
+
 
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
 
@@ -103,6 +111,9 @@ void PartConfigMode::setup() {
 
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoad, pBankLoad, pPatchLoad, pQuestion }, 4);
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSave, pBankSave, pPatchSave, pQuestion }, 5);
+
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoadGlobal, pGlobalBankLoad, pGlobalProgLoad, pQuestion }, 4);
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSaveGlobal, pGlobalBankSave, pGlobalProgSave, pQuestion }, 5);
 
   }
 
@@ -129,7 +140,9 @@ void MixMuteMode::setup() {
     //sprintf(name[1], "%d", p);
     ParameterInfo *pPatternVolume = new ParameterInfo("V" + String(p), 0, 1, globalState->engine->partVolumes[p], "partVolume"+String(p));
     ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p], "playProb"+String(p));
-    allSynthParameters[0]->addPage(vector<ParameterInfo *>{ pPatternVolume, pDummy, pDummy, pPlayingProb }, p);
+    ParameterInfo *pMute = new ParameterInfoDiscrete("MUT",0,1, globalState->sequencerMode.sequencerActive[p], "mute"+String(p) );
+    allSynthParameters[0]->addPage(vector<ParameterInfo *>{ pPatternVolume, pMute, pDummy, pPlayingProb }, p);
+    armedForMuteToggle[p] = 0;
   }
 
   Serial.println("MixMuteMode info mode: getting initial page");
@@ -139,6 +152,25 @@ void MixMuteMode::setup() {
 
 int Mode::effectivePartId(int partId) {  // map from logical part id 0-5 to effective partId for synthEngine
   return partId + globalState->engine->getNbParts() * globalState->partConfigMode.partTypes[partId];
+}
+
+// if buttons are moved -> do not mute/unmute on next button release
+void MixMuteMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
+  armedForMuteToggle[globalState->selectedPart] = 0; 
+  Mode::processPotValue(potIndex, potVal, updateDisplay);
+}
+
+bool MixMuteMode::pushButtonReleased(int buttonIndex) {
+
+  Mode::pushButtonReleased(buttonIndex);
+
+  if (buttonIndex >= NB_PARTS) return false; 
+  if (armedForMuteToggle[buttonIndex]) {
+    int oldValue = globalState->sequencerMode.sequencerActive[buttonIndex]->getValueDiscrete();
+    globalState->sequencerMode.sequencerActive[buttonIndex]->setValue(!oldValue);
+    armedForMuteToggle[buttonIndex] = 0;
+  }
+  return true;
 }
 
 void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
@@ -291,6 +323,7 @@ void Mode::handleCancelled() {
     lcd->print("    ");
   }
 
+// in conform mode, we only look at buttons 6 and 7
 bool Mode::handleConfirmModeButtonPressed(int buttonIndex) {
 
   if (buttonIndex == 6) {// cancel
@@ -311,6 +344,8 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
 
   int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
   if (eventConsumed) return true;
+
+  if (buttonIndex < NB_PARTS) armedForMuteToggle[buttonIndex] = 1;
 
   //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
   SynthParameters *synthParameters = allSynthParameters[0];
@@ -345,7 +380,7 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
   return true;
 }
 
-// confirmed, can be either load or save
+// confirmed, can be either load or save (either patch or global/program)
 void PartConfigMode::handleConfirmed() {
   // find out WHAT was confirmed
   // we can look at the lane, or at the parameter that was asking for confirmation
@@ -359,7 +394,9 @@ void PartConfigMode::handleConfirmed() {
     //doc["PartParameters"] = JsonObject();
     JsonObject obj = doc["PartParameters"].to<JsonObject>();
 
-    globalState->synthMode.serializeSynthPart(&obj, globalState->selectedPart);
+    int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
+    globalState->synthMode.serializePart(&obj, effPartId);
+    
 
     char output[2560];
     int nbBytes = serializeJson(doc, output);
@@ -420,7 +457,8 @@ void PartConfigMode::handleConfirmed() {
 
       JsonObject obj = doc["PartParameters"]; //.to<JsonObject>();
       //Serial.println(doc["PartParameters"].to<JsonObject>());
-      globalState->synthMode.deserializeSynthPart(&obj, globalState->selectedPart);
+      int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
+      globalState->synthMode.deserializePart(&obj, effPartId);
       // close the file:
       dataFile.close();
       lcd->setCursor(4 * 3, 0);
@@ -432,6 +470,78 @@ void PartConfigMode::handleConfirmed() {
       lcd->print("err ");
     }
   }
+
+  if((paramName == "GlobalBNKSave") || (paramName == "GlobalPRGSave")) {
+    Serial.println("save global prg");
+
+    JsonDocument doc;
+    JsonObject obj = doc["Program"].to<JsonObject>();
+
+    //globalState->synthMode.serializeSynthPart(&obj, globalState->selectedPart);
+    globalState->serializeProgram(&obj);
+
+    char output[25600];
+    int nbBytes = serializeJson(doc, output);
+
+    String filename = String("Program_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
+    Serial.println(filename);
+
+    SD.remove(filename.c_str()); // don't append to existing file
+
+    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
+
+    Serial.print(output);
+
+    Serial.print("number bytes: ");
+    Serial.println(nbBytes);
+
+    // if the file is available, write the contents of datastring to it
+    if (dataFile) {
+      dataFile.println(output);
+
+      dataFile.close();
+      Serial.println("wrote file");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("w-ok");
+    } else {
+      Serial.println("error opening file for write");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+    }
+  }
+
+    
+  
+
+  if((paramName == "GlobalBNKLoad") || (paramName == "GlobalPRGLoad")) {
+    Serial.println("load global prg");
+    JsonDocument doc;
+    //JsonObject obj = doc["PartParameters"].to<JsonObject>();
+    String filename = String("Program_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
+    Serial.println(filename);
+
+    File dataFile = SD.open(filename.c_str());
+    if (dataFile) {
+      Serial.println("reading patch file:");
+
+      deserializeJson(doc, dataFile);
+
+      JsonObject obj = doc["Program"];
+      //globalState->synthMode.deserializeSynthPart(&obj, globalState->selectedPart);
+      globalState->deserializeProgram(&obj);
+      // close the file:
+      dataFile.close();
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("l-ok");
+
+    } else {
+      Serial.println("error opening - patch does not exist");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+    }
+    
+  }
+
 }
 
 /*
@@ -588,6 +698,7 @@ void MixMuteMode::postPartOrModeSwitch() {
 void SequencerMode::setup() {
   for (int i = 0; i < globalState->engine->getNbParts(); i++) {
     lastPlayedNote.push_back(-1);
+    sequencerActive[i] = new StaticSignalDiscrete(NULL, 1);
   }
 }
 
@@ -785,7 +896,13 @@ void SequencerMode::maybePlay() {
     Serial.print("playing step ");
     Serial.println(playHead);
 
-    for (int part = 0; part < 4; part++) {  // TODO: play all parts
+    for (int part = 0; part < NB_PARTS; part++) {  // TODO: play all parts
+
+      if (sequencerActive[part]->getValueDiscrete() == 0) {
+        if (lastPlayedNote[part] > -1) globalState->myNoteOff(part + 1, lastPlayedNote[part], 0);
+        lastPlayedNote[part] = -1;
+        continue;
+      }
 
       //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
 
@@ -833,7 +950,7 @@ void SequencerMode::maybePlay() {
   }
 }
 
-void SynthMode::serializeSynthPart(JsonObject *jsonObject, int partId) {
+void Mode::serializePart(JsonObject *jsonObject, int partId) {
 
   
 
@@ -856,7 +973,7 @@ void SynthMode::serializeSynthPart(JsonObject *jsonObject, int partId) {
   }
 }
 
-void SynthMode::deserializeSynthPart(JsonObject *jsonObject,  int partId) {
+void Mode::deserializePart(JsonObject *jsonObject,  int partId) {
   
   
   SynthParameters *params = this->allSynthParameters[partId];
@@ -869,6 +986,8 @@ void SynthMode::deserializeSynthPart(JsonObject *jsonObject,  int partId) {
       for (int elementId = 0; elementId < pOnPage.size(); elementId++) {
         ParameterInfo *pinfo = pOnPage[elementId];
         //(*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
+
+        // TODO: check (doc["value"].is<int>())
         float extractedValue = (*jsonObject)[pinfo->getUniqueName()];
         pinfo->setValue(extractedValue);
         //Serial.print("Deserialized ");
@@ -877,4 +996,102 @@ void SynthMode::deserializeSynthPart(JsonObject *jsonObject,  int partId) {
       }
     }
   }
+}
+
+void GlobalState::serializeProgram(JsonObject *prg) {
+
+  // JsonObject  add<JsonObject>() const;   // adds a new empty object
+  // *** synth parameters
+  JsonArray patchList = (*prg)["PartParameters"].to<JsonArray>();
+
+  for (int i=0;i<NB_PARTS;i++) {
+    int effPartId = synthMode.effectivePartId(i);
+    JsonObject partParameters = patchList.add<JsonObject>();
+    synthMode.serializePart(&partParameters, effPartId);
+  }
+
+  // *** partConfig
+  JsonArray configList = (*prg)["PartConfig"].to<JsonArray>();
+
+  for (int i=0;i<NB_PARTS;i++) {
+    JsonObject partConfigParameters = configList.add<JsonObject>();
+    partConfigMode.serializePart(&partConfigParameters, i);
+  }
+
+  // *** sequencer
+  JsonArray seqdata = (*prg)["SequencerData"].to<JsonArray>();
+
+  for (int i=0;i<NB_PARTS;i++) {
+    JsonObject partSeqData = seqdata.add<JsonObject>();
+    sequencerMode.serializeSequencerData(&partSeqData, i);
+  }
+
+}
+
+void GlobalState::deserializeProgram(JsonObject *prg) {
+  // *** synth parameters
+  JsonArray patchList = (*prg)["PartParameters"];//.to<JsonArray>();
+
+  for (int i=0;i<NB_PARTS;i++) {
+    int effPartId = synthMode.effectivePartId(i);
+
+    JsonObject partParameters = patchList[i]; //.to<JsonObject>(); // this breaks it
+    synthMode.deserializePart(&partParameters, effPartId);
+  }
+
+  // *** partConfig
+  JsonArray configList = (*prg)["PartConfig"]; //.to<JsonArray>();
+
+  for (int i=0;i<NB_PARTS;i++) {
+    JsonObject partConfigParameters = configList[i];
+    partConfigMode.deserializePart(&partConfigParameters, i);
+  }
+
+  // *** sequencer
+  JsonArray seqdata = (*prg)["SequencerData"]; 
+
+  for (int i=0;i<NB_PARTS;i++) {
+    JsonObject partSeqData = seqdata[i]; 
+    sequencerMode.deserializeSequencerData(&partSeqData, i);
+  }
+
+}
+
+void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
+  Serial.println("serializeSequencerData");
+
+  JsonArray patterns = (*seqData)["Patterns"].to<JsonArray>();
+  Sequence *s = this->globalState->sequences[partId];
+
+  // TODO: Loop, to add multiple patterns
+  JsonArray pattern = patterns.add<JsonArray>();
+  for(int step = 0; step<s->NB_STEPS; step++) {
+    JsonObject stepData = pattern.add<JsonObject>();
+    stepData["octave"] = s->data[0][step];
+    stepData["note"] = s->data[1][step];
+    stepData["on/off"] = s->data[2][step];
+    // TODO: parameter locks
+
+  }
+
+}
+
+void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
+  Serial.println("deserializeSequencerData");
+
+  JsonArray patterns = (*seqData)["Patterns"]; 
+
+  Sequence *s = this->globalState->sequences[partId];
+
+  // TODO: Loop, to add multiple patterns
+  JsonArray pattern = patterns[0]; 
+  for(int step = 0; step<pattern.size(); step++) {
+    JsonObject stepData = pattern[step]; 
+    s->data[0][step] = stepData["octave"];
+    s->data[1][step] = stepData["note"];
+    s->data[2][step] = stepData["on/off"];
+    // TODO: parameter locks
+
+  }
+
 }

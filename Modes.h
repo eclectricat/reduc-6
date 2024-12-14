@@ -26,6 +26,9 @@ class Mode {
 
   virtual int effectivePartId(int partId); 
 
+  void serializePart(JsonObject *jsonObject, int partId);
+  void deserializePart(JsonObject *jsonObject, int partId);
+
   GlobalState *globalState;
   LiquidCrystal *lcd;
 
@@ -50,8 +53,7 @@ class SynthMode : public Mode {
   virtual void postPartOrModeSwitch() override;
   void setup();
 
-  void serializeSynthPart(JsonObject *jsonObject, int partId);
-  void deserializeSynthPart(JsonObject *jsonObject, int partId);
+  
 
 };
 
@@ -103,6 +105,10 @@ class MixMuteMode: public Mode {
   void setup();
   virtual void postPartOrModeSwitch();
   virtual bool pushButtonPressed(int buttonIndex);
+  virtual bool pushButtonReleased(int buttonIndex);
+  virtual void processPotValue(int potIndex, int potVal,  bool updateDisplay);
+
+  int armedForMuteToggle[NB_PARTS];
 };
 
 class SequencerMode: public Mode {
@@ -133,6 +139,9 @@ class SequencerMode: public Mode {
   void displayOctAndNote();
   void displayStep();
 
+  void serializeSequencerData(JsonObject *seqData, int partId);
+  void deserializeSequencerData(JsonObject *seqData, int partId);
+
   int cursorPos = 0;
   int nbSteps = 64;
 
@@ -150,6 +159,8 @@ class SequencerMode: public Mode {
   //float valuesToReset[4 * 6] ; // TODO: don't hardcode
   ParameterInfo *parametersToReset[4 * NB_PARTS];
   StaticSignalDiscrete* patternLengths[NB_PARTS];
+
+  StaticSignalDiscrete *sequencerActive[NB_PARTS];
 
   StaticSignalDiscrete* bpm;
   ParameterInfo *pBPM;
@@ -174,6 +185,9 @@ class GlobalState {
 
   void myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
   void myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
+
+  void serializeProgram(JsonObject *jsonObject);
+  void deserializeProgram(JsonObject *jsonObject);
 
   //void switchToMode(int mode);
   // change mode, or pass button on the active mode
@@ -209,10 +223,11 @@ class GlobalState {
 
 class Sequence {
 
-  const int NB_STEPS = 64 ;
-  // stored: octave, note, on/off, (length, velo)
-
   public:
+
+    const int NB_STEPS = 64 ;
+    // stored: octave, note, on/off, (length, velo)
+    
     Sequence() {
       // TODO
     }
