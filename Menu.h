@@ -64,6 +64,8 @@ class ParameterInfo {
     // we only really have 3 digits, so map the value back to a 0..100 scale
     virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
 
+    
+
     virtual int printableValueFromPotValue(int potValue) {
       return 100 * (potValue/1024.0);
     }
@@ -143,9 +145,9 @@ class SynthParameters {
       }
     }
 
-    vector<ParameterInfo*> getPage(int laneId, int pageId) {
+    vector<ParameterInfo*> *getPage(int laneId, int pageId) {
       if (existPage(laneId, pageId)) {
-        return lanes.at(laneId).at(pageId);
+        return &(lanes.at(laneId).at(pageId));
       } else {
         Serial.println("Page does not exist");
         return getPage(0,0);

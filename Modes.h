@@ -34,7 +34,7 @@ class Mode {
 
   int selectedLane = 0;
   int selectedPage = 0;
-  vector<ParameterInfo*> currentMenuPage;
+  vector<ParameterInfo*> *currentMenuPage;
 
   ParameterInfo *parameterRequestingConfirmation = NULL;
   int lastConfDisplayUpdate = 0;

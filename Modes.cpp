@@ -174,7 +174,7 @@ bool MixMuteMode::pushButtonReleased(int buttonIndex) {
 }
 
 void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
-  currentMenuPage.at(potIndex)->updateParameter(potVal);
+  currentMenuPage->at(potIndex)->updateParameter(potVal);
 
   // TODO; make this more efficient, this is costly
   // only refresh if value changed, and print all 4 digits in one go
@@ -183,7 +183,7 @@ void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
     lcd->setCursor(4 * potIndex, 1);
     lcd->print("    ");
     lcd->setCursor(4 * potIndex, 1);
-    lcd->print(currentMenuPage.at(potIndex)->printableValue());
+    lcd->print(currentMenuPage->at(potIndex)->printableValue());
   }
 }
 
@@ -235,7 +235,7 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
     globalState->selectedPart = buttonIndex;  // TODO check nbParts
 
     postPartOrModeSwitch();  //this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
-    fullDisplayUpdate();
+    //fullDisplayUpdate();
     lcd->setCursor(0, 0);
     lcd->print("Part ");
     lcd->setCursor(5, 0);
@@ -264,7 +264,8 @@ bool Mode::pushButtonPressed(int buttonIndex) {
   if (eventConsumed) return true;
 
   //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
-  int partId = effectivePartId(globalState->selectedPart);
+
+  int partId = effectivePartId(globalState->selectedPart); // TODO: this only makes sense for the synthMode !?
   SynthParameters *synthParameters = allSynthParameters[partId];
 
   if (selectedLane == buttonIndex) {  // already on that lane
@@ -635,14 +636,14 @@ bool PartConfigMode::pushButtonPressed(int buttonIndex) {
 
 void Mode::fullDisplayUpdate() {
   lcd->clear();
-  for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
-    Serial.print(currentMenuPage.at(p)->getName());
+  for (unsigned int p = 0; p < currentMenuPage->size(); p++) {
+    Serial.print(currentMenuPage->at(p)->getName());
     Serial.print("__");
 
     lcd->setCursor(4 * p, 0);
-    lcd->print(currentMenuPage.at(p)->getName());
+    lcd->print(currentMenuPage->at(p)->getName());
     lcd->setCursor(4 * p, 1);
-    lcd->print(currentMenuPage.at(p)->printableValue());
+    lcd->print(currentMenuPage->at(p)->printableValue());
   }
 }
 
@@ -724,7 +725,9 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   // potVal is 0-3, referring to selected parameter or last used parameters
   // initial implementatino, just take the parameters that are currently active in synth mode
   int effectivePartId = this->effectivePartId(globalState->selectedPart);
-  ParameterInfo *lockParam = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage)[potIndex];
+
+  std::vector<ParameterInfo*> *pis = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage);
+  ParameterInfo *lockParam = (*pis)[potIndex];
 
   // display locked value
   lcd->setCursor(4 * potIndex, 1);
@@ -850,7 +853,8 @@ void SequencerMode::displayLockingParams() {
   for (unsigned int p = 0; p < 4; p++) {
     int effectivePartId = this->effectivePartId(globalState->selectedPart);
     //ParameterInfo *pinfo = this->globalState->partConfigMode.lockParameters[partId * 4 + p];
-    ParameterInfo *lockParam = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage)[p];
+    std::vector<ParameterInfo*> *pis = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage);
+    ParameterInfo *lockParam = (*pis)[p];
 
     Serial.print(lockParam->getName());
     Serial.print("__");
@@ -960,9 +964,9 @@ void Mode::serializePart(JsonObject *jsonObject, int partId) {
 
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
-      std::vector<ParameterInfo *> pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage.size(); elementId++) {
-        ParameterInfo *pinfo = pOnPage[elementId];
+      std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+        ParameterInfo *pinfo = (*pOnPage)[elementId];
         (*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
         Serial.print("Serializing ");
         Serial.print(pinfo->getName());
@@ -982,9 +986,9 @@ void Mode::deserializePart(JsonObject *jsonObject,  int partId) {
 
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
-      std::vector<ParameterInfo *> pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage.size(); elementId++) {
-        ParameterInfo *pinfo = pOnPage[elementId];
+      std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+        ParameterInfo *pinfo = (*pOnPage)[elementId];
         //(*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
 
         // TODO: check (doc["value"].is<int>())

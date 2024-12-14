@@ -95,6 +95,8 @@ GlobalState globalState(&engine, &lcd);
 
 //globalState.setup(); // intialise, so the Modes can call back into globalState
 
+IntervalTimer seqCallbackTimer;
+
 
 void myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
   globalState.myNoteOn(channel, note, velocity);
@@ -112,6 +114,11 @@ void lockPotentiometers(bool refreshReadingFirst) {
         potsMoved[pt] = 0;
         potValuesOnParamChange[pt] = currentPotVals[pt];
       }
+}
+
+void sequencerCallback() {
+  if (globalState.seqPlaying) 
+   globalState.sequencerMode.maybePlay();
 }
 
 
@@ -175,8 +182,11 @@ void setup()
     Serial.println("Card failed, or not present");
   } else
     Serial.println("card initialized.");
-}
 
+  seqCallbackTimer.priority(250);
+  seqCallbackTimer.begin(sequencerCallback, 10000);
+
+}
 
 
 void loop()
@@ -185,8 +195,8 @@ void loop()
 
   // print some stats
   unsigned int now = millis();
-  //if (now > startMillis + 10000) {
-  if (false) {
+  if (now > startMillis + 10000) {
+  //if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");
@@ -225,7 +235,11 @@ void loop()
   // do high prio stuff first
 
   // sequencer
-  if (globalState.seqPlaying) globalState.sequencerMode.maybePlay();
+  //if (globalState.seqPlaying) {
+  //  globalState.sequencerMode.maybePlay();
+  //} else {
+    delay(5);
+  //}
 
    //for (int i=0;i<30;i++) {
     int received = usbMIDI.read();
@@ -282,7 +296,9 @@ void loop()
       // TODO: only reset this if an actual page change has happened, But it is not totally broken like that...
       // also for e.g. sequencermode, params need to be locked e.g. when step changes
       
+      int starttime = millis();
       bool needToLock = globalState.selectedMode->pushButtonPressed(i);
+      Serial.println(millis()-starttime);
       if (needToLock) lockPotentiometers(false); // typically after changing parameter pages. 
 
       //if(i==6) {
@@ -324,6 +340,6 @@ void loop()
 
  
 
-  delay(5);  // do not print too fast!
+  //delay(5);  // do not print too fast!
 }
 
