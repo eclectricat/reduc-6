@@ -80,10 +80,17 @@ class PartConfigMode: public Mode {
 
   int effectivePartId(int partId) {return partId;} // used for page switch
 
+  void resetEngineTypeAndVoices();
+
   //int selectedLane = 0;
   //int selectedPage = 0;
   ///vector<ParameterInfo*> currentMenuPage;
-  int partTypes[6] = {0,1,1,1,0,0}; /// TODO: control via parameters
+  int partTypes[NB_PARTS] = {0,1,1,1,0,0}; /// TODO: control via parameters
+
+  // link to parameters controlling nbVoices and engineType
+  StaticSignalDiscrete* nbVoicesParams[NB_PARTS];
+  StaticSignalDiscrete* engineTypeParams[NB_PARTS];
+
 
   StaticSignalDiscrete *selectedBank;
   StaticSignalDiscrete *selectedPatch;

@@ -107,7 +107,17 @@ void PartConfigMode::setup() {
   for (int p = 0; p < globalState->engine->getNbParts(); p++) {
 
     ParameterInfo *pPatternLength = new ParameterInfoDiscrete("len", 1, 64, globalState->sequencerMode.patternLengths[p], "patternLen");
+    StaticSignalDiscrete *engineType = new StaticSignalDiscrete(NULL, 0);
+    StaticSignalDiscrete *nbVoices = new StaticSignalDiscrete(NULL, (p<4 ? 1: 0));
+
+    this->engineTypeParams[p] = engineType;
+    this->nbVoicesParams[p] = nbVoices;
+
+    ParameterInfo *pEngineType = new ParameterInfoDiscreteConfirmation("ENG", 0, 1, engineType, "engineType", &(this->parameterRequestingConfirmation));
+    ParameterInfo *pNbVoices = new ParameterInfoDiscreteConfirmation("VOC", 0, 6, nbVoices, "nbVoices", &(this->parameterRequestingConfirmation));
+
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ globalState->sequencerMode.pBPM, pPatternLength, pDummy, pDummy }, 0);
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pEngineType, pNbVoices, pDummy, pDummy }, 1);
 
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoad, pBankLoad, pPatchLoad, pQuestion }, 4);
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSave, pBankSave, pPatchSave, pQuestion }, 5);
@@ -511,9 +521,6 @@ void PartConfigMode::handleConfirmed() {
     }
   }
 
-    
-  
-
   if((paramName == "GlobalBNKLoad") || (paramName == "GlobalPRGLoad")) {
     Serial.println("load global prg");
     JsonDocument doc;
@@ -532,6 +539,7 @@ void PartConfigMode::handleConfirmed() {
       globalState->deserializeProgram(&obj);
       // close the file:
       dataFile.close();
+      
       lcd->setCursor(4 * 3, 0);
       lcd->print("l-ok");
 
@@ -542,6 +550,66 @@ void PartConfigMode::handleConfirmed() {
     }
     
   }
+
+  if((paramName == "nbVoices") || (paramName == "engineType")) {
+    resetEngineTypeAndVoices();
+    lcd->setCursor(4 * 3, 0);
+    lcd->print("done");
+  }
+
+}
+
+void PartConfigMode::resetEngineTypeAndVoices() {
+  Serial.println("resetting all engine Types and nbVoices");
+
+  // first disable all voices
+  for (int p=0;p<NB_PARTS;p++) {
+    int partId = globalState->synthMode.effectivePartId(p);
+    Serial.print("effectivePartId ");
+    Serial.println(partId);
+    globalState->engine->getPart(partId)->setActiveNbVoices(0);
+  }
+
+  globalState->engine->markRequiredSignals();
+
+  // set all synth engines
+  for (int p=0;p<NB_PARTS;p++) {
+    partTypes[p] = engineTypeParams[p]->getValueDiscrete();
+  }
+
+  // set the voices
+  // total count can not be larger than 6
+  // engine type 1 can only have 1 voice
+  int maxVoiceAssign = 6;
+  int nbVoicesAssigned = 0;
+  for (int p=0;p<NB_PARTS;p++) {
+    int partId = globalState->synthMode.effectivePartId(p);
+    int requestedVoices = nbVoicesParams[p]->getValueDiscrete();
+    Serial.print("effectivePartId ");
+    Serial.println(partId);
+    Serial.print("Engine ");
+    Serial.print(partTypes[p]);
+    Serial.print("/ nbVoices ");
+
+    if ((partTypes[p] == 1) && (requestedVoices > 1)) {
+      requestedVoices = 1;
+      nbVoicesParams[p]->setValue(1);
+    }
+
+    if(nbVoicesAssigned +  requestedVoices <= maxVoiceAssign) { // can give it all the requested voices
+      globalState->engine->getPart(partId)->setActiveNbVoices(requestedVoices);
+      nbVoicesAssigned += requestedVoices;
+      //Serial.println(requestedVoices);
+    } else { // give as many voices as we have left
+      globalState->engine->getPart(partId)->setActiveNbVoices(maxVoiceAssign - nbVoicesAssigned);
+      nbVoicesParams[p]->setValue(maxVoiceAssign - nbVoicesAssigned); // reflect in parameter what is the actual voice number
+      //Serial.println(maxVoiceAssign - nbVoicesAssigned);
+      nbVoicesAssigned = maxVoiceAssign;
+    }
+    Serial.println(globalState->engine->getPart(partId)->getActiveNbVoices());
+  }
+
+  globalState->engine->markRequiredSignals();
 
 }
 
@@ -992,8 +1060,10 @@ void Mode::deserializePart(JsonObject *jsonObject,  int partId) {
         //(*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
 
         // TODO: check (doc["value"].is<int>())
-        float extractedValue = (*jsonObject)[pinfo->getUniqueName()];
-        pinfo->setValue(extractedValue);
+        if((*jsonObject)[pinfo->getUniqueName()].is<float>()) {
+          float extractedValue = (*jsonObject)[pinfo->getUniqueName()];
+          pinfo->setValue(extractedValue);
+        }
         //Serial.print("Deserialized ");
         //Serial.print(pinfo->getName());
         //Serial.println(extractedValue);
@@ -1033,6 +1103,20 @@ void GlobalState::serializeProgram(JsonObject *prg) {
 }
 
 void GlobalState::deserializeProgram(JsonObject *prg) {
+ 
+
+  // *** partConfig
+  JsonArray configList = (*prg)["PartConfig"]; //.to<JsonArray>();
+
+  for (int i=0;i<NB_PARTS;i++) {
+    JsonObject partConfigParameters = configList[i];
+    partConfigMode.deserializePart(&partConfigParameters, i);
+  }
+
+  // based on part config, select the correct sound engines and voice numbers
+  // needs to happen before loading synth params
+  this->partConfigMode.resetEngineTypeAndVoices(); 
+
   // *** synth parameters
   JsonArray patchList = (*prg)["PartParameters"];//.to<JsonArray>();
 
@@ -1043,13 +1127,6 @@ void GlobalState::deserializeProgram(JsonObject *prg) {
     synthMode.deserializePart(&partParameters, effPartId);
   }
 
-  // *** partConfig
-  JsonArray configList = (*prg)["PartConfig"]; //.to<JsonArray>();
-
-  for (int i=0;i<NB_PARTS;i++) {
-    JsonObject partConfigParameters = configList[i];
-    partConfigMode.deserializePart(&partConfigParameters, i);
-  }
 
   // *** sequencer
   JsonArray seqdata = (*prg)["SequencerData"]; 

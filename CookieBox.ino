@@ -167,7 +167,9 @@ void setup()
   globalState.sequencerMode.setup();
   globalState.mixMuteMode.setup();
   lockPotentiometers(true);
+  globalState.partConfigMode.resetEngineTypeAndVoices();
 
+  delay(100);
 
   if ( ARM_DWT_CYCCNT == ARM_DWT_CYCCNT ) {
 		// Enable CPU Cycle Count
@@ -183,8 +185,8 @@ void setup()
   } else
     Serial.println("card initialized.");
 
-  seqCallbackTimer.priority(250);
-  seqCallbackTimer.begin(sequencerCallback, 10000);
+  //seqCallbackTimer.priority(250);
+  //seqCallbackTimer.begin(sequencerCallback, 10000);
 
 }
 
@@ -211,7 +213,7 @@ void loop()
     AudioProcessorUsageMaxReset();
 
     // profiling info
-    /*for (int s = 0; s < engine.registry.getNbSignals(); s++) {
+    for (int s = 0; s < engine.registry.getNbSignals(); s++) {
       Signal* as = engine.registry.getSignals()[s];
       profiling[as->signame()] = profiling[as->signame()] + as->getAndResetLastSpentTime();
       moduleCounter[as->signame()] = moduleCounter[as->signame()] + 1;
@@ -225,7 +227,7 @@ void loop()
       Serial.print(itr->second/1000000);
       Serial.print("... nbInstances ");
       Serial.println(moduleCounter[itr->first]);
-    }*/
+    }
 
     profiling.clear();
     moduleCounter.clear();
@@ -238,6 +240,7 @@ void loop()
   //if (globalState.seqPlaying) {
   //  globalState.sequencerMode.maybePlay();
   //} else {
+    sequencerCallback();
     delay(5);
   //}
 
@@ -267,7 +270,7 @@ void loop()
   }
 
   
-  if (nbLoopPasses%5 == 0) { // do lo prio stuff
+  //if (nbLoopPasses%5 == 0) { // do lo prio stuff
 
 
   // check for pots moved
@@ -336,7 +339,7 @@ void loop()
   }
   }
 
-  } // low prio throttling
+  //} // low prio throttling
 
  
 

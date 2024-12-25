@@ -194,6 +194,11 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
   StaticSignalDiscrete *noiseType = new StaticSignalDiscrete(registry, 0);
 
+  StaticSignal *delayMs = new StaticSignal(NULL, 0);
+  StaticSignalDiscrete *delayBeat = new StaticSignalDiscrete(NULL, 1);
+  StaticSignal *delayFeedback = new StaticSignal(NULL, 0);
+  StaticSignal *delayWet = new StaticSignal(NULL, 0);
+
   ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct, "o1Oct");
   ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR, "pitchEnvDR");
   ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 1000, envPitchAmount, "envPitchAmount");
@@ -219,6 +224,11 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol, "clickVol");
   ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF, "clickLPF");
 
+  ParameterInfo *pDelayMs = new ParameterInfo("Ms", 1, 100, delayMs, "delayMs");
+  ParameterInfo *pDelayBeat = new ParameterInfoDiscrete("del", 0, 4, delayBeat, "delayBeat");
+  ParameterInfo *pDelayFb = new ParameterInfo("Fb", 0, 1, delayFeedback, "delayFeedback");
+  ParameterInfo *pDelayWet = new ParameterInfo("Wet", 0, 1, delayWet, "delayWet");
+
 
   StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
   ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS, "dummyS");
@@ -230,7 +240,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pClickLPF }, 1);
   menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pNoiseType }, 2);
   menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
-
+  menu->addPage(vector<ParameterInfo *>{ pDelayMs, pDelayBeat, pDelayFb, pDelayWet}, 4);
 
   // create the chain of 'Signals'
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
@@ -271,9 +281,10 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   VCA *vca = new VCA(registry, over, ampEnv);
 
   this->stutter = new Stutter(registry, vca, stutterFraction, this->bpm);
-  //this->stutter = new Stutter(registry, vca, stutterFraction, bpmTemp);
 
-  Signal *output = new VCA(registry, this->stutter, this->partVolume);
+  Signal *delay = new Delay(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
+
+  Signal *output = new VCA(registry, delay, this->partVolume);
   //Signal *output = this->stutter;
 
   return output;

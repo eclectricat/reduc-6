@@ -173,7 +173,7 @@ private:
 class StaticSignal : public Signal {
 public:
   StaticSignal(Registry* r, float v)
-    : Signal(r) {
+    : Signal(NULL) {  // TODO: is it ok to put NULL here, i.e. never register these static signals?
     value = v;
   }
 
@@ -797,6 +797,10 @@ public:
     value = v1;
   }
 
+  virtual String signame() const {
+    return "2pole";
+  }
+
 private:
   Signal *in, *cut, *res;
   float v0 = 0;
@@ -831,6 +835,10 @@ public:
     value = in - v1;
   }
 
+  virtual String signame() const {
+    return "hipass";
+  }
+
 private:
   Signal *in, *cut, *res;
   float v0 = 0;
@@ -855,6 +863,10 @@ public:
     float in = this->in->getValue();
     float gain = this->gain->getValue();
     value = fast_tanh(in * gain) * 0.5f; // * (1/gain);
+  }
+
+  virtual String signame() const {
+    return "overdrive";
   }
 
 private:
@@ -896,6 +908,10 @@ public:
     samplecounter = 0;
   }
 
+  virtual String signame() const {
+    return "stutter";
+  }
+
   //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
 
 private:
@@ -903,6 +919,76 @@ private:
   float samples[2800]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
   int samplecounter = 0;
   //int loopLength = (int) (60.0f / (120 * 16) * 44100);
+};
+
+class Delay : public Signal {
+public:
+  Delay(Registry* r, Signal* in, Signal* timeMs, Signal *bpm, StaticSignalDiscrete* timeBeat, Signal* feedback, Signal *wet)
+    : Signal(r) {
+    this->in = in;
+    this->timeMs = timeMs;
+    this->timeBeat = timeBeat;
+    this->feedback = feedback;
+    this->wet = wet;
+    this->bpm = bpm;
+
+    for (int i=0;i<bufferLength; i++) {
+      samples[i] = 0;
+    }
+
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float in = this->in->getValue();
+    float wet = this->wet->getValue();
+    
+
+    if (wet < 0.1) { // skip
+    //if (true) { // skip
+      value = in;
+      return;
+    }
+
+    int delayTime = (int) (timeMs->getValue() * 44.1f);
+    int bpm = this->bpm->getValue();
+    int beats = this->timeBeat->getValueDiscrete();
+
+    delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
+
+    delayTime = delayTime / subsample;
+
+    //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
+    int readHead = (writehead/subsample) - delayTime;
+    if (readHead < 0) readHead += bufferLength;
+    
+    value = samples[readHead] * wet + in * (1-wet);
+
+    samples[writehead/subsample] = in + feedback->getValue() * samples[readHead];
+
+    writehead++;
+    if ((writehead/subsample) >= bufferLength) writehead = 0;
+
+  }
+
+
+  virtual String signame() const {
+    return "delay";
+  }
+
+
+private:
+  Signal *in, *timeMs,  *feedback, *wet, *bpm;
+  StaticSignalDiscrete *timeBeat;
+  const static int bufferLength = 10000;
+  float samples[bufferLength]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
+  int writehead = 0;
+
+  int subsample = 3; // save memory and sacrifice high fidelty
+  
 };
 
 class Click : public Signal {
@@ -926,6 +1012,10 @@ public:
   void retrigger() {
     value = 1;
     counter = 0;
+  }
+
+  virtual String signame() const {
+    return "click";
   }
 
   private:
@@ -1343,6 +1433,10 @@ public:
   Registry registry;  // put it here for debugging
 
   StaticSignal* partVolumes[NB_PARTS]; // the drum part and the synth part on the same voice will share the volume
+  
+  Part* getPart(int partId) {
+    return parts[partId];
+  }
 
 private:
 
