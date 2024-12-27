@@ -125,6 +125,7 @@ void sequencerCallback() {
 void setup()
 {
   Serial.begin(9600); // USB is always 12 Mbit/sec
+  delay(1000); // wait for serial
   //waveform1.frequency(500);
   //engine.frequency(500);
   globalState.setup(); // intialise, so the Modes can call back into globalState
@@ -197,8 +198,8 @@ void loop()
 
   // print some stats
   unsigned int now = millis();
-  if (now > startMillis + 10000) {
-  //if (false) {
+  //if (now > startMillis + 10000) {
+  if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");

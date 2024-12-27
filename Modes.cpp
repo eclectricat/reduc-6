@@ -150,7 +150,7 @@ void MixMuteMode::setup() {
     //sprintf(name[1], "%d", p);
     ParameterInfo *pPatternVolume = new ParameterInfo("V" + String(p), 0, 1, globalState->engine->partVolumes[p], "partVolume"+String(p));
     ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p], "playProb"+String(p));
-    ParameterInfo *pMute = new ParameterInfoDiscrete("MUT",0,1, globalState->sequencerMode.sequencerActive[p], "mute"+String(p) );
+    ParameterInfo *pMute = new ParameterInfoDiscrete("On ",0,1, globalState->sequencerMode.sequencerActive[p], "UnMuted"+String(p) );
     allSynthParameters[0]->addPage(vector<ParameterInfo *>{ pPatternVolume, pMute, pDummy, pPlayingProb }, p);
     armedForMuteToggle[p] = 0;
   }
@@ -166,7 +166,7 @@ int Mode::effectivePartId(int partId) {  // map from logical part id 0-5 to effe
 
 // if buttons are moved -> do not mute/unmute on next button release
 void MixMuteMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
-  armedForMuteToggle[globalState->selectedPart] = 0; 
+  armedForMuteToggle[selectedLane] = 0; // the currently selected part is stored in the selectedLane field in this mode
   Mode::processPotValue(potIndex, potVal, updateDisplay);
 }
 
@@ -179,6 +179,12 @@ bool MixMuteMode::pushButtonReleased(int buttonIndex) {
     int oldValue = globalState->sequencerMode.sequencerActive[buttonIndex]->getValueDiscrete();
     globalState->sequencerMode.sequencerActive[buttonIndex]->setValue(!oldValue);
     armedForMuteToggle[buttonIndex] = 0;
+
+    int paramPos = 1; // position of this parameter on display
+    lcd->setCursor(4 * paramPos, 1);
+    lcd->print("    ");
+    lcd->setCursor(4 * paramPos, 1);
+    lcd->print(currentMenuPage->at(paramPos)->printableValue());
   }
   return true;
 }

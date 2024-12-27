@@ -275,12 +275,14 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   Signal *clickLP = new Digital2Pole(registry, click, clickLPF, new StaticSignal(NULL, 0));
   Signal *clickVCA = new VCA(registry, clickLP, clickVol);
 
-  Signal *over = new Overdrive(registry, new Mixer(registry, {noise, osc, clickVCA} , 1), overdriveGain);
-  over = new DigitalHiPass(registry, over, hiPassCutoff2, hiPassRes2);
+  
+  Signal *hip = new DigitalHiPass(registry, new Mixer(registry, {noise, osc, clickVCA}, 1), hiPassCutoff2, hiPassRes2);
 
-  VCA *vca = new VCA(registry, over, ampEnv);
+  VCA *vca = new VCA(registry, hip, ampEnv);
 
-  this->stutter = new Stutter(registry, vca, stutterFraction, this->bpm);
+  Signal *over = new Overdrive(registry, vca , overdriveGain);
+
+  this->stutter = new Stutter(registry, over, stutterFraction, this->bpm);
 
   Signal *delay = new Delay(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
 
