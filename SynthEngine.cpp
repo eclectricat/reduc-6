@@ -284,7 +284,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   this->stutter = new Stutter(registry, over, stutterFraction, this->bpm);
 
-  Signal *delay = new Delay(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
+  Signal *delay = new Delay8bit(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
 
   Signal *output = new VCA(registry, delay, this->partVolume);
   //Signal *output = this->stutter;

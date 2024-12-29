@@ -991,6 +991,97 @@ private:
   
 };
 
+class Delay8bit : public Signal {
+public:
+  Delay8bit(Registry* r, Signal* in, Signal* timeMs, Signal *bpm, StaticSignalDiscrete* timeBeat, Signal* feedback, Signal *wet)
+    : Signal(r) {
+    this->in = in;
+    this->timeMs = timeMs;
+    this->timeBeat = timeBeat;
+    this->feedback = feedback;
+    this->wet = wet;
+    this->bpm = bpm;
+
+    for (int i=0;i<bufferLength; i++) {
+      samples[i] = 0;
+    }
+
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float in = this->in->getValue();
+    float wet = this->wet->getValue();
+    
+
+    if (wet < 0.1) { // skip
+    //if (true) { // skip
+      value = in;
+      return;
+    }
+
+    int delayTime = (int) (timeMs->getValue() * 44.1f);
+    int bpm = this->bpm->getValue();
+    int beats = this->timeBeat->getValueDiscrete();
+
+    // assuming unsigned byte, but this is wrong anyway
+    // float is -0.5 to 0.5
+    // float to uint8: (value + 0.5) * 255;
+    // uint8 to float: (((float)value) / 255 ) - 0.5f;
+
+    // signed
+    // byte is -128 to 127
+    // float to byte: value * 255
+    // byte to float: value / 255
+
+    delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
+
+
+    //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
+    int readHead = writehead - delayTime;
+    if (readHead < 0) readHead += bufferLength;
+
+    signed char sampleReadFromBuffer = samples[readHead];
+    float sampleReadFromBufferF = ((float)sampleReadFromBuffer) / 255 ;
+    
+    value = sampleReadFromBufferF * wet + in * (1-wet);
+
+    //float sampleToWrite = in + feedback->getValue() * sampleReadFromBufferF;
+    //float clipped = fast_tanh(sampleToWrite * 2) * 0.5f;
+    //unsigned char clipped8Bit = (clipped + 0.5f) * 255;
+    //samples[writehead] = clipped8Bit;
+
+    // without converting bufferValues to float all the time
+    int sampleToWrite = feedback->getValue() * sampleReadFromBuffer + in  * 255;
+    if (sampleToWrite > 127) sampleToWrite = 127;
+    if (sampleToWrite < -127) sampleToWrite = -127; // -128 in reality I think 
+    
+    samples[writehead] = (signed char) sampleToWrite;
+    
+
+    writehead++;
+    if (writehead >= bufferLength) writehead = 0;
+
+  }
+
+
+  virtual String signame() const {
+    return "delay8Bit";
+  }
+
+
+private:
+  Signal *in, *timeMs,  *feedback, *wet, *bpm;
+  StaticSignalDiscrete *timeBeat;
+  const static int bufferLength = 30000;
+  signed char samples[bufferLength]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
+  int writehead = 0;
+  
+};
+
 class Click : public Signal {
 public:
   Click(Registry* r)
