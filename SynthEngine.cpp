@@ -224,7 +224,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol, "clickVol");
   ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF, "clickLPF");
 
-  ParameterInfo *pDelayMs = new ParameterInfo("Ms", 1, 100, delayMs, "delayMs");
+  ParameterInfo *pDelayMs = new ParameterInfo("Ms", 0, 50, delayMs, "delayMs");
   ParameterInfo *pDelayBeat = new ParameterInfoDiscrete("del", 0, 4, delayBeat, "delayBeat");
   ParameterInfo *pDelayFb = new ParameterInfo("Fb", 0, 1, delayFeedback, "delayFeedback");
   ParameterInfo *pDelayWet = new ParameterInfo("Wet", 0, 1, delayWet, "delayWet");

@@ -897,10 +897,13 @@ public:
     }
 
     int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
+    loopLength = loopLength % bufferLength; // avoid buffer overrun
     
     if (samplecounter < loopLength) samples[samplecounter]=in;
     value = samples[samplecounter % loopLength];
+    
     samplecounter++;
+    
 
   }
 
@@ -916,7 +919,8 @@ public:
 
 private:
   Signal *in, *fraction, *bpm;
-  float samples[2800]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
+  const static int bufferLength = 2800;
+  float samples[bufferLength]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
   int samplecounter = 0;
   //int loopLength = (int) (60.0f / (120 * 16) * 44100);
 };
@@ -1042,7 +1046,7 @@ public:
 
     //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
     int readHead = writehead - delayTime;
-    if (readHead < 0) readHead += bufferLength;
+    while (readHead < 0) readHead += bufferLength;
 
     signed char sampleReadFromBuffer = samples[readHead];
     float sampleReadFromBufferF = ((float)sampleReadFromBuffer) / 255 ;
