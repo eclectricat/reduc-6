@@ -831,16 +831,18 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
   int consumed = handleGenericPushButtonEvents(buttonIndex);
   if (consumed) return true;
 
+  int patternLength = patternLengths[this->globalState->selectedPart]->getValueDiscrete();
+
   if (buttonIndex == 0) {
     cursorPos = cursorPos - 1;
-    if (cursorPos < 0) cursorPos += nbSteps;
+    if (cursorPos < 0) cursorPos += patternLength;
     displayStep();
     displayOctAndNote();
   }
 
   if (buttonIndex == 1) {
     cursorPos = cursorPos + 1;
-    if (cursorPos >= nbSteps) cursorPos -= nbSteps;
+    if (cursorPos >= patternLength) cursorPos -= patternLength;
     displayStep();
     displayOctAndNote();
   }
@@ -856,6 +858,13 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
     Serial.println(newValue);
     s->data[2][cursorPos] = newValue;
 
+    displayOctAndNote();
+  }
+
+  if (buttonIndex == 3) {
+    cursorPos = cursorPos + 8;
+    if (cursorPos >= patternLength) cursorPos -= patternLength;
+    displayStep();
     displayOctAndNote();
   }
 
