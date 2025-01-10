@@ -6,7 +6,7 @@
 
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
-  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd) {
+  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd), sequencerModeGraphic(lcd) {
   this->engine = engine;
 
   for (int p = 0; p < NB_PARTS; p++) {
@@ -55,6 +55,7 @@ void GlobalState::setup() {
   synthMode.globalState = this;
   partConfigMode.globalState = this;
   sequencerMode.globalState = this;
+  sequencerModeGraphic.globalState = this;
   mixMuteMode.globalState = this;
   for (int i = 0; i < this->engine->getNbParts(); i++) {
 
@@ -126,7 +127,6 @@ void PartConfigMode::setup() {
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSaveGlobal, pGlobalBankSave, pGlobalProgSave, pQuestion }, 5);
 
   }
-
 
   Serial.println("Part info mode: getting initial page");
   currentMenuPage = allSynthParameters[0]->getPage(0, 0);
@@ -203,6 +203,7 @@ void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
   }
 }
 
+// returned 'consumed': 0 not consumed, 1 registered shift keys, 2, actually did something
 int Mode::handleGenericPushButtonEvents(int buttonIndex) {
 
   if (buttonIndex == 7) {  // P
@@ -218,11 +219,16 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
   if (globalState->shiftPressed && globalState->pPressed) {  // mode switch
     Serial.println("mode switch");
 
-    if (buttonIndex == 0) {
+    if ((buttonIndex == 0) && (globalState->selectedMode != &(globalState->sequencerMode))) {
       globalState->selectedMode = &(globalState->sequencerMode);
       lcd->setCursor(0, 0);
       lcd->print("  SEQUENCER         ");
       // postPartOrModeSwitch(); // not necessary for this one
+    } else if (buttonIndex == 0) { // state is already sequencer
+      globalState->selectedMode = &(globalState->sequencerModeGraphic);
+      lcd->setCursor(0, 0);
+      lcd->print("  SEQ GRAPHIC    ");
+      globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 3) {
       globalState->selectedMode = &(globalState->partConfigMode);
       lcd->setCursor(0, 0);
@@ -242,7 +248,7 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
 
     this->globalState->delayedDisplayRefresh = millis() + 1000;
 
-    return 1;
+    return 2; 
   }
 
   if (globalState->shiftPressed) {  // part switch
@@ -260,7 +266,7 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
     lcd->print("               ");
     this->globalState->delayedDisplayRefresh = millis() + 1000;
 
-    return 1;
+    return 2;
   }
 
   return 0;
@@ -795,6 +801,10 @@ void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay
   }
 }
 
+void SequencerModeGraphic::processPotValue(int potIndex, int potVal, bool updateDisplay) {
+  seqMode->processPotValue(potIndex, potVal, updateDisplay);
+}
+
 void SequencerMode::processLockParameter(int potIndex, int potVal) {
   // potVal is 0-3, referring to selected parameter or last used parameters
   // initial implementatino, just take the parameters that are currently active in synth mode
@@ -825,6 +835,7 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   }
   Serial.println("all locking slots occupied");
 }
+
 
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
@@ -898,6 +909,40 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
   return true;  // TODO: do we really need to lock pots after all buttons here?
 }
 
+bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
+
+  int consumed = handleGenericPushButtonEvents(buttonIndex);
+  if (consumed == 2) return true;
+
+  // arm to toggle this step on button release
+  armedForToggle = buttonIndex;
+
+  int page = seqMode->cursorPos / 8; 
+
+  // switch to step
+  seqMode->cursorPos = page * 8 + buttonIndex; 
+  // toggle this step
+  /*
+  Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+  int currentValue = s->data[2][seqMode->cursorPos];
+  int newValue = 1 - currentValue;
+
+  Serial.print("new value at position:");
+  Serial.print(seqMode->cursorPos);
+  Serial.print(":");
+  Serial.println(newValue);
+  s->data[2][seqMode->cursorPos] = newValue;
+  */
+
+  seqMode->displayStep();
+  seqMode->displayOctAndNote();
+
+  // every button is a step change -> lock all pots
+  return true;
+
+}
+
+
 bool SequencerMode::pushButtonReleased(int buttonIndex) {
   //Serial.print("pushButtonReleased seq mode:");
   bool needToLock = Mode::pushButtonReleased(buttonIndex);
@@ -911,10 +956,30 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
   return needToLock;
 }
 
+bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
+  
+  bool needToLock = Mode::pushButtonReleased(buttonIndex);
+
+  if (armedForToggle == buttonIndex) {
+    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    int currentValue = s->data[2][seqMode->cursorPos];
+    int newValue = 1 - currentValue;
+
+    Serial.print("new value at position:");
+    Serial.print(seqMode->cursorPos);
+    Serial.print(":");
+    Serial.println(newValue);
+    s->data[2][seqMode->cursorPos] = newValue;
+
+    seqMode->displayOctAndNote();
+  }
+
+  return needToLock;
+}
+
 void SequencerMode::fullDisplayUpdate() {
   lcd->clear();
   lcd->setCursor(0, 0);
-
 
   // Part
   lcd->print(String("P") + (this->globalState->selectedPart + 1));
@@ -923,6 +988,10 @@ void SequencerMode::fullDisplayUpdate() {
 
   displayOctAndNote();
   displayPlayStatus();
+}
+
+void SequencerModeGraphic::fullDisplayUpdate() {
+  seqMode->fullDisplayUpdate();
 }
 
 void SequencerMode::displayLockingParams() {
@@ -949,12 +1018,25 @@ void SequencerMode::displayLockingParams() {
   }
 }
 
+/*void SequencerModeGraphic::displayLockingParams() {
+  seqMode->displayLockingParams();
+}*/
+
 void SequencerMode::displayStep() {
   // Step
   lcd->setCursor(3, 0);  // X,Y
   lcd->print("S  ");
   lcd->setCursor(4, 0);
   lcd->print(this->cursorPos);
+
+  String stepVisu = String("");
+  int page = cursorPos / 8;
+  for (int step=0;step<8;step++) {
+    String thisChar = (page*8+step == cursorPos) ? String("|") : String(" ");
+    stepVisu = stepVisu + thisChar;
+  }
+  lcd->setCursor(6,1);
+  lcd->print(stepVisu);
 }
 
 void SequencerMode::displayOctAndNote() {
@@ -963,7 +1045,16 @@ void SequencerMode::displayOctAndNote() {
   lcd->setCursor(0, 1);
   lcd->print(String("O") + String(s->data[0][cursorPos]) + String(" N") + String(s->data[1][cursorPos]) + String(" "));
   lcd->setCursor(7, 1);
-  lcd->print(s->data[2][cursorPos] ? "+" : "-");
+  //lcd->print(s->data[2][cursorPos] ? "+" : "-");
+
+  String stepVisu = String("");
+  int page = cursorPos / 8;
+  for (int step=0;step<8;step++) {
+    String thisChar = s->data[2][page*8+step] ? "+" : "_";
+    stepVisu = stepVisu + thisChar;
+  }
+  lcd->setCursor(6,0);
+  lcd->print(stepVisu);
 }
 
 void SequencerMode::displayPlayStatus() {

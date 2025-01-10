@@ -53,8 +53,6 @@ class SynthMode : public Mode {
   virtual void postPartOrModeSwitch() override;
   void setup();
 
-  
-
 };
 
 class PartConfig {
@@ -71,9 +69,6 @@ class PartConfigMode: public Mode {
     this->lcd = lcd;
   }
 
-  //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
-  //virtual bool pushButtonPressed(int buttonIndex) override;
-  //virtual void pushButtonReleased(int buttonIndex) override;
   void setup();
   virtual void postPartOrModeSwitch();
   virtual void handleConfirmed();
@@ -82,25 +77,14 @@ class PartConfigMode: public Mode {
 
   void resetEngineTypeAndVoices();
 
-  //int selectedLane = 0;
-  //int selectedPage = 0;
-  ///vector<ParameterInfo*> currentMenuPage;
-  int partTypes[NB_PARTS] = {0,1,1,1,0,0}; /// TODO: control via parameters
+  int partTypes[NB_PARTS] = {0,1,1,1,0,0}; 
 
   // link to parameters controlling nbVoices and engineType
   StaticSignalDiscrete* nbVoicesParams[NB_PARTS];
   StaticSignalDiscrete* engineTypeParams[NB_PARTS];
 
-
   StaticSignalDiscrete *selectedBank;
   StaticSignalDiscrete *selectedPatch;
-
-  // TODO: should be nbParts * nbPartTypes * 4, and values should not be hardcoded 
-  //ParameterInfo* lockParameters[4*6]; // 4 params, 6 parts, get it with (partId * 4 + paramId) //= {NULL, NULL, NULL, NULL};
-
-  //std::vector<SynthParameters*> allSynthParameters;
-
-
 };
 
 class MixMuteMode: public Mode {
@@ -174,6 +158,26 @@ class SequencerMode: public Mode {
 
 };
 
+class SequencerModeGraphic : public Mode {
+  public:
+
+  SequencerModeGraphic(LiquidCrystal *lcd) {
+    this->lcd = lcd;
+  }
+
+  virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
+  virtual bool pushButtonPressed(int buttonIndex) override;
+  virtual bool pushButtonReleased(int buttonIndex) override;
+  virtual void postPartOrModeSwitch() override {armedForToggle = -1;}
+  virtual void fullDisplayUpdate() override;
+  void setup(SequencerMode *sMode) {seqMode = sMode;}
+
+  SequencerMode *seqMode; // most calls will be delegated to the normal sequencer mode
+
+  int armedForToggle = -1; // only toggle on button release, if the button press was not used for something else
+
+};
+
 class GlobalState {
 
   public:
@@ -182,6 +186,7 @@ class GlobalState {
   SynthMode synthMode;
   PartConfigMode partConfigMode;
   SequencerMode sequencerMode;
+  SequencerModeGraphic sequencerModeGraphic;
   MixMuteMode mixMuteMode;
   Mode *selectedMode = &synthMode;
 
