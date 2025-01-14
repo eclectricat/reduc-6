@@ -1131,7 +1131,6 @@ void SequencerMode::maybePlay() {
 void Mode::serializePart(JsonObject *jsonObject, int partId) {
 
   
-
   SynthParameters *params = this->allSynthParameters[partId];
   int nbLanes = params->getNbLanes();
   for (int lane = 0; lane < nbLanes; lane++) {
@@ -1150,6 +1149,8 @@ void Mode::serializePart(JsonObject *jsonObject, int partId) {
     }
   }
 }
+
+
 
 void Mode::deserializePart(JsonObject *jsonObject,  int partId) {
   
@@ -1176,6 +1177,26 @@ void Mode::deserializePart(JsonObject *jsonObject,  int partId) {
       }
     }
   }
+}
+
+ParameterInfo* Mode::getParameterByNameAndPart(String uniqueName, int partId) {
+
+  SynthParameters *params = this->allSynthParameters[partId];
+  int nbLanes = params->getNbLanes();
+  for (int lane = 0; lane < nbLanes; lane++) {
+
+    int nbPages = params->getNbPages(lane);
+    for (int page = 0; page < nbPages; page++) {
+      std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+        ParameterInfo *pinfo = (*pOnPage)[elementId];
+        if (pinfo->getUniqueName() == uniqueName) {
+          return pinfo;
+        }
+      }
+    }
+  }
+  return NULL;
 }
 
 void GlobalState::serializeProgram(JsonObject *prg) {
@@ -1257,7 +1278,16 @@ void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
     stepData["octave"] = s->data[0][step];
     stepData["note"] = s->data[1][step];
     stepData["on/off"] = s->data[2][step];
-    // TODO: parameter locks
+
+    JsonArray lockedParams = stepData["pLocks"].to<JsonArray>();
+    int pIndex = 0;
+    while((pIndex < 4) && (s->lockedParameters[pIndex][step]!=NULL)) {
+      JsonObject onePlock = lockedParams.add<JsonObject>();
+      onePlock["name"] = s->lockedParameters[pIndex][step]->getUniqueName();
+      //onePlock["value"] = s->lockedParameters[pIndex][step]->getValue();
+      onePlock["value"] = s->lockedValues[pIndex][step];
+      pIndex++;
+    }
 
   }
 
@@ -1277,7 +1307,31 @@ void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
     s->data[0][step] = stepData["octave"];
     s->data[1][step] = stepData["note"];
     s->data[2][step] = stepData["on/off"];
-    // TODO: parameter locks
+
+    // first delete existing pLocks
+    for(int pIndex = 0; pIndex < s->lockedParameters.size(); pIndex++) {
+      s->lockedParameters[pIndex][step] = NULL;
+    }
+    
+    if (stepData["pLocks"].is<JsonArray>()) {
+      JsonArray pLocks = stepData["pLocks"];
+      for(int pIndex = 0; pIndex < pLocks.size(); pIndex++) {
+        String uniqueName = pLocks[pIndex]["name"];
+        Serial.print("Searching param ");
+        Serial.print(uniqueName);
+        Serial.print(" is null? ");
+        float value = pLocks[pIndex]["value"];
+        // TODO mapping from sequencer Part ID to synth Part ID via midi channel settings, for now 1:1
+        int synthPartId = this->effectivePartId(partId);
+        ParameterInfo *paramToLock = globalState->synthMode.getParameterByNameAndPart(uniqueName, synthPartId);
+        Serial.println(paramToLock == NULL);
+        if(paramToLock != NULL) {
+          Serial.println(value);
+          s->lockedParameters[pIndex][step] = paramToLock;
+          s->lockedValues[pIndex][step] = value;
+        }
+      }
+    }
 
   }
 

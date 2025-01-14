@@ -28,6 +28,7 @@ class Mode {
 
   void serializePart(JsonObject *jsonObject, int partId);
   void deserializePart(JsonObject *jsonObject, int partId);
+  ParameterInfo* getParameterByNameAndPart(String uniqueName, int partId);
 
   GlobalState *globalState;
   LiquidCrystal *lcd;
@@ -52,6 +53,7 @@ class SynthMode : public Mode {
   virtual bool pushButtonReleased(int buttonIndex) override;
   virtual void postPartOrModeSwitch() override;
   void setup();
+
 
 };
 
