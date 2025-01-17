@@ -216,7 +216,7 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
     return 1;
   }
 
-  if (globalState->shiftPressed && globalState->pPressed) {  // mode switch
+  if (globalState->pPressed) {  // mode switch
     Serial.println("mode switch");
 
     if ((buttonIndex == 0) && (globalState->selectedMode != &(globalState->sequencerMode))) {
@@ -730,7 +730,7 @@ void Mode::fullDisplayUpdate() {
 bool SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
-  if ((buttonIndex == 7) && (!globalState->shiftPressed)) {
+  if ((buttonIndex == 5) && (!globalState->shiftPressed)) {
     globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
 
@@ -753,7 +753,7 @@ bool Mode::pushButtonReleased(int buttonIndex) {
 
 bool SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
-  if (buttonIndex == 7) {
+  if (buttonIndex == 5) {
     globalState->myNoteOff(globalState->selectedPart + 1, 36, 127);
   }
   return false;
