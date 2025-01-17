@@ -170,7 +170,10 @@ class SequencerModeGraphic : public Mode {
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
   virtual bool pushButtonPressed(int buttonIndex) override;
   virtual bool pushButtonReleased(int buttonIndex) override;
-  virtual void postPartOrModeSwitch() override {armedForToggle = -1;}
+  virtual void postPartOrModeSwitch() override {
+    armedForToggle = -1; 
+    seqMode->paramLockMode = 0;
+  }
   virtual void fullDisplayUpdate() override;
   void setup(SequencerMode *sMode) {seqMode = sMode;}
 

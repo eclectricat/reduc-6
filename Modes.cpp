@@ -625,93 +625,6 @@ void PartConfigMode::resetEngineTypeAndVoices() {
 
 }
 
-/*
-bool PartConfigMode::pushButtonPressed(int buttonIndex) {
-
-  int selectedLaneBefore = this->selectedLane;
-
-  int eventConsumed = Mode::pushButtonPressed(buttonIndex);
-  //if (eventConsumed) return true;
-  
-  
-  if ((buttonIndex == 5)&&(selectedLaneBefore == 5)) {  // save current state
-
-    JsonDocument doc;
-    //doc["PartParameters"] = JsonObject();
-    JsonObject obj = doc["PartParameters"].to<JsonObject>();
-
-    globalState->synthMode.serializeSynthPart(&obj, globalState->selectedPart);
-
-    char output[2560];
-    int nbBytes = serializeJson(doc, output);
-
-    String filename = String("Patch_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
-    Serial.println(filename);
-
-    SD.remove(filename.c_str()); // don't append to existing file
-
-    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-
-    Serial.print(output);
-
-    Serial.print("number bytes: ");
-    Serial.println(nbBytes);
-
-    // if the file is available, write the contents of datastring to it
-    if (dataFile) {
-      dataFile.println(output);
-
-      dataFile.close();
-      Serial.println("wrote file");
-    } else {
-      Serial.println("error opening file for write");
-    }
-  }
-
-  // when already on load lane, and pressing load again -> actually load
-  if ((buttonIndex == 4)&&(selectedLaneBefore == 4)) {  // load saved state
-
-    Serial.println("listing files");
-    File dir = SD.open("/");
-    File entry = dir.openNextFile();
-    while (entry) {
-      Serial.println(entry.name());
-      entry.close();
-      entry = dir.openNextFile();
-    }
-    Serial.println("done listing files");
-
-    JsonDocument doc;
-    //JsonObject obj = doc["PartParameters"].to<JsonObject>();
-    String filename = String("Patch_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
-    Serial.println(filename);
-
-    File dataFile = SD.open(filename.c_str());
-    if (dataFile) {
-      Serial.println("reading patch file:");
-
-      deserializeJson(doc, dataFile);
-
-      //Serial.println("read file:");
-      //Serial.println("Deserialize, this is what we got");
-      //serializeJson(doc["PartParameters"], Serial);
-
-      JsonObject obj = doc["PartParameters"]; //.to<JsonObject>();
-      //Serial.println(doc["PartParameters"].to<JsonObject>());
-      globalState->synthMode.deserializeSynthPart(&obj, globalState->selectedPart);
-      // close the file:
-      dataFile.close();
-
-    } else {
-      Serial.println("error opening - patch does not exist");
-    }
-  }
-  
-  return true;
-}
-
-*/
-
 
 
 void Mode::fullDisplayUpdate() {
@@ -803,6 +716,7 @@ void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay
 
 void SequencerModeGraphic::processPotValue(int potIndex, int potVal, bool updateDisplay) {
   seqMode->processPotValue(potIndex, potVal, updateDisplay);
+  this->armedForToggle = -1; // when pLocks were modified, don't toggle step on release
 }
 
 void SequencerMode::processLockParameter(int potIndex, int potVal) {
@@ -879,9 +793,8 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
     displayOctAndNote();
   }
 
-  if (buttonIndex == 4) {  // parameter lock (experimental)
+  if (buttonIndex == 4) {  // parameter lock 
     this->paramLockMode = 1;
-
     displayLockingParams();
   }
 
@@ -914,6 +827,10 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
   int consumed = handleGenericPushButtonEvents(buttonIndex);
   if (consumed == 2) return true;
 
+  // every button press goes into pLock mode
+  seqMode->paramLockMode = 1;
+  seqMode->displayLockingParams();
+
   // arm to toggle this step on button release
   armedForToggle = buttonIndex;
 
@@ -934,10 +851,10 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
   s->data[2][seqMode->cursorPos] = newValue;
   */
 
-  seqMode->displayStep();
-  seqMode->displayOctAndNote();
+  //seqMode->displayStep();
+  //seqMode->displayOctAndNote();
 
-  // every button is a step change -> lock all pots
+  // every button is a step change, and goes into pLock mode -> lock all pots
   return true;
 
 }
@@ -959,6 +876,7 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
 bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
   
   bool needToLock = Mode::pushButtonReleased(buttonIndex);
+  
 
   if (armedForToggle == buttonIndex) {
     Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
@@ -971,8 +889,18 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
     Serial.println(newValue);
     s->data[2][seqMode->cursorPos] = newValue;
 
-    seqMode->displayOctAndNote();
+    
   }
+  
+  //seqMode->displayStep();
+  //seqMode->displayOctAndNote();
+  if(seqMode->paramLockMode) {
+    needToLock = true; // returning from pLock mode
+    seqMode->paramLockMode = 0;
+    this->fullDisplayUpdate();
+  }
+
+  // if we e.g. just switched into this mode, don't do anything on button release. displaz will be refreshed by delayed update.
 
   return needToLock;
 }
