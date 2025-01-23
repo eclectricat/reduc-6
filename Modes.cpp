@@ -223,7 +223,7 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
       globalState->selectedMode = &(globalState->sequencerMode);
       lcd->setCursor(0, 0);
       lcd->print("  SEQUENCER         ");
-      // postPartOrModeSwitch(); // not necessary for this one
+      globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 0) { // state is already sequencer
       globalState->selectedMode = &(globalState->sequencerModeGraphic);
       lcd->setCursor(0, 0);
@@ -694,11 +694,22 @@ void SequencerMode::setup() {
     lastPlayedNote.push_back(-1);
     sequencerActive[i] = new StaticSignalDiscrete(NULL, 1);
   }
+
+  page = new StaticSignalDiscrete(NULL, 0);
+  ParameterInfoDiscrete *pPage = new ParameterInfoDiscrete("PAG ", 0, 7, page, "SequencerPage");
+  StaticSignal *dummy = new StaticSignal(NULL, 0);
+  ParameterInfo *pDummy = new ParameterInfo("  ", 0, 10, dummy, "dummy");
+  this->doubleShiftParameters.push_back(pPage);
+  this->doubleShiftParameters.push_back(pDummy);
+  this->doubleShiftParameters.push_back(pDummy);
+  this->doubleShiftParameters.push_back(pDummy);
 }
 
 void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
 
   if (this->paramLockMode) return processLockParameter(potIndex, potVal);
+  if (this->doubleShiftMode) return processDoubleShiftParameter(potIndex, potVal);
+
 
   if (potIndex == 0) {  // octave
     int oct = std::lround(1 + (potVal / 1024.0) * 4) - 2;
@@ -750,11 +761,35 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   Serial.println("all locking slots occupied");
 }
 
+void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
+  ParameterInfo *param = this->doubleShiftParameters[potIndex];
+
+  param->updateParameter(potVal);
+
+  // display locked value
+  lcd->setCursor(4 * potIndex, 1);
+  lcd->print("   ");
+  lcd->setCursor(4 * potIndex, 1);
+  lcd->print(param->printableValue());
+
+}
+
 
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
   int consumed = handleGenericPushButtonEvents(buttonIndex);
-  if (consumed) return true;
+  if (consumed == 2) return true;
+
+  if (consumed == 1) { // one of the shift buttons was pressed
+    if (globalState->shiftPressed && globalState->pPressed) { // now both shift buttons are pressed
+      this->doubleShiftMode = true;
+      // put the actual values into the parameters
+      int page = cursorPos / 8;
+      this->page->setValue(page);
+      displayDoubleShiftMode();
+      return true;
+    }
+  }
 
   int patternLength = patternLengths[this->globalState->selectedPart]->getValueDiscrete();
 
@@ -827,6 +862,19 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
   int consumed = handleGenericPushButtonEvents(buttonIndex);
   if (consumed == 2) return true;
 
+  if (consumed == 1) { // one of the shift buttons was pressed
+    if (globalState->shiftPressed && globalState->pPressed) { // now both shift buttons are pressed
+      seqMode->doubleShiftMode = true;
+      seqMode->paramLockMode = false;
+      
+      // put the actual values into the parameters
+      int page = seqMode->cursorPos / 8;
+      seqMode->page->setValue(page);
+      seqMode->displayDoubleShiftMode();
+      return true;
+    }
+  }
+
   // every button press goes into pLock mode
   seqMode->paramLockMode = 1;
   seqMode->displayLockingParams();
@@ -836,7 +884,7 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
 
   int page = seqMode->cursorPos / 8; 
 
-  // switch to step
+  // move cursor to step
   seqMode->cursorPos = page * 8 + buttonIndex; 
   // toggle this step
   /*
@@ -870,12 +918,34 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
     fullDisplayUpdate();
     needToLock = true;
   }
+
+  if (this->doubleShiftMode) {
+    if ((buttonIndex == 6) || (buttonIndex == 7)) { // we are no longer in double shift mode
+      doubleShiftMode = false;
+      int stepInPage = cursorPos % 8;
+      cursorPos = page->getValueDiscrete() * 8 + stepInPage;
+      fullDisplayUpdate();
+      needToLock = true;
+    }
+  }
   return needToLock;
 }
 
 bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
   
   bool needToLock = Mode::pushButtonReleased(buttonIndex);
+
+  if (seqMode->doubleShiftMode) {
+    if ((buttonIndex == 6) || (buttonIndex == 7)) { // we are no longer in double shift mode
+      seqMode->doubleShiftMode = false;
+      seqMode->paramLockMode = false;
+      armedForToggle = -1;
+      int stepInPage = seqMode->cursorPos % 8;
+      seqMode->cursorPos = seqMode->page->getValueDiscrete() * 8 + stepInPage;
+      fullDisplayUpdate();
+      needToLock = true;
+    }
+  }
   
 
   if (armedForToggle == buttonIndex) {
@@ -924,10 +994,10 @@ void SequencerModeGraphic::fullDisplayUpdate() {
 
 void SequencerMode::displayLockingParams() {
   lcd->clear();
-  lcd->setCursor(0, 0);
-  lcd->print("Locking parameters");
+  //lcd->setCursor(0, 0);
+  //lcd->print("Locking parameters");
 
-  lcd->clear();
+  //lcd->clear();
 
 
   for (unsigned int p = 0; p < 4; p++) {
@@ -943,6 +1013,21 @@ void SequencerMode::displayLockingParams() {
     lcd->print(lockParam->getName());
     lcd->setCursor(4 * p, 1);
     lcd->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
+  }
+}
+
+void SequencerMode::displayDoubleShiftMode() {
+  lcd->clear();
+  for (unsigned int p = 0; p < 4; p++) {
+    ParameterInfo *param = doubleShiftParameters[p];
+
+    Serial.print(param->getName());
+    Serial.print("__");
+
+    lcd->setCursor(4 * p, 0);
+    lcd->print(param->getName());
+    lcd->setCursor(4 * p, 1);
+    lcd->print(param->printableValue());  
   }
 }
 

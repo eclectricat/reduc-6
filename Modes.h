@@ -121,11 +121,16 @@ class SequencerMode: public Mode {
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
   virtual bool pushButtonPressed(int buttonIndex) override;
   virtual bool pushButtonReleased(int buttonIndex) override;
+  virtual void postPartOrModeSwitch() override { 
+    this->paramLockMode = 0; // not exactly sure how it can happen that this is on
+  }
  
   void setup();
   virtual void fullDisplayUpdate();
   void displayLockingParams();
   void processLockParameter(int potIndex, int value);
+  void displayDoubleShiftMode();
+  void processDoubleShiftParameter(int potIndex, int value);
 
   void maybePlay();
   void displayPlayStatus();
@@ -145,8 +150,11 @@ class SequencerMode: public Mode {
 
   std::vector<int> lastPlayedNote; // to be able to stop notes: todo: keep note length etc
 
+  std::vector<ParameterInfo*> doubleShiftParameters; // page and pattern switching
+
   // state: temporary sub-modes, pattern change, parameter lock
-  int paramLockMode = 0;
+  bool paramLockMode = false;
+  bool doubleShiftMode = false;
   int patternSelectMode = 0;
 
   //float valuesToReset[4 * 6] ; // TODO: don't hardcode
@@ -157,6 +165,8 @@ class SequencerMode: public Mode {
 
   StaticSignalDiscrete* bpm;
   ParameterInfo *pBPM;
+
+  StaticSignalDiscrete *page = NULL;
 
 };
 
