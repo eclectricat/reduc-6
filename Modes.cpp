@@ -85,15 +85,26 @@ void PartConfigMode::setup() {
   Registry *registry = &(globalState->engine->registry);
 
   registry->setPartAndVoiceTag(0, 0);  // does not really matter - this signal does not need to be updated by the synth engine
-  StaticSignal *dummyS = new StaticSignal(registry, 0);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  //StaticSignal *dummyS = new StaticSignal(registry, 0);
+  //ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  ParameterInfo *pDummy = new DummyParameterInfo(" ");
   selectedBank = new StaticSignalDiscrete(NULL, 0);
   selectedPatch = new StaticSignalDiscrete(NULL, 0);
-  ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
+
+  /*ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
   ParameterInfo *pLoad = new ParameterInfoDiscrete("LOD", 0, 9, dummyS, "LOD");
   ParameterInfo *pSaveGlobal = new ParameterInfoDiscrete("GSV", 0, 9, dummyS, "GSV");
   ParameterInfo *pLoadGlobal = new ParameterInfoDiscrete("GLD", 0, 9, dummyS, "GLD");
-  ParameterInfo *pQuestion = new ParameterInfo(" ", 0, 10, dummyS, "?");
+  ParameterInfo *pQuestion = new ParameterInfo(" ", 0, 10, dummyS, "?");*/
+
+  ParameterInfo *pSave = new DummyParameterInfo("SAV");
+  ParameterInfo *pLoad = new DummyParameterInfo("LOD");
+  ParameterInfo *pSaveGlobal = new DummyParameterInfo("GSV");
+  ParameterInfo *pLoadGlobal = new DummyParameterInfo("GLD");
+  ParameterInfo *pQuestion = new DummyParameterInfo(" ");
+
+
+
   ParameterInfo *pBankSave = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKSave", &(this->parameterRequestingConfirmation));
   ParameterInfo *pPatchSave = new ParameterInfoDiscreteConfirmation("PTC", 0, 10, selectedPatch, "PTCSave", &(this->parameterRequestingConfirmation));
   ParameterInfo *pBankLoad = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKLoad", &(this->parameterRequestingConfirmation));
@@ -139,8 +150,9 @@ void MixMuteMode::setup() {
   Registry *registry = &(globalState->engine->registry);
 
   registry->setPartAndVoiceTag(0, 0);  // does not really matter - this signal does not need to be updated by the synth engine
-  StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  //StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
+  //ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  ParameterInfo *pDummy = new DummyParameterInfo(" ");
 
   allSynthParameters.push_back(new SynthParameters());  // we only need 1 SynthParameters, not one per part (the different lanes are the different part params)
 
@@ -184,7 +196,11 @@ bool MixMuteMode::pushButtonReleased(int buttonIndex) {
     lcd->setCursor(4 * paramPos, 1);
     lcd->print("    ");
     lcd->setCursor(4 * paramPos, 1);
-    lcd->print(currentMenuPage->at(paramPos)->printableValue());
+
+    char buffer[] = "____";
+    currentMenuPage->at(paramPos)->renderPrintableValue(buffer);
+    lcd->print(buffer);
+    //lcd->print(currentMenuPage->at(paramPos)->printableValue());
   }
   return true;
 }
@@ -196,10 +212,15 @@ void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
   // only refresh if value changed, and print all 4 digits in one go
 
   if (updateDisplay) {
+    //lcd->setCursor(4 * potIndex, 1);
+    //lcd->print("    ");
+    //lcd->setCursor(4 * potIndex, 1);
+    //lcd->print(currentMenuPage->at(potIndex)->printableValue());
+
     lcd->setCursor(4 * potIndex, 1);
-    lcd->print("    ");
-    lcd->setCursor(4 * potIndex, 1);
-    lcd->print(currentMenuPage->at(potIndex)->printableValue());
+    char buffer[] = "____";
+    currentMenuPage->at(potIndex)->renderPrintableValue(buffer);
+    lcd->print(buffer);
   }
 }
 
@@ -636,7 +657,10 @@ void Mode::fullDisplayUpdate() {
     lcd->setCursor(4 * p, 0);
     lcd->print(currentMenuPage->at(p)->getName());
     lcd->setCursor(4 * p, 1);
-    lcd->print(currentMenuPage->at(p)->printableValue());
+    char* buffer = "____";
+    currentMenuPage->at(p)->renderPrintableValue(buffer);
+    lcd->print(buffer);
+    //lcd->print(currentMenuPage->at(p)->printableValue());
   }
 }
 
@@ -697,8 +721,8 @@ void SequencerMode::setup() {
 
   page = new StaticSignalDiscrete(NULL, 0);
   ParameterInfoDiscrete *pPage = new ParameterInfoDiscrete("PAG ", 0, 7, page, "SequencerPage");
-  StaticSignal *dummy = new StaticSignal(NULL, 0);
-  ParameterInfo *pDummy = new ParameterInfo("  ", 0, 10, dummy, "dummy");
+  
+  ParameterInfo *pDummy = new DummyParameterInfo("  ");
   this->doubleShiftParameters.push_back(pPage);
   this->doubleShiftParameters.push_back(pDummy);
   this->doubleShiftParameters.push_back(pDummy);
@@ -740,7 +764,10 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
 
   // display locked value
   lcd->setCursor(4 * potIndex, 1);
-  lcd->print(lockParam->printableValueFromPotValue(potVal));
+  char buffer[] = "    ";
+  lockParam->renderPrintableValueFromPotValue(buffer, potVal);
+  lcd->print(buffer);
+  //lcd->print(lockParam->printableValueFromPotValue(potVal));
 
 
   // store parameter value in sequence
@@ -770,7 +797,10 @@ void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
   lcd->setCursor(4 * potIndex, 1);
   lcd->print("   ");
   lcd->setCursor(4 * potIndex, 1);
-  lcd->print(param->printableValue());
+  char* buffer = "____";
+  param->renderPrintableValue(buffer);
+  lcd->print(buffer);
+  //lcd->print(param->printableValue());
 
 }
 
@@ -1012,7 +1042,10 @@ void SequencerMode::displayLockingParams() {
     lcd->setCursor(4 * p, 0);
     lcd->print(lockParam->getName());
     lcd->setCursor(4 * p, 1);
-    lcd->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
+    char* buffer = "____";
+    lockParam->renderPrintableValue(buffer);
+    lcd->print(buffer);
+    //lcd->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
   }
 }
 
@@ -1027,7 +1060,11 @@ void SequencerMode::displayDoubleShiftMode() {
     lcd->setCursor(4 * p, 0);
     lcd->print(param->getName());
     lcd->setCursor(4 * p, 1);
-    lcd->print(param->printableValue());  
+    
+    //lcd->print(param->printableValue()); 
+    char buffer[] = "    ";
+    param->renderPrintableValue(buffer);
+    lcd->print(buffer); 
   }
 }
 

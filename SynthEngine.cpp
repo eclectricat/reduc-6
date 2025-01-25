@@ -71,7 +71,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
   ParameterInfo *pPanSpread = new ParameterInfo("Pan  ", 0, 1, panSpread, "panSpread");
 
-  ParameterInfo *pLfoWave = new ParameterInfoDiscrete("LFO  ", 0, 1, lfoWave, "lfoWave");
+  std::vector<String> lfoTypes = {"saw", "tri"};
+  ParameterInfo *pLfoWave = new ParameterInfoDiscrete("LFO  ", 0, 1, lfoWave, "lfoWave", lfoTypes);
   ParameterInfo *pLfoFreq = new ParameterInfo("Frq  ", 0.1, 10, lfoFreq, "lfoFreq");
   ParameterInfo *pLfoToPitch = new ParameterInfo("Vib  ", -0.12, 0.12, lfoToPitch, "lfoToPitch"); // TODO: try to avoid exp function
   ParameterInfo *pLfoToCutoff = new ParameterInfo("Cut  ", -1, 1, lfoToCutoff, "lfoToCutoff");
@@ -80,7 +81,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  //ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
+  ParameterInfo *pDummy = new DummyParameterInfo("    ");
 
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pO1Wave, pO1Vol, pDetune }, 0);
   menu->addPage(vector<ParameterInfo *>{ pO1Pw, pLfoToPW1, pSubVol, pSubPhase}, 0);
@@ -231,7 +233,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
-  ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS, "dummyS");
+  //ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS, "dummyS");
+  //ParameterInfo *pDummy = new DummyParameterInfo("....");
 
   // pages: (global decay, filter) (pitch, pitchenv, amount, sinVol) (noiseVol, [noiseDecay]), (click?, fm, )
   //menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);

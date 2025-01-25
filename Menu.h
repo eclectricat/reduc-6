@@ -40,7 +40,7 @@ class ParameterInfo {
       else this->storedValue = targetValue;
     }
 
-    void lock(int potValue) {
+    virtual void lock(int potValue) {
       if (locked) return; // in case its accidentally called twice in a row
       locked = true;
       storedValue = param->getValue();
@@ -50,7 +50,7 @@ class ParameterInfo {
       //Serial.println(this->getName());
     }
 
-    void unlock() {
+    virtual void unlock() {
       if (!locked) return;
       locked = false;
       param->setValue(storedValue);
@@ -62,16 +62,24 @@ class ParameterInfo {
     String getUniqueName() {return uniqueName;}
     
     // we only really have 3 digits, so map the value back to a 0..100 scale
-    virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
+    //virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
 
-    
-
-    virtual int printableValueFromPotValue(int potValue) {
-      return 100 * (potValue/1024.0);
+    virtual void renderPrintableValue(char* buff) {
+      int value = (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );
+      snprintf(buff, 5, "%4d", value); // TODO: is it correct to put 5 here, even though the string has only 4 visible characters?
+      //snprintf(buff, 5, "%4.2g", param->getValue()); 
     }
 
-    float getValue() {return param->getValue();}
-    void setValue(float newValue) {param->setValue(newValue);} // directly set the parameter value (used internally e.g. for load functionality)
+    /*virtual int printableValueFromPotValue(int potValue) {
+      return 100 * (potValue/1024.0);
+    }*/
+    virtual void renderPrintableValueFromPotValue(char* buff, int potValue) {
+      int value = 100 * (potValue/1024.0);
+      snprintf(buff, 5, "%4d", value);
+    }
+
+    virtual float getValue() {return param->getValue();}
+    virtual void setValue(float newValue) {param->setValue(newValue);} // directly set the parameter value (used internally e.g. for load functionality)
 
   protected:
     String name;
@@ -87,16 +95,41 @@ class ParameterInfo {
 class ParameterInfoDiscrete: public ParameterInfo {
   
   public:
-  ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param, String uniqueName):ParameterInfo(name, min, max, param, uniqueName) {
+  ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param, String uniqueName, const std::vector<String>& strings=std::vector<String>() ):ParameterInfo(name, min, max, param, uniqueName) {
+    stringValues = strings;
   }
 
-  int printableValue() override {
+  /*int printableValue() override {
     return (int) param->getValue();
+  }*/
+
+  /*virtual int printableValueFromPotValue(int potValue) {
+      return (int) (this->min + (potValue/1024.0) * (this->max - this->min));
+  }*/
+
+  virtual void renderPrintableValue(char* buff) {
+      int value = (int)param->getValue();
+
+      if((value >=0) && (value < stringValues.size())) {
+        snprintf(buff, 5, "%4s", stringValues[value].c_str());
+      } else {
+        snprintf(buff, 5, "%4d", value); // TODO: is it correct to put 5 here, even though the string has only 4 visible characters?
+      }
   }
 
-  virtual int printableValueFromPotValue(int potValue) {
-      return (int) (this->min + (potValue/1024.0) * (this->max - this->min));
+  virtual void renderPrintableValueFromPotValue(char *buff, int potValue) {
+    int value = (int) (this->min + (potValue/1024.0) * (this->max - this->min));
+
+    if((value >=0) && (value < stringValues.size())) {
+        snprintf(buff, 5, "%4s", stringValues[value].c_str());
+      } else {
+        snprintf(buff, 5, "%4d", value); // TODO: is it correct to put 5 here, even though the string has only 4 visible characters?
+      }
+
   }
+
+  protected:
+  std::vector<String> stringValues;
 };
 
 class ParameterInfoDiscreteConfirmation: public ParameterInfoDiscrete {
@@ -116,6 +149,22 @@ class ParameterInfoDiscreteConfirmation: public ParameterInfoDiscrete {
   ParameterInfo **confirmationNotification = NULL;
   
 
+};
+
+class DummyParameterInfo: public ParameterInfo {
+  public: 
+    DummyParameterInfo(String name):ParameterInfo(name, 0, 1, NULL, String("dummyParameter"))  {}
+
+    virtual void updateParameter(int potValue) {}
+    virtual void lock(int potValue) {} 
+    virtual void unlock() {}
+    virtual int printableValue() {return -1;}
+    virtual void renderPrintableValue(char* buff) {snprintf(buff, 5, "%s", "    ");}
+    virtual int printableValueFromPotValue(int potValue) {
+      return -1;
+    }
+    virtual float getValue() {return -1;}
+    virtual void setValue(float newValue) {} // directly set the parameter value (used internally e.g. for load functionality)
 };
 
 
