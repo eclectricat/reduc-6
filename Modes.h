@@ -7,6 +7,11 @@ class GlobalState;
 class Sequence;
 //class Menu2;
 
+// TODO; put this to some truly global location
+#define NB_PARTS 6 
+#define NB_PATTERNS 2
+
+
 class Mode {
 
   public:
@@ -207,6 +212,7 @@ class GlobalState {
 
 
   int selectedPart=0;
+  int selectedPattern=0;
 
   void setup();
 
@@ -228,7 +234,8 @@ class GlobalState {
 
   int delayedDisplayRefresh = -1;
 
-  std::vector<Sequence*> sequences;
+  //index like that: patterns[patternnumber][track]-> sequence
+  std::vector<std::vector<Sequence*>> patterns = std::vector<std::vector<Sequence*>>(NB_PATTERNS, std::vector<Sequence*>(NB_PARTS, NULL)); 
 
   StaticSignal* playingProb[NB_PARTS]; // 16 for all possible midi channels
 

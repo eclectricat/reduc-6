@@ -8,6 +8,8 @@
 
 using namespace std;
 
+
+
 // there are 3 types of values
 // raw potentiometer values (0-1024)
 // actual internal float values (range defined by min and max)

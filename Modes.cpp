@@ -4,6 +4,10 @@
 #include <ArduinoJson.h>
 #include <SD.h>
 
+int freeram() {
+    return (char*)&_heap_end - __brkval;
+}
+
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
   : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd), sequencerModeGraphic(lcd) {
@@ -64,8 +68,28 @@ void GlobalState::setup() {
 
     Serial.println("created synth parameters");
     partConfigMode.allSynthParameters.push_back(new SynthParameters());  // one for every logical part
-    sequences.push_back(new Sequence());
+    //sequences.push_back(new Sequence());
   }
+
+  Serial.print("patterns: ");
+  
+  Serial.println(patterns.size());
+  Serial.println(patterns[0].size());
+  for (int pat=0; pat<NB_PATTERNS; pat++) {
+    //patterns.push_back(std::vector<Sequence*>());
+    for (int track=0; track<this->engine->getNbParts(); track++) {
+      //patterns[pat].push_back(new Sequence());
+      //patterns[pat][track] = new Sequence();
+      Serial.println("create sequence:");
+      Serial.println(pat);
+      Serial.println(track);
+      Serial.println(freeram());
+      Serial.println(patterns[pat][track]==NULL);
+      patterns[pat][track] = new Sequence();
+      
+    }
+  }
+
   this->delayedDisplayRefresh = millis() + 2000;
 }
 
@@ -657,7 +681,7 @@ void Mode::fullDisplayUpdate() {
     lcd->setCursor(4 * p, 0);
     lcd->print(currentMenuPage->at(p)->getName());
     lcd->setCursor(4 * p, 1);
-    char* buffer = "____";
+    char buffer[] = "____";
     currentMenuPage->at(p)->renderPrintableValue(buffer);
     lcd->print(buffer);
     //lcd->print(currentMenuPage->at(p)->printableValue());
@@ -737,13 +761,15 @@ void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay
 
   if (potIndex == 0) {  // octave
     int oct = std::lround(1 + (potVal / 1024.0) * 4) - 2;
-    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
     s->data[0][cursorPos] = oct;
     displayOctAndNote();
   }
   if (potIndex == 1) {  // note
     int note = std::lround(0 + (potVal / 1024.0) * 12);
-    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
     s->data[1][cursorPos] = note;
     displayOctAndNote();
   }
@@ -772,7 +798,8 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
 
   // store parameter value in sequence
   int selectedPart = this->globalState->selectedPart;
-  Sequence *s = this->globalState->sequences[selectedPart];
+  //Sequence *s = this->globalState->sequences[selectedPart];
+  Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
 
   for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
     if ((s->lockedParameters[lockPosition][cursorPos] == NULL) || (s->lockedParameters[lockPosition][cursorPos] == lockParam)) {
@@ -797,7 +824,7 @@ void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
   lcd->setCursor(4 * potIndex, 1);
   lcd->print("   ");
   lcd->setCursor(4 * potIndex, 1);
-  char* buffer = "____";
+  char buffer[] = "____";
   param->renderPrintableValue(buffer);
   lcd->print(buffer);
   //lcd->print(param->printableValue());
@@ -838,7 +865,8 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
   }
 
   if (buttonIndex == 2) {
-    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
     int currentValue = s->data[2][cursorPos];
     int newValue = 1 - currentValue;
 
@@ -979,7 +1007,8 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
   
 
   if (armedForToggle == buttonIndex) {
-    Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
     int currentValue = s->data[2][seqMode->cursorPos];
     int newValue = 1 - currentValue;
 
@@ -1042,7 +1071,7 @@ void SequencerMode::displayLockingParams() {
     lcd->setCursor(4 * p, 0);
     lcd->print(lockParam->getName());
     lcd->setCursor(4 * p, 1);
-    char* buffer = "____";
+    char buffer[] = "____";
     lockParam->renderPrintableValue(buffer);
     lcd->print(buffer);
     //lcd->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
@@ -1090,7 +1119,8 @@ void SequencerMode::displayStep() {
 }
 
 void SequencerMode::displayOctAndNote() {
-  Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+  //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+  Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
   // oct and note
   lcd->setCursor(0, 1);
   lcd->print(String("O") + String(s->data[0][cursorPos]) + String(" N") + String(s->data[1][cursorPos]) + String(" "));
@@ -1136,7 +1166,8 @@ void SequencerMode::maybePlay() {
 
       int wrappedPlayHead = playHead % patternLengths[part]->getValueDiscrete();
 
-      Sequence *s = this->globalState->sequences[part];
+      //Sequence *s = this->globalState->sequences[part];
+      Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
       if (s->data[2][wrappedPlayHead]) {
         // stop previous note
         //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
@@ -1319,9 +1350,11 @@ void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
   Serial.println("serializeSequencerData");
 
   JsonArray patterns = (*seqData)["Patterns"].to<JsonArray>();
-  Sequence *s = this->globalState->sequences[partId];
-
+  //Sequence *s = this->globalState->sequences[partId];
+  
   // TODO: Loop, to add multiple patterns
+  Sequence *s = this->globalState->patterns[globalState->selectedPattern][partId];
+
   JsonArray pattern = patterns.add<JsonArray>();
   for(int step = 0; step<s->NB_STEPS; step++) {
     JsonObject stepData = pattern.add<JsonObject>();
@@ -1348,9 +1381,11 @@ void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
 
   JsonArray patterns = (*seqData)["Patterns"]; 
 
-  Sequence *s = this->globalState->sequences[partId];
-
+  //Sequence *s = this->globalState->sequences[partId];
+  
   // TODO: Loop, to add multiple patterns
+  Sequence *s = this->globalState->patterns[globalState->selectedPattern][partId];
+
   JsonArray pattern = patterns[0]; 
   for(int step = 0; step<pattern.size(); step++) {
     JsonObject stepData = pattern[step]; 
