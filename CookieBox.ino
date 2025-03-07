@@ -80,7 +80,6 @@ int currentPotVals[] = {0,0,0,0};
 int nbLoopPasses=0;
 unsigned long startMillis=0;
 
-//JsonDocument jprofiling;
 std::map<String, int> profiling;
 std::map<String, int> moduleCounter;
 

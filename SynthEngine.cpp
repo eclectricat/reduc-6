@@ -4,7 +4,7 @@
 
 using namespace std;
 
-SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
+SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int partId, ParameterInfo* delayParams[], Signal **fxBus) {
 
   registry->setPartAndVoiceTag(partId,0);
 
@@ -44,6 +44,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   lfoToPW1 = new StaticSignal(registry, 0.f);
   lfoToPW2 = new StaticSignal(registry, 0.f);
 
+  StaticSignal *delaySend = new StaticSignal(NULL, 0);
+
 
   ParameterInfo *pO1Oct = new ParameterInfoDiscrete("1Oct", 0.0f, 4.0f, o1Oct, "o1Oct");
   ParameterInfo *pO2Oct = new ParameterInfoDiscrete("2Oct", 0.0f, 4.0f, o2Oct, "o2Oct");
@@ -79,6 +81,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   ParameterInfo *pLfoToPW1 = new ParameterInfo("PWM  ", 0, 1, lfoToPW1, "lfoToPW1");
   ParameterInfo *pLfoToPW2 = new ParameterInfo("PWM  ", 0, 1, lfoToPW2, "lfoToPW2");
 
+  ParameterInfo *pDelaySend = new ParameterInfo("DEL", 0, 1, delaySend, "delaySend");
 
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
   //ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
@@ -94,8 +97,10 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   menu->addPage(vector<ParameterInfo *>{ pEnvA, pEnvD, pEnvS, pEnvR }, 2);
 
   menu->addPage(vector<ParameterInfo *>{ pLfoWave, pLfoFreq, pLfoToPitch, pLfoToCutoff }, 3);
-
   menu->addPage(vector<ParameterInfo *>{ pPanSpread, pDummy, pDummy, pDummy }, 3);
+
+  menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pDummy, pDummy, pDummy}, 4);
 
 
   for (int i = 0; i < maxNbVoices; i++) {
@@ -106,6 +111,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   registry->setPartAndVoiceTag(partId,0);
   Signal *outputSignal = new MixerStereo(registry, signals, maxNbVoices, 0.5f);
   outputSignal = new VcaStereo(registry, outputSignal, this->partVolume);
+
+  *fxBus = new VCA(registry, outputSignal, delaySend); // FIXME: only takes the left channel so far
 
   return outputSignal;
 }
@@ -167,7 +174,7 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
   signals[i] = pan;
 }
 
-SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int partId) {
+SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int partId, ParameterInfo* delayParams[], Signal **fxBus) {
   registry->setPartAndVoiceTag(partId,0);
 
   StaticSignal *clickLPF = new StaticSignal(registry, 0.5f);
@@ -196,10 +203,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
   StaticSignalDiscrete *noiseType = new StaticSignalDiscrete(registry, 0);
 
-  StaticSignal *delayMs = new StaticSignal(NULL, 0);
+  StaticSignal *delaySend = new StaticSignal(NULL, 0);
+
+  /*StaticSignal *delayMs = new StaticSignal(NULL, 0);
   StaticSignalDiscrete *delayBeat = new StaticSignalDiscrete(NULL, 1);
   StaticSignal *delayFeedback = new StaticSignal(NULL, 0);
-  StaticSignal *delayWet = new StaticSignal(NULL, 0);
+  StaticSignal *delayWet = new StaticSignal(NULL, 0);*/
 
   ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct, "o1Oct");
   ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR, "pitchEnvDR");
@@ -226,13 +235,16 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol, "clickVol");
   ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF, "clickLPF");
 
-  ParameterInfo *pDelayMs = new ParameterInfo("Ms", 0, 50, delayMs, "delayMs");
+  ParameterInfo *pDelaySend = new ParameterInfo("DEL", 0, 1, delaySend, "delaySend");
+
+  /*ParameterInfo *pDelayMs = new ParameterInfo("Ms", 0, 50, delayMs, "delayMs");
   ParameterInfo *pDelayBeat = new ParameterInfoDiscrete("del", 0, 4, delayBeat, "delayBeat");
   ParameterInfo *pDelayFb = new ParameterInfo("Fb", 0, 1, delayFeedback, "delayFeedback");
-  ParameterInfo *pDelayWet = new ParameterInfo("Wet", 0, 1, delayWet, "delayWet");
+  ParameterInfo *pDelayWet = new ParameterInfo("Wet", 0, 1, delayWet, "delayWet");*/
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 0.0f);
+  ParameterInfo *pDummy = new DummyParameterInfo("    ");
   //ParameterInfo *pDummy = new ParameterInfo("....", 0, 0.1f, dummyS, "dummyS");
   //ParameterInfo *pDummy = new DummyParameterInfo("....");
 
@@ -243,7 +255,9 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pClickLPF }, 1);
   menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pNoiseType }, 2);
   menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
-  menu->addPage(vector<ParameterInfo *>{ pDelayMs, pDelayBeat, pDelayFb, pDelayWet}, 4);
+  //menu->addPage(vector<ParameterInfo *>{ pDelayMs, pDelayBeat, pDelayFb, pDelayWet}, 4);
+  menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pDummy, pDummy, pDummy}, 4);
 
   // create the chain of 'Signals'
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
@@ -287,9 +301,13 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   this->stutter = new Stutter(registry, over, stutterFraction, this->bpm);
 
-  Signal *delay = new Delay8bit(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
+  //Signal *delay = new Delay8bit(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
+  *fxBus = new VCA(registry, stutter, delaySend);
 
-  Signal *output = new VCA(registry, delay, this->partVolume);
+  Signal *output = new VCA(registry, stutter, this->partVolume);
+
+
+
   //Signal *output = this->stutter;
 
   return output;
@@ -445,25 +463,45 @@ void SynthEngine::update(void) {
 }
 
 void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSignal *bpm) {
-//void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams) {
+
+  // create parameters for the global modules, i.e. FX
+
+  StaticSignal *delayMs = new StaticSignal(NULL, 0);
+  StaticSignalDiscrete *delayBeat = new StaticSignalDiscrete(NULL, 1);
+  StaticSignal *delayFeedback = new StaticSignal(NULL, 0);
+  StaticSignal *delayVol = new StaticSignal(NULL, 1);
+
+  ParameterInfo *pDelayMs = new ParameterInfo("Ms", 0, 50, delayMs, "delayMs");
+  ParameterInfo *pDelayBeat = new ParameterInfoDiscrete("del", 0, 4, delayBeat, "delayBeat");
+  ParameterInfo *pDelayFb = new ParameterInfo("Fb", 0, 1, delayFeedback, "delayFeedback");
+  ParameterInfo *pDelayVol = new ParameterInfo("Vol", 0, 1, delayVol, "delayWet");
+
+  // to pass the parameters to all the parts
+  ParameterInfo* delayParams[4] = {pDelayBeat, pDelayMs, pDelayFb, pDelayVol};
+  // to return the FX bus signal
+  Signal *fxBus;
+
   for (int i=0;i<nbParts;i++) {
 
     this->partVolumes[i] = new StaticSignal(NULL, 1);
     parts[i] = new SynthPart(partVolumes[i]);
     parts[i+nbParts] = new DrumPart(partVolumes[i], bpm);
-    //parts[i] = new SynthPart();
-    //parts[i+nbParts] = new DrumPart(bpm);
-    //parts[i+nbParts] = new DrumPart();
-    signals[i]=parts[i]->buildSynth(&registry, allParams[i], i);
-    signals[i+nbParts]=parts[i+nbParts]->buildSynth(&registry, allParams[i+nbParts], i+nbParts);
+
+    signals[i]=parts[i]->buildSynth(&registry, allParams[i], i, delayParams, &fxBus);
+    effectsBusSignals[i] = fxBus;
+    signals[i+nbParts]=parts[i+nbParts]->buildSynth(&registry, allParams[i+nbParts], i+nbParts, delayParams, &fxBus);
+    effectsBusSignals[i+nbParts] = fxBus;
     Serial.println("created synth part");
 
-    
+
   }
 
   registry.setPartAndVoiceTag(0,-1);
-  outputSignal = new MixerStereo(&registry, signals, nbParts*nbPartTypes, 0.5f);
-  //outputSignal = new MixerStereo(&registry, signals, nbParts, 0.5f);
+
+  Signal *fxBusMixer = new Mixer(&registry, effectsBusSignals, nbParts*nbPartTypes, 1.0f);
+  signals[nbParts*nbPartTypes] = new GlobalDelay8bit(&registry, fxBusMixer, delayMs, bpm, delayBeat, delayFeedback, delayVol);
+  outputSignal = new MixerStereo(&registry, signals, nbParts*nbPartTypes+1, 0.5f);
+  //outputSignal = new MixerStereo(&registry, signals, nbParts*nbPartTypes, 0.5f);
 
   parts[0]->setActiveNbVoices(3);
   //parts[2]->setActiveNbVoices(1);
@@ -472,7 +510,6 @@ void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSig
   parts[1 + 6]->setActiveNbVoices(1);
   parts[2 + 6]->setActiveNbVoices(1);
   parts[3 + 6]->setActiveNbVoices(1);
-
 
   markRequiredSignals();
 }

@@ -529,6 +529,9 @@ void PartConfigMode::handleConfirmed() {
       globalState->synthMode.deserializePart(&obj, effPartId);
       // close the file:
       dataFile.close();
+
+      Serial.println(freeram());
+
       lcd->setCursor(4 * 3, 0);
       lcd->print("l-ok");
 
@@ -585,6 +588,9 @@ void PartConfigMode::handleConfirmed() {
     String filename = String("Program_")+this->selectedBank->getValueDiscrete()+"_"+this->selectedPatch->getValueDiscrete()+".json";
     Serial.println(filename);
 
+    Serial.print("RAM before and after:");
+    Serial.println(freeram());
+
     File dataFile = SD.open(filename.c_str());
     if (dataFile) {
       Serial.println("reading patch file:");
@@ -596,6 +602,8 @@ void PartConfigMode::handleConfirmed() {
       globalState->deserializeProgram(&obj);
       // close the file:
       dataFile.close();
+
+      Serial.println(freeram());
       
       lcd->setCursor(4 * 3, 0);
       lcd->print("l-ok");

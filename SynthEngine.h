@@ -21,6 +21,7 @@ class Signal;  // fw dec
 class Registry;
 class Menu;
 class SynthParameters;
+class ParameterInfo;
 class Env;
 class LFO;
 typedef Signal* SignalPtr;
@@ -68,7 +69,7 @@ public:
   }
 
 private:
-  const static int maxNumSignals = 10000;
+  const static int maxNumSignals = 2000;
   SignalPtr signals[maxNumSignals];  // all signals
   int partIds[maxNumSignals];        //for each signal: which part and voice does it belong to?
   int voiceIds[maxNumSignals];
@@ -81,7 +82,7 @@ private:
   int voiceId = 0;
 
 
-  SignalPtr activeSignals[maxNumSignals];
+  SignalPtr activeSignals[maxNumSignals]; //!!
   int nbActiveSignals = 0;
 
   friend class SynthEngine;
@@ -1086,6 +1087,80 @@ private:
   
 };
 
+class GlobalDelay8bit : public Signal {
+public:
+  GlobalDelay8bit(Registry* r, Signal* in, Signal* timeMs, Signal *bpm, StaticSignalDiscrete* timeBeat, Signal* feedback, Signal *vol)
+    : Signal(r) {
+    this->in = in;
+    this->timeMs = timeMs;
+    this->timeBeat = timeBeat;
+    this->feedback = feedback;
+    this->vol = vol;
+    this->bpm = bpm;
+
+    for (int i=0;i<bufferLength; i++) {
+      samples[i] = 0;
+    }
+
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float in = this->in->getValue();
+    float vol = this->vol->getValue();
+
+    int delayTime = (int) (timeMs->getValue() * 44.1f);
+    int bpm = this->bpm->getValue();
+    int beats = this->timeBeat->getValueDiscrete();
+
+    // assuming unsigned byte, but this is wrong anyway
+    // float is -0.5 to 0.5
+    // float to uint8: (value + 0.5) * 255;
+    // uint8 to float: (((float)value) / 255 ) - 0.5f;
+
+    // signed
+    // byte is -128 to 127
+    // float to byte: value * 255
+    // byte to float: value / 255
+
+    delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
+
+    int readHead = writehead - delayTime;
+    while (readHead < 0) readHead += bufferLength;
+
+    signed char sampleReadFromBuffer = samples[readHead];
+    float sampleReadFromBufferF = ((float)sampleReadFromBuffer) / 255 ;
+
+    value = sampleReadFromBufferF * vol;
+
+
+    // without converting bufferValues to float all the time
+    in = in  +  ((float)rand()) / ((float)RAND_MAX*255);
+    int sampleToWrite = round(feedback->getValue() * sampleReadFromBuffer + in  * 255);
+    if (sampleToWrite > 127) sampleToWrite = 127;
+    if (sampleToWrite < -127) sampleToWrite = -127; // -128 in reality I think
+
+    samples[writehead] = (signed char) sampleToWrite;
+
+    writehead++;
+    if (writehead >= bufferLength) writehead = 0;
+  }
+
+  virtual String signame() const {
+    return "GlobalDelay8Bit";
+  }
+
+private:
+  Signal *in, *timeMs,  *feedback, *vol, *bpm;
+  StaticSignalDiscrete *timeBeat;
+  const static int bufferLength = 30000;
+  signed char samples[bufferLength]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
+  int writehead = 0;
+};
+
 class Click : public Signal {
 public:
   Click(Registry* r)
@@ -1318,7 +1393,7 @@ class Part {
     leastRecentlyReleasedVoiceId = 0;
   }
 
-  virtual SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+  virtual SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId, ParameterInfo* delayParams[], Signal **fxBus);
 
   void noteOn(int note, int velo);
   void noteOff(int note, int velo);
@@ -1382,7 +1457,7 @@ class SynthPart :  public Part {
 
 public:
   SynthPart(StaticSignal *partVolume): Part(partVolume) {}
-  SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+  SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId, ParameterInfo* delayParams[], Signal **fxBus);
 
 private:
 
@@ -1430,7 +1505,7 @@ public:
   //DrumPart(StaticSignal *bpm): Part() {  
     this->bpm=bpm;
   }
-  SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId);
+  SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId, ParameterInfo* delayParams[], Signal **fxBus);
   virtual void retriggerVoice(int voiceId) {
     Part::retriggerVoice(voiceId);
     this->stutter->retrigger();
@@ -1542,16 +1617,16 @@ private:
   const static int nbPartTypes = NB_PART_TYPES; // type of engines (synth, drum)
 
   /*
-  For each of the 6 logical parts we alreadz instantiate all of the possible sound engines (i.e. part types)
+  For each of the 6 logical parts we already instantiate all of the possible sound engines (i.e. part types)
   The resulting signals and parts are stored in the following fields:
   currently we have 2 part types (synth and drum), the fields contain first the synth parts and then the drum parts
   When accessing the parts, depending on the selected part type we need to offset the access by nbParts...
   */
   // the per voice signals that go into the last mixer, nbParts * nbPartTypes
-  SignalPtr signals[nbParts*nbPartTypes];
+  SignalPtr signals[nbParts*nbPartTypes+1]; // +1 because of global effects/delay!!
+  SignalPtr effectsBusSignals[nbParts*nbPartTypes];
   Part* parts[nbParts*nbPartTypes];
 
-  
 
   // totaloutput
   SignalPtr outputSignal = 0;

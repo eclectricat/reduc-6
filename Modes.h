@@ -9,7 +9,7 @@ class Sequence;
 
 // TODO; put this to some truly global location
 #define NB_PARTS 6 
-#define NB_PATTERNS 2
+#define NB_PATTERNS 8
 
 
 class Mode {
