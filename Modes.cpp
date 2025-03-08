@@ -750,12 +750,16 @@ void SequencerMode::setup() {
 
   page = new StaticSignalDiscrete(NULL, 0);
   ParameterInfoDiscrete *pPage = new ParameterInfoDiscrete("PAG ", 0, 7, page, "SequencerPage");
+  selectedPattern = new StaticSignalDiscrete(NULL, 0);
+  ParameterInfoDiscrete *pSelectedPattern = new ParameterInfoDiscrete("PAT ", 0, NB_PATTERNS-1, selectedPattern, "SelectedPattern");
+  sequencerPlaying = new StaticSignalDiscrete(NULL, 0);
+  ParameterInfoDiscrete *pSequencerPlaying = new ParameterInfoDiscrete("PLY ", 0, 1, sequencerPlaying, "SequencerPlaying");
 
   ParameterInfo *pDummy = new DummyParameterInfo("  ");
   this->doubleShiftParameters.push_back(pPage);
   this->doubleShiftParameters.push_back(pDummy);
-  this->doubleShiftParameters.push_back(pDummy);
-  this->doubleShiftParameters.push_back(pDummy);
+  this->doubleShiftParameters.push_back(pSelectedPattern);
+  this->doubleShiftParameters.push_back(pSequencerPlaying);
 }
 
 void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
@@ -847,6 +851,8 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
       // put the actual values into the parameters
       int page = cursorPos / 8;
       this->page->setValue(page);
+      this->sequencerPlaying->setValue(globalState->seqPlaying ? 1 : 0);
+      this->selectedPattern->setValue(globalState->selectedPattern);
       displayDoubleShiftMode();
       return true;
     }
@@ -932,6 +938,9 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
       // put the actual values into the parameters
       int page = seqMode->cursorPos / 8;
       seqMode->page->setValue(page);
+      seqMode->sequencerPlaying->setValue(globalState->seqPlaying ? 1 : 0);
+      seqMode->selectedPattern->setValue(globalState->selectedPattern);
+
       seqMode->displayDoubleShiftMode();
       return true;
     }
@@ -985,6 +994,10 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
       doubleShiftMode = false;
       int stepInPage = cursorPos % 8;
       cursorPos = page->getValueDiscrete() * 8 + stepInPage;
+
+      globalState->seqPlaying = sequencerPlaying->getValueDiscrete() == 1;
+      globalState->selectedPattern = selectedPattern->getValueDiscrete();
+
       fullDisplayUpdate();
       needToLock = true;
     }
@@ -1003,6 +1016,10 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
       armedForToggle = -1;
       int stepInPage = seqMode->cursorPos % 8;
       seqMode->cursorPos = seqMode->page->getValueDiscrete() * 8 + stepInPage;
+
+      globalState->seqPlaying = seqMode->sequencerPlaying->getValueDiscrete() == 1;
+      globalState->selectedPattern = seqMode->selectedPattern->getValueDiscrete();
+
       fullDisplayUpdate();
       needToLock = true;
     }

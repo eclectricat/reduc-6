@@ -171,7 +171,10 @@ class SequencerMode: public Mode {
   StaticSignalDiscrete* bpm;
   ParameterInfo *pBPM;
 
+  // the double shift parameters
   StaticSignalDiscrete *page = NULL;
+  StaticSignalDiscrete *selectedPattern = NULL;
+  StaticSignalDiscrete *sequencerPlaying = NULL;
 
 };
 
