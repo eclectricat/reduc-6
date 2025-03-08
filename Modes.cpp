@@ -994,7 +994,9 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
       doubleShiftMode = false;
       int stepInPage = cursorPos % 8;
       cursorPos = page->getValueDiscrete() * 8 + stepInPage;
-
+      if(!globalState->seqPlaying && sequencerPlaying->getValueDiscrete() == 1) {
+        this->nextTriggerTime = millis(); // avoid that all missed steps are played now
+      }
       globalState->seqPlaying = sequencerPlaying->getValueDiscrete() == 1;
       globalState->selectedPattern = selectedPattern->getValueDiscrete();
 
@@ -1016,7 +1018,9 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
       armedForToggle = -1;
       int stepInPage = seqMode->cursorPos % 8;
       seqMode->cursorPos = seqMode->page->getValueDiscrete() * 8 + stepInPage;
-
+      if(!globalState->seqPlaying && sequencerPlaying->getValueDiscrete() == 1) {
+        this->nextTriggerTime = millis(); // avoid that all missed steps are played now
+      }
       globalState->seqPlaying = seqMode->sequencerPlaying->getValueDiscrete() == 1;
       globalState->selectedPattern = seqMode->selectedPattern->getValueDiscrete();
 
