@@ -1138,7 +1138,7 @@ public:
 
 
     // without converting bufferValues to float all the time
-    in = in  +  ((float)rand()) / ((float)RAND_MAX*255);
+    //in = in  +  ((float)rand()) / ((float)RAND_MAX*255);
     int sampleToWrite = round(feedback->getValue() * sampleReadFromBuffer + in  * 255);
     if (sampleToWrite > 127) sampleToWrite = 127;
     if (sampleToWrite < -127) sampleToWrite = -127; // -128 in reality I think
