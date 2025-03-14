@@ -17,7 +17,7 @@
 
 
 
-class Signal;  // fw dec
+class Signal;
 class Registry;
 class Menu;
 class SynthParameters;

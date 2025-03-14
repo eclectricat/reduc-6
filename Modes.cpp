@@ -1018,8 +1018,8 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
       armedForToggle = -1;
       int stepInPage = seqMode->cursorPos % 8;
       seqMode->cursorPos = seqMode->page->getValueDiscrete() * 8 + stepInPage;
-      if(!globalState->seqPlaying && sequencerPlaying->getValueDiscrete() == 1) {
-        this->nextTriggerTime = millis(); // avoid that all missed steps are played now
+      if(!globalState->seqPlaying && seqMode->sequencerPlaying->getValueDiscrete() == 1) {
+        seqMode->nextTriggerTime = millis(); // avoid that all missed steps are played now
       }
       globalState->seqPlaying = seqMode->sequencerPlaying->getValueDiscrete() == 1;
       globalState->selectedPattern = seqMode->selectedPattern->getValueDiscrete();
