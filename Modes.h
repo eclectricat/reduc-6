@@ -149,11 +149,11 @@ class SequencerMode: public Mode {
   int nbSteps = 64;
 
   int playHead = 0;
-  int nextTriggerTime = 0;
-  //int interBeatMs = 250; // tempo, 8th notes when quarter is at 120 BPM
-  int interBeatMs = 125; // tempo, 16th notes when quarter is at 120 BPM
+  double nextTriggerTime = 0;
+  double interBeatMs = 125; // tempo, 16th notes when quarter is at 120 BPM
 
-  std::vector<int> lastPlayedNote; // to be able to stop notes: todo: keep note length etc
+  std::vector<int> lastPlayedNote; // to be able to stop notes
+  std::vector<int> remainingNoteDuration; //keep note length etc
 
   std::vector<ParameterInfo*> doubleShiftParameters; // page and pattern switching
 
@@ -263,13 +263,11 @@ class Sequence {
   public:
 
     const int NB_STEPS = 64 ;
-    // stored: octave, note, on/off, (length, velo)
+    // stored: octave, note, on/off, length ( velo)
     
-    Sequence() {
-      // TODO
-    }
-    //std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3); // , std::vector<int>(NB_STEPS, 0));
-    std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3, std::vector<int>(NB_STEPS, 0)); // 3 x nbsteps
+    Sequence() { }
+    //std::vector<std::vector<int> > data = std::vector<std::vector<int> >(3, std::vector<int>(NB_STEPS, 0)); // 3 x nbsteps
+    std::vector<std::vector<int8_t> > data = std::vector<std::vector<int8_t> >(4, std::vector<int8_t>(NB_STEPS, 0)); // 4 x nbsteps
     std::vector<std::vector<ParameterInfo*>> lockedParameters = std::vector<std::vector<ParameterInfo*> >(4, std::vector<ParameterInfo*>(NB_STEPS, NULL)); // 4 automated params
     std::vector<std::vector<float>> lockedValues = std::vector<std::vector<float> >(4, std::vector<float>(NB_STEPS, 0)); // 4 automated params
 };

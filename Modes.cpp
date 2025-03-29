@@ -745,6 +745,7 @@ void MixMuteMode::postPartOrModeSwitch() {
 void SequencerMode::setup() {
   for (int i = 0; i < globalState->engine->getNbParts(); i++) {
     lastPlayedNote.push_back(-1);
+    remainingNoteDuration.push_back(0);
     sequencerActive[i] = new StaticSignalDiscrete(NULL, 1);
   }
 
@@ -782,6 +783,14 @@ void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay
     s->data[1][cursorPos] = note;
     displayOctAndNote();
   }
+  if (potIndex == 2) {  // length
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
+
+    int length = (potVal < 300) ? std::lround(8 * (potVal / 300.0)) : 8 +  std::lround((s->NB_STEPS-8) * ((potVal-300) / (1024-300.0)));
+    s->data[3][cursorPos] = length;
+    displayOctAndNote();
+  }
+
 }
 
 void SequencerModeGraphic::processPotValue(int potIndex, int potVal, bool updateDisplay) {
@@ -1136,18 +1145,17 @@ void SequencerMode::displayStep() {
     String thisChar = (page * 8 + step == cursorPos) ? String("|") : String(" ");
     stepVisu = stepVisu + thisChar;
   }
-  lcd->setCursor(6, 1);
+  lcd->setCursor(8, 1);
   lcd->print(stepVisu);
 }
 
 void SequencerMode::displayOctAndNote() {
-  //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
+
   Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
   // oct and note
   lcd->setCursor(0, 1);
-  lcd->print(String("O") + String(s->data[0][cursorPos]) + String(" N") + String(s->data[1][cursorPos]) + String(" "));
+  lcd->print(String("O") + String(s->data[0][cursorPos]) + String("N") + String(s->data[1][cursorPos]) + String("L") + String(s->data[3][cursorPos]) + String(" "));
   lcd->setCursor(7, 1);
-  //lcd->print(s->data[2][cursorPos] ? "+" : "-");
 
   String stepVisu = String("");
   int page = cursorPos / 8;
@@ -1155,18 +1163,18 @@ void SequencerMode::displayOctAndNote() {
     String thisChar = s->data[2][page * 8 + step] ? "+" : "_";
     stepVisu = stepVisu + thisChar;
   }
-  lcd->setCursor(6, 0);
+  lcd->setCursor(8, 0);
   lcd->print(stepVisu);
 }
 
 void SequencerMode::displayPlayStatus() {
   // play status
-  lcd->setCursor(15, 0);
+  lcd->setCursor(6, 0);
   lcd->print(globalState->seqPlaying ? "P" : "-");
-  lcd->setCursor(14, 1);
-  lcd->print("__");
-  lcd->setCursor(14, 1);
-  lcd->print(this->playHead % nbSteps);
+  //lcd->setCursor(14, 1);
+  //lcd->print("__");
+  //lcd->setCursor(14, 1);
+  //lcd->print(this->playHead % nbSteps);
 }
 
 
@@ -1184,24 +1192,26 @@ void SequencerMode::maybePlay() {
         continue;
       }
 
-      //Sequence *s = this->globalState->sequences[this->globalState->selectedPart]; // for now only play part that is being edited
-
       int wrappedPlayHead = playHead % patternLengths[part]->getValueDiscrete();
 
-      //Sequence *s = this->globalState->sequences[part];
-      Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
-      if (s->data[2][wrappedPlayHead]) {
-        // stop previous note
-        //globalState->myNoteOff(globalState->selectedPart+1, lastPlayedNote, 0);
+      // check if a note needs to be stopped due to note length
+      remainingNoteDuration[part]--;
+      if (remainingNoteDuration[part] == 0) { // a note just ended
+        if (lastPlayedNote[part] > -1) globalState->myNoteOff(part + 1, lastPlayedNote[part], 0);
+        lastPlayedNote[part] = -1;
+      }
 
+      Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
+      if (s->data[2][wrappedPlayHead]) { // we have a new note to play
+ 
+        // stop previous note if it is still playing
         if (lastPlayedNote[part] > -1) globalState->myNoteOff(part + 1, lastPlayedNote[part], 0);
         int newNote = 36 + s->data[0][wrappedPlayHead] * 12 + s->data[1][wrappedPlayHead];
         lastPlayedNote[part] = newNote;
+        remainingNoteDuration[part] = s->data[3][wrappedPlayHead];
         // play
-        //globalState->myNoteOn(globalState->selectedPart+1, newNote, 127);
 
         // automate locked parameter and/or reset original parameter values
-
         for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
 
           if (this->parametersToReset[part * 4 + lockPosition] != NULL) {  // for the first note in the sequence after a restart, we will call unlock here, even though it is unlocked
@@ -1210,12 +1220,11 @@ void SequencerMode::maybePlay() {
 
           this->parametersToReset[part * 4 + lockPosition] = s->lockedParameters[lockPosition][wrappedPlayHead];  // also copy NULLs from lockedParameters
           if (s->lockedParameters[lockPosition][wrappedPlayHead] != NULL) {
-
-            //this->valuesToReset[part*4 + lockPosition] = s->lockedParameters[lockPosition][playHead]->getValue();
-            //s->lockedParameters[lockPosition][playHead]->updateParameter(s->lockedValues[lockPosition][playHead]);
             s->lockedParameters[lockPosition][wrappedPlayHead]->lock(s->lockedValues[lockPosition][wrappedPlayHead]);
           }
         }
+
+        // finally play new note
         globalState->myNoteOn(part + 1, newNote, 127);
         Serial.println(newNote);
       }
@@ -1378,9 +1387,13 @@ void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
     JsonArray pattern = patterns.add<JsonArray>();
     for (int step = 0; step < s->NB_STEPS; step++) {
       JsonObject stepData = pattern.add<JsonObject>();
-      stepData["octave"] = s->data[0][step];
+      /*stepData["octave"] = s->data[0][step];
       stepData["note"] = s->data[1][step];
-      stepData["on/off"] = s->data[2][step];
+      stepData["on/off"] = s->data[2][step];*/
+      stepData["o"] = s->data[0][step];
+      stepData["n"] = s->data[1][step];
+      stepData["o/o"] = s->data[2][step];
+      stepData["l"] = s->data[3][step];
 
       JsonArray lockedParams = stepData["pLocks"].to<JsonArray>();
       int pIndex = 0;
@@ -1405,9 +1418,17 @@ void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
     JsonArray pattern = patterns[patternId];
     for (int step = 0; step < pattern.size(); step++) {
       JsonObject stepData = pattern[step];
-      s->data[0][step] = stepData["octave"];
-      s->data[1][step] = stepData["note"];
-      s->data[2][step] = stepData["on/off"];
+
+      if (stepData.containsKey("octave")) { // old format
+        s->data[0][step] = stepData["octave"];
+        s->data[1][step] = stepData["note"];
+        s->data[2][step] = stepData["on/off"];
+      } else {
+        s->data[0][step] = stepData["o"];
+        s->data[1][step] = stepData["n"];
+        s->data[2][step] = stepData["o/o"];
+        s->data[3][step] = stepData["l"];
+      }
 
       // first delete existing pLocks
       for (int pIndex = 0; pIndex < s->lockedParameters.size(); pIndex++) {
