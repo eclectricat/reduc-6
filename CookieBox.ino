@@ -44,9 +44,18 @@ AudioConnection          patchCord3(ampR, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=448,312
 // GUItool: end automatically generated code
 
-AudioOutputUSB usbAudio;
-AudioConnection          patchCord4(ampL, 0, usbAudio, 0);
-AudioConnection          patchCord5(ampR, 0, usbAudio, 1);
+//AudioOutputUSB usbAudio;
+AudioOutputUSBOct usbOctOut; 
+//AudioConnection          patchCord4(ampL, 0, usbAudio, 0);
+//AudioConnection          patchCord5(ampR, 0, usbAudio, 1);
+AudioConnection          patchCordUSB0(engine, 0, usbOctOut, 0);
+AudioConnection          patchCordUSB1(engine, 1, usbOctOut, 1);
+AudioConnection          patchCordUSB2(engine, 2, usbOctOut, 2);
+AudioConnection          patchCordUSB3(engine, 3, usbOctOut, 3);
+AudioConnection          patchCordUSB4(engine, 4, usbOctOut, 4);
+AudioConnection          patchCordUSB5(engine, 5, usbOctOut, 5);
+AudioConnection          patchCordUSB6(engine, 6, usbOctOut, 6);
+AudioConnection          patchCordUSB7(engine, 7, usbOctOut, 7);
 
 const int buttonPin = 28;
 

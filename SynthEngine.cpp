@@ -410,12 +410,32 @@ void SynthEngine::update(void) {
   audio_block_t *block;
   audio_block_t *blockR;
 
+  audio_block_t *blockD0;
+  audio_block_t *blockD1;
+  audio_block_t *blockD2;
+  audio_block_t *blockD3;
+  audio_block_t *blockD4;
+  audio_block_t *blockD5;
 
   // allocate the audio blocks to transmit
   block = allocate();
   if (block == NULL) return;
   blockR = allocate();
   if (blockR == NULL) return;
+
+  blockD0 = allocate();
+  if (blockD0 == NULL) return;
+  blockD1 = allocate();
+  if (blockD1 == NULL) return;
+  blockD2 = allocate();
+  if (blockD2 == NULL) return;
+  blockD3 = allocate();
+  if (blockD3 == NULL) return;
+  blockD4 = allocate();
+  if (blockD4 == NULL) return;
+  blockD5 = allocate();
+  if (blockD5 == NULL) return;
+
   if (outputSignal == NULL) return;
 
   float currentSample[2];
@@ -424,17 +444,9 @@ void SynthEngine::update(void) {
   for (i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
 
     // update all Signals in order
-    //for (int s = 0; s < registry.nbSignals; s++) {
     for (int s = 0; s < registry.nbActiveSignals; s++) {
-      //registry.signals[s]->update();
-      //registry.signals[s]->update_instrumented();
       registry.activeSignals[s]->update_instrumented();
-      
     }
-
-    //block->data[i] = (short)(55000 * signal->getValue()); // TODO: do all the scaling in a single place
-    //currentSample[0] = outputSignal->getValue(0);
-    //currentSample[1] = outputSignal->getValue(1);
 
     for (int s = 0; s < 2; s++) {
       tempval = outputSignal->getValue(s);
@@ -442,11 +454,6 @@ void SynthEngine::update(void) {
         maxSignalLevel = abs(tempval);
       }
 
-      /*if (currentSample[s] > 0.5) {
-        currentSample[s] = 0.5;
-      } else if (currentSample[s] < -0.5) {
-        currentSample[s] = -0.5;
-      }*/
       //currentSample[s] = std::min(0.5f, std::max(-0.5f, currentSample[s]));
       //currentSample[s] = tempval <= -0.5f ? -0.5f :  tempval >= 0.5f ? 0.5f : tempval;
       currentSample[s] = 0.5f * fast_tanh(tempval * 2); // softclip
@@ -454,12 +461,35 @@ void SynthEngine::update(void) {
 
     block->data[i] = (short)(55000 * currentSample[0]);    // TODO: do all the scaling in a single place
     blockR->data[i] = (short)(55000 * currentSample[1]);  // TODO: do all the scaling in a single place
+
+    // TODO: clip, for the direct outs, should we take the left channel, or sum/avg left and right?
+    // TODO: get the signals before the mix volume?
+    blockD0->data[i] = (short)(55000 * (signals[0]->getValue() + signals[0+NB_PARTS]->getValue()) );
+    blockD1->data[i] = (short)(55000 * (signals[1]->getValue() + signals[1+NB_PARTS]->getValue()) );
+    blockD2->data[i] = (short)(55000 * (signals[2]->getValue() + signals[2+NB_PARTS]->getValue()) );
+    blockD3->data[i] = (short)(55000 * (signals[3]->getValue() + signals[3+NB_PARTS]->getValue()) );
+    blockD4->data[i] = (short)(55000 * (signals[4]->getValue() + signals[4+NB_PARTS]->getValue()) );
+    blockD5->data[i] = (short)(55000 * (signals[5]->getValue() + signals[5+NB_PARTS]->getValue()) );
   }
+
   transmit(block);
   transmit(blockR, 1);
 
+  transmit(blockD0, 2);
+  transmit(blockD1, 3);
+  transmit(blockD2, 4);
+  transmit(blockD3, 5);
+  transmit(blockD4, 6);
+  transmit(blockD5, 7);
+
   release(block);
   release(blockR);
+  release(blockD0);
+  release(blockD1);
+  release(blockD2);
+  release(blockD3);
+  release(blockD4);
+  release(blockD5);
 }
 
 void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSignal *bpm) {
