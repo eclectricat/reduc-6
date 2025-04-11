@@ -113,7 +113,10 @@ void myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
   globalState.myNoteOff(channel, note, velocity);
 }
 
-
+void myClockHandler() { globalState.sequencerMode.tick();}
+void myStartHandler() { globalState.sequencerMode.startSync();}
+void myStopHandler() { globalState.sequencerMode.stopSync();}
+void myContinueHandler() { globalState.sequencerMode.continueSync();}
 
 void lockPotentiometers(bool refreshReadingFirst) {
   for(int pt = 0; pt < nbPots; pt++) {
@@ -155,6 +158,10 @@ void setup()
 
   usbMIDI.setHandleNoteOn(myNoteOn);
   usbMIDI.setHandleNoteOff(myNoteOff);
+  usbMIDI.setHandleClock(myClockHandler);
+  usbMIDI.setHandleStart(myStartHandler);
+  usbMIDI.setHandleStop(myStopHandler);
+  usbMIDI.setHandleContinue(myContinueHandler);
   //usbMIDI.setHandleControlChange(myControlChange);
 
   delay(100);
@@ -247,12 +254,8 @@ void loop()
   // do high prio stuff first
 
   // sequencer
-  //if (globalState.seqPlaying) {
-  //  globalState.sequencerMode.maybePlay();
-  //} else {
     sequencerCallback();
     delay(5);
-  //}
 
    //for (int i=0;i<30;i++) {
     int received = usbMIDI.read();
@@ -348,11 +351,7 @@ void loop()
     }
   }
   }
-
   //} // low prio throttling
-
- 
-
   //delay(5);  // do not print too fast!
 }
 

@@ -137,10 +137,30 @@ class SequencerMode: public Mode {
   void displayDoubleShiftMode();
   void processDoubleShiftParameter(int potIndex, int value);
 
-  void maybePlay();
+  void maybePlay(); // internal clock
+  void play(); // called directly when externally clocked
   void displayPlayStatus();
   void displayOctAndNote();
   void displayStep();
+
+
+  // TBD: sometimes the syncing is about 40ms behind
+  void tick() { 
+    if (tickCounter == 0) {
+      if (playingSync) {
+        Serial.println("tick -> play");
+        play();
+      } else {
+        Serial.println("tick (no play)"); // looks like this is not happening, at least with reaper
+      }
+    }
+    tickCounter = (tickCounter + 1 ) % 6;
+  }
+
+  void startSync() { playHead = 0; playingSync = true; tickCounter = 0;} 
+  void stopSync() { playingSync = false; cleanUpAfterStop();}
+  void continueSync() {playHead = 0; playingSync = true; tickCounter = 0;}
+  void cleanUpAfterStop();
 
   void serializeSequencerData(JsonObject *seqData, int partId);
   void deserializeSequencerData(JsonObject *seqData, int partId);
@@ -151,6 +171,9 @@ class SequencerMode: public Mode {
   int playHead = 0;
   double nextTriggerTime = 0;
   double interBeatMs = 125; // tempo, 16th notes when quarter is at 120 BPM
+
+  int tickCounter = 0;
+  bool playingSync = false;
 
   std::vector<int> lastPlayedNote; // to be able to stop notes
   std::vector<int> remainingNoteDuration; //keep note length etc

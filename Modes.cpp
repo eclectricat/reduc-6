@@ -851,6 +851,17 @@ void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
 
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
+  // if in plock mode, pressing 'no'/6/part button deletes all plocks of the current step
+  if(this->paramLockMode == 1) {
+    if (buttonIndex == 6) {
+      Serial.println("deleting plocks");
+      Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
+      for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+        s->lockedParameters[lockPosition][cursorPos] =NULL;
+      }
+    }
+  }
+
   int consumed = handleGenericPushButtonEvents(buttonIndex);
   if (consumed == 2) return true;
 
@@ -917,7 +928,8 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
       this->nextTriggerTime = millis();  // 0; // means: in the next call a step 0 is going to be played
     } else {                             // switch off current note
       // of all parts
-      for (int i = 0; i < globalState->engine->getNbParts(); i++) {
+      cleanUpAfterStop();
+      /*for (int i = 0; i < globalState->engine->getNbParts(); i++) {
         globalState->myNoteOff(i + 1, lastPlayedNote[i], 0);  // TODO: mapping from seq part to midi channel
         for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
           if (this->parametersToReset[i * 4 + lockPosition] != NULL) {
@@ -925,13 +937,25 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
             this->parametersToReset[i * 4 + lockPosition] = NULL;
           }
         }
-      }
+      }*/
     }
 
     displayPlayStatus();
   }
 
   return true;  // TODO: do we really need to lock pots after all buttons here?
+}
+
+void SequencerMode::cleanUpAfterStop() {
+  for (int i = 0; i < globalState->engine->getNbParts(); i++) {
+        globalState->myNoteOff(i + 1, lastPlayedNote[i], 0);  // TODO: mapping from seq part to midi channel
+        for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
+          if (this->parametersToReset[i * 4 + lockPosition] != NULL) {
+            this->parametersToReset[i * 4 + lockPosition]->unlock();
+            this->parametersToReset[i * 4 + lockPosition] = NULL;
+          }
+        }
+    }
 }
 
 bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
@@ -1181,6 +1205,14 @@ void SequencerMode::displayPlayStatus() {
 void SequencerMode::maybePlay() {
   if (millis() > nextTriggerTime) {
     nextTriggerTime = nextTriggerTime + interBeatMs;
+    play();
+    // recalculate tempo: TODO, can we do that more rarely?
+    interBeatMs = 60000 / (bpm->value * 4);
+  }
+}
+
+void SequencerMode::play() {
+
     Serial.print("playing step ");
     Serial.println(playHead);
 
@@ -1235,9 +1267,6 @@ void SequencerMode::maybePlay() {
     }
     playHead = (playHead + 1);  // % nbSteps;
 
-    // recalculate tempo: TODO, can we do that more rarely?
-    interBeatMs = 60000 / (bpm->value * 4);
-  }
 }
 
 void Mode::serializePart(JsonObject *jsonObject, int partId) {
