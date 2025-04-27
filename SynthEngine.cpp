@@ -45,6 +45,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   lfoToPW2 = new StaticSignal(registry, 0.f);
 
   StaticSignal *delaySend = new StaticSignal(NULL, 0);
+  reduction = new StaticSignal(NULL, 0);
+  overdriveGain = new StaticSignal(NULL, 1); 
 
 
   ParameterInfo *pO1Oct = new ParameterInfoDiscrete("1Oct", 0.0f, 4.0f, o1Oct, "o1Oct");
@@ -82,6 +84,9 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   ParameterInfo *pLfoToPW2 = new ParameterInfo("PWM  ", 0, 1, lfoToPW2, "lfoToPW2");
 
   ParameterInfo *pDelaySend = new ParameterInfo("DEL", 0, 1, delaySend, "delaySend");
+  ParameterInfo *pReduction = new ParameterInfo("BIT", 0, 1, reduction, "bitred");
+  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "odGain");
+
 
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
   //ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
@@ -100,7 +105,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   menu->addPage(vector<ParameterInfo *>{ pPanSpread, pDummy, pDummy, pDummy }, 3);
 
   menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
-  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pDummy, pDummy, pDummy}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pOverdriveGain, pReduction, pDummy}, 4);
 
 
   for (int i = 0; i < maxNbVoices; i++) {
@@ -164,11 +169,14 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
 
   VCA *vca = new VCA(registry, filter, env);
 
+  Signal *od = new Overdrive(registry, vca, overdriveGain);
+  Signal *bitred = new Reduction(registry, od, reduction);
+
   // distribute voices evenly over stereo width
   float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
   //float position = -1 + 2.0f * (float(i) / this->activeNbVoices); // division by zero?
   Signal *sPosition = new VCA(registry, new StaticSignal(registry, position), panSpread);
-  Signal *pan = new Pan(registry, vca, sPosition);
+  Signal *pan = new Pan(registry, bitred, sPosition);
 
   // store the last element of the chain -> output
   signals[i] = pan;
@@ -195,6 +203,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   loPassCutoff = new StaticSignal(registry, 1.0f);
 
   overdriveGain = new StaticSignal(registry, 1.0f);
+  Signal *reductionAmount = new StaticSignal(NULL, 0);
 
   StaticSignal *hiPassCutoff2 = new StaticSignal(registry, 0.0f);
   StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
@@ -224,6 +233,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff, "loPassCutoff");
 
   ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "overdriveGain");
+  ParameterInfo *pReductionAmount = new ParameterInfo("BIT", 0, 1, reductionAmount, "bitRed");
 
   ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2, "hiPassCutoff2");
   ParameterInfo *pHiPassRes2 = new ParameterInfo("HPR ", 0, 1, hiPassRes2, "hiPassRes2");
@@ -257,7 +267,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
   //menu->addPage(vector<ParameterInfo *>{ pDelayMs, pDelayBeat, pDelayFb, pDelayWet}, 4);
   menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
-  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pDummy, pDummy, pDummy}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pReductionAmount, pDummy, pDummy}, 4);
 
   // create the chain of 'Signals'
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
@@ -298,8 +308,9 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   VCA *vca = new VCA(registry, hip, ampEnv);
 
   Signal *over = new Overdrive(registry, vca , overdriveGain);
+  Signal *bitRed = new Reduction(registry, over, reductionAmount);
 
-  this->stutter = new Stutter(registry, over, stutterFraction, this->bpm);
+  this->stutter = new Stutter(registry, bitRed, stutterFraction, this->bpm);
 
   //Signal *delay = new Delay8bit(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
   *fxBus = new VCA(registry, stutter, delaySend);

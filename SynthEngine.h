@@ -874,6 +874,43 @@ private:
   Signal *in, *gain;
 };
 
+class Reduction : public Signal {
+public:
+  Reduction(Registry* r, Signal* in, Signal* reduction)
+    : Signal(r) {
+    this->in = in;
+    this->reduction = reduction;
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  }
+
+  void update() {
+    float in = this->in->getValue();
+    float reduction = this->reduction->getValue();
+    //if(reduction > 0.99) reduction = 0.99;
+    //int16_t quantized = (65535 * in * (1.0f - reduction));
+    //value = quantized / (1.0f-reduction) / 65535;
+
+    if (reduction > 0.01) {
+                double resolution = (1-reduction) * 50 + 1 ; // TODO, what is the signal level here !?* 32767 + 1;
+                int quantized = (int) (in * resolution); // a Double(1) is mapped to the max reso Int
+                value = quantized / resolution;
+    } else {
+      value = in;
+    }
+    
+  }
+
+  virtual String signame() const {
+    return "reduction";
+  }
+
+private:
+  Signal *in, *reduction;
+};
+
 class Stutter : public Signal {
 public:
   Stutter(Registry* r, Signal* in, Signal* fraction, Signal* bpm)
@@ -1497,6 +1534,9 @@ private:
   StaticSignal* lfoToCutoff = NULL;
   StaticSignal* lfoToPW1 = NULL;
   StaticSignal* lfoToPW2 = NULL;
+
+  StaticSignal* overdriveGain = NULL;
+  StaticSignal* reduction = NULL;
 };
 
 class DrumPart :  public Part {

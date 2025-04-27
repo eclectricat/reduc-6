@@ -137,7 +137,15 @@ class ParameterInfoDiscrete: public ParameterInfo {
 class ParameterInfoDiscreteConfirmation: public ParameterInfoDiscrete {
 
   public:
-  ParameterInfoDiscreteConfirmation(String name, float min, float max, StaticSignal* param, String uniqueName, ParameterInfo **confirmationNotification):ParameterInfoDiscrete(name, min, max, param, uniqueName) {
+  ParameterInfoDiscreteConfirmation(
+    String name, 
+    float min, 
+    float max, 
+    StaticSignal* param, 
+    String uniqueName, 
+    ParameterInfo **confirmationNotification,
+    const std::vector<String>& strings=std::vector<String>() 
+    ):ParameterInfoDiscrete(name, min, max, param, uniqueName, strings) {
     this->confirmationNotification = confirmationNotification;
   }
 

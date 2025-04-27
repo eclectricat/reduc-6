@@ -63,7 +63,8 @@ const int buttonPins[] = {28, 29, 30, 31, 32, 35, 34, 33};
 Bounce* pushbuttons[8];
 Bounce pushbutton = Bounce(buttonPin, 10);  // 10 ms debounce
 
-const int potPins[] = {A13, A12, A11, A10};
+//const int potPins[] = {A13, A12, A11, A10};
+const int potPins[] = {A10, A11, A12, A13};
 
 const int led1Pin = 37;
 
@@ -197,10 +198,15 @@ void setup()
   Serial.print("Initializing SD card...");
   
   // see if the card is present and can be initialized:
-  if (!SD.begin(BUILTIN_SDCARD)) {
-    Serial.println("Card failed, or not present");
-  } else
-    Serial.println("card initialized.");
+  for(int c=0;c<10;c++) {
+    if (!SD.begin(BUILTIN_SDCARD)) {
+      Serial.println("Card failed, or not present");
+      delay(1000);
+    } else {
+      Serial.println("card initialized.");
+      break;  
+    }
+  }
 
   //seqCallbackTimer.priority(250);
   //seqCallbackTimer.begin(sequencerCallback, 10000);

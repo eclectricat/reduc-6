@@ -80,6 +80,8 @@ class PartConfigMode: public Mode {
   virtual void postPartOrModeSwitch();
   virtual void handleConfirmed();
 
+  bool handleSeqAct();
+
   int effectivePartId(int partId) {return partId;} // used for page switch
 
   void resetEngineTypeAndVoices();
@@ -92,6 +94,11 @@ class PartConfigMode: public Mode {
 
   StaticSignalDiscrete *selectedBank;
   StaticSignalDiscrete *selectedPatch;
+  StaticSignalDiscrete *seqActionDest;
+  StaticSignalDiscrete *seqActionOp;
+
+  int clipBoardPattern = -1;
+  int clipBoardPart = -1;
 };
 
 class MixMuteMode: public Mode {

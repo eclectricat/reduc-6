@@ -114,6 +114,11 @@ void PartConfigMode::setup() {
   selectedBank = new StaticSignalDiscrete(NULL, 0);
   selectedPatch = new StaticSignalDiscrete(NULL, 0);
 
+  seqActionDest = new StaticSignalDiscrete(NULL, 0);
+  seqActionOp = new StaticSignalDiscrete(NULL, 0);
+  std::vector<String> destinations = {"seq", "ptn"};
+  std::vector<String> actions = {"clr", "cop", "pas"};
+
   /*ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
   ParameterInfo *pLoad = new ParameterInfoDiscrete("LOD", 0, 9, dummyS, "LOD");
   ParameterInfo *pSaveGlobal = new ParameterInfoDiscrete("GSV", 0, 9, dummyS, "GSV");
@@ -126,6 +131,9 @@ void PartConfigMode::setup() {
   ParameterInfo *pLoadGlobal = new DummyParameterInfo("GLD");
   ParameterInfo *pQuestion = new DummyParameterInfo(" ");
 
+  ParameterInfo *pSeqAction = new DummyParameterInfo("ACT");
+  ParameterInfo *pSeqActionDest = new ParameterInfoDiscreteConfirmation("DST", 0, destinations.size()-1, seqActionDest, "actDst", &(this->parameterRequestingConfirmation), destinations);
+  ParameterInfo *pSeqActionOp = new ParameterInfoDiscreteConfirmation("OP", 0, actions.size()-1, seqActionOp, "actOp", &(this->parameterRequestingConfirmation), actions);
 
 
   ParameterInfo *pBankSave = new ParameterInfoDiscreteConfirmation("BNK", 0, 10, selectedBank, "BNKSave", &(this->parameterRequestingConfirmation));
@@ -153,6 +161,8 @@ void PartConfigMode::setup() {
 
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ globalState->sequencerMode.pBPM, pPatternLength, pDummy, pDummy }, 0);
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pEngineType, pNbVoices, pDummy, pDummy }, 1);
+
+    allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSeqAction, pSeqActionDest, pSeqActionOp, pDummy }, 2);
 
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pLoad, pBankLoad, pPatchLoad, pQuestion }, 4);
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSave, pBankSave, pPatchSave, pQuestion }, 5);
@@ -620,6 +630,67 @@ void PartConfigMode::handleConfirmed() {
     lcd->setCursor(4 * 3, 0);
     lcd->print("done");
   }
+
+  if ((paramName == "actDst") || (paramName == "actOp")) {
+    bool success = handleSeqAct();
+    if (!success) {
+      Serial.println("error executing action");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+    } else {
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("done");
+    }
+  }
+
+}
+
+bool PartConfigMode::handleSeqAct() {
+  //StaticSignalDiscrete *seqActionDest;
+  //StaticSignalDiscrete *seqActionOp;
+  //std::vector<String> destinations = {"seq", "ptn"};
+  //std::vector<String> actions = {"clr", "cop", "pas"};
+
+
+  // handle copying
+  // copying pattern or sequence is the same, only at paste time we distinguish
+  if (this->seqActionOp->getValueDiscrete() == 1) {// copy
+    this->clipBoardPattern=globalState->selectedPattern;
+    this->clipBoardPart=globalState->selectedPart; // 
+    return true;
+  }
+
+
+  // which parts are we processing
+  int minPart=0;
+  int maxPart=NB_PARTS-1;
+  if(seqActionDest->getValueDiscrete() == 0) { // only current sequence, i.e. one part of the pattern
+    minPart = globalState->selectedPart;
+    maxPart = minPart;
+  }
+
+  // process parts
+  for (int part = minPart; part<=maxPart; part++) {
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
+
+    if (this->seqActionOp->getValueDiscrete() == 0) {// clr
+      s->data = std::vector<std::vector<int8_t> >(4, std::vector<int8_t>(s->NB_STEPS, 0));
+      s->lockedParameters = std::vector<std::vector<ParameterInfo*> >(4, std::vector<ParameterInfo*>(s->NB_STEPS, NULL));
+    }
+
+    if (this->seqActionOp->getValueDiscrete() == 2) {// paste
+      if ((clipBoardPart<0) || (clipBoardPattern<0)) return false;
+      int partToCopyFrom = (seqActionDest->getValueDiscrete() == 0) ? clipBoardPart : part;
+      Sequence *source = this->globalState->patterns[clipBoardPattern][partToCopyFrom];
+      s->data = source->data;
+      if(partToCopyFrom == part) { // TODO: when copying a seq to another part, we could copy plocks if both parts use the same engine
+        s->lockedParameters = source->lockedParameters; 
+        s->lockedValues = source->lockedValues;
+      }
+    }     
+  }
+
+  return true;
 }
 
 void PartConfigMode::resetEngineTypeAndVoices() {
