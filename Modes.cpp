@@ -259,12 +259,12 @@ void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
 // returned 'consumed': 0 not consumed, 1 registered shift keys, 2, actually did something
 int Mode::handleGenericPushButtonEvents(int buttonIndex) {
 
-  if (buttonIndex == 7) {  // P
+  if (buttonIndex == MODE_BUTTON) {  // P
     globalState->pPressed = true;
     return 1;
   }
 
-  if (buttonIndex == 6) {  // shift
+  if (buttonIndex == PART_BUTTON) {  // shift
     globalState->shiftPressed = true;
     return 1;
   }
@@ -304,10 +304,10 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
     return 2;
   }
 
-  if (globalState->shiftPressed) {  // part switch
+  if ((globalState->shiftPressed) && (buttonIndex < NB_PARTS)) {  // part switch
     Serial.println("part switch");
 
-    globalState->selectedPart = buttonIndex;  // TODO check nbParts
+    globalState->selectedPart = buttonIndex;  
 
     postPartOrModeSwitch();  //this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
     //fullDisplayUpdate();
@@ -402,10 +402,10 @@ void Mode::handleCancelled() {
 // in conform mode, we only look at buttons 6 and 7
 bool Mode::handleConfirmModeButtonPressed(int buttonIndex) {
 
-  if (buttonIndex == 6) {  // cancel
+  if (buttonIndex == PART_BUTTON) {  // cancel
     handleCancelled();
     return true;
-  } else if (buttonIndex == 7) {  // confirm
+  } else if (buttonIndex == MODE_BUTTON) {  // confirm
     handleConfirmed();
     return true;
   }
@@ -417,11 +417,12 @@ bool Mode::handleConfirmModeButtonPressed(int buttonIndex) {
 bool MixMuteMode::pushButtonPressed(int buttonIndex) {
 
   // when doing parameter switch, respect the fact that we have only one synthparameter here
-
   int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
   if (eventConsumed) return true;
 
-  if (buttonIndex < NB_PARTS) armedForMuteToggle[buttonIndex] = 1;
+  if (buttonIndex >= NB_PARTS) return false;
+
+  armedForMuteToggle[buttonIndex] = 1;
 
   //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart];
   SynthParameters *synthParameters = allSynthParameters[0];
@@ -439,16 +440,6 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
   if (synthParameters->existPage(selectedLane, selectedPage)) {
     currentMenuPage = synthParameters->getPage(selectedLane, selectedPage);
     Serial.print("Selected param:");
-    /*lcd->clear();
-    for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
-      Serial.print(currentMenuPage.at(p)->getName());
-      Serial.print("__");
-
-      lcd->setCursor(4 * p, 0);
-      lcd->print(currentMenuPage.at(p)->getName());
-      lcd->setCursor(4 * p, 1);
-      lcd->print(currentMenuPage.at(p)->printableValue());
-    }*/
     fullDisplayUpdate();
     Serial.println("");
   }
@@ -646,11 +637,6 @@ void PartConfigMode::handleConfirmed() {
 }
 
 bool PartConfigMode::handleSeqAct() {
-  //StaticSignalDiscrete *seqActionDest;
-  //StaticSignalDiscrete *seqActionOp;
-  //std::vector<String> destinations = {"seq", "ptn"};
-  //std::vector<String> actions = {"clr", "cop", "pas"};
-
 
   // handle copying
   // copying pattern or sequence is the same, only at paste time we distinguish
@@ -659,7 +645,6 @@ bool PartConfigMode::handleSeqAct() {
     this->clipBoardPart=globalState->selectedPart; // 
     return true;
   }
-
 
   // which parts are we processing
   int minPart=0;
@@ -767,7 +752,7 @@ void Mode::fullDisplayUpdate() {
 bool SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
-  if ((buttonIndex == 5) && (!globalState->shiftPressed)) {
+  if ((buttonIndex == 7) && (!globalState->shiftPressed)) {
     globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
 
@@ -775,12 +760,12 @@ bool SynthMode::pushButtonPressed(int buttonIndex) {
 }
 
 bool Mode::pushButtonReleased(int buttonIndex) {
-  if (buttonIndex == 7) {  // P
+  if (buttonIndex == MODE_BUTTON) {  // P
     globalState->pPressed = false;
     return false;
   }
 
-  if (buttonIndex == 6) {  // shift
+  if (buttonIndex == PART_BUTTON) {  // shift
     globalState->shiftPressed = false;
     return false;
   }
@@ -790,14 +775,13 @@ bool Mode::pushButtonReleased(int buttonIndex) {
 
 bool SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
-  if (buttonIndex == 5) {
+  if (buttonIndex == 7) {
     globalState->myNoteOff(globalState->selectedPart + 1, 36, 127);
   }
   return false;
 }
 
 void SynthMode::postPartOrModeSwitch() {
-  //int partId = globalState->selectedPart + 6 * globalState->partConfigMode.partTypes[globalState->selectedPart]; // TODO: hardcoded
   int partId = effectivePartId(globalState->selectedPart);
   this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
 }
@@ -924,7 +908,7 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
   // if in plock mode, pressing 'no'/6/part button deletes all plocks of the current step
   if(this->paramLockMode == 1) {
-    if (buttonIndex == 6) {
+    if (buttonIndex == MODE_BUTTON) {
       Serial.println("deleting plocks");
       Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
       for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
@@ -992,7 +976,7 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
     displayLockingParams();
   }
 
-  if (buttonIndex == 5) {  // play/stop
+  if (buttonIndex == 7) {  // play/stop
     this->globalState->seqPlaying = !this->globalState->seqPlaying;
     if (this->globalState->seqPlaying) {
       this->playHead = 0;
@@ -1000,15 +984,6 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
     } else {                             // switch off current note
       // of all parts
       cleanUpAfterStop();
-      /*for (int i = 0; i < globalState->engine->getNbParts(); i++) {
-        globalState->myNoteOff(i + 1, lastPlayedNote[i], 0);  // TODO: mapping from seq part to midi channel
-        for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
-          if (this->parametersToReset[i * 4 + lockPosition] != NULL) {
-            this->parametersToReset[i * 4 + lockPosition]->unlock();
-            this->parametersToReset[i * 4 + lockPosition] = NULL;
-          }
-        }
-      }*/
     }
 
     displayPlayStatus();
@@ -1050,7 +1025,10 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
     }
   }
 
-  // every button press goes into pLock mode
+  // from here on only process the 8 step buttons
+  if (buttonIndex >= 8) return false;
+
+  // every step button press goes into pLock mode
   seqMode->paramLockMode = 1;
   seqMode->displayLockingParams();
 
@@ -1061,21 +1039,6 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
 
   // move cursor to step
   seqMode->cursorPos = page * 8 + buttonIndex;
-  // toggle this step
-  /*
-  Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
-  int currentValue = s->data[2][seqMode->cursorPos];
-  int newValue = 1 - currentValue;
-
-  Serial.print("new value at position:");
-  Serial.print(seqMode->cursorPos);
-  Serial.print(":");
-  Serial.println(newValue);
-  s->data[2][seqMode->cursorPos] = newValue;
-  */
-
-  //seqMode->displayStep();
-  //seqMode->displayOctAndNote();
 
   // every button is a step change, and goes into pLock mode -> lock all pots
   return true;
@@ -1094,7 +1057,7 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
   }
 
   if (this->doubleShiftMode) {
-    if ((buttonIndex == 6) || (buttonIndex == 7)) {  // we are no longer in double shift mode
+    if ((buttonIndex == MODE_BUTTON) || (buttonIndex == PART_BUTTON)) {  // we are no longer in double shift mode
       doubleShiftMode = false;
       int stepInPage = cursorPos % 8;
       cursorPos = page->getValueDiscrete() * 8 + stepInPage;
@@ -1116,7 +1079,7 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
   bool needToLock = Mode::pushButtonReleased(buttonIndex);
 
   if (seqMode->doubleShiftMode) {
-    if ((buttonIndex == 6) || (buttonIndex == 7)) {  // we are no longer in double shift mode
+    if ((buttonIndex == PART_BUTTON) || (buttonIndex == MODE_BUTTON)) {  // we are no longer in double shift mode
       seqMode->doubleShiftMode = false;
       seqMode->paramLockMode = false;
       armedForToggle = -1;
@@ -1179,11 +1142,6 @@ void SequencerModeGraphic::fullDisplayUpdate() {
 
 void SequencerMode::displayLockingParams() {
   lcd->clear();
-  //lcd->setCursor(0, 0);
-  //lcd->print("Locking parameters");
-
-  //lcd->clear();
-
 
   for (unsigned int p = 0; p < 4; p++) {
     int effectivePartId = this->effectivePartId(globalState->selectedPart);
@@ -1361,8 +1319,6 @@ void Mode::serializePart(JsonObject *jsonObject, int partId) {
   }
 }
 
-
-
 void Mode::deserializePart(JsonObject *jsonObject, int partId) {
 
 
@@ -1441,7 +1397,6 @@ void GlobalState::serializeProgram(JsonObject *prg) {
 
 void GlobalState::deserializeProgram(JsonObject *prg) {
 
-
   // *** partConfig
   JsonArray configList = (*prg)["PartConfig"];  //.to<JsonArray>();
 
@@ -1463,7 +1418,6 @@ void GlobalState::deserializeProgram(JsonObject *prg) {
     JsonObject partParameters = patchList[i];  //.to<JsonObject>(); // this breaks it
     synthMode.deserializePart(&partParameters, effPartId);
   }
-
 
   // *** sequencer
   JsonArray seqdata = (*prg)["SequencerData"];

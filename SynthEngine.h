@@ -68,8 +68,12 @@ public:
     this->voiceId = voiceId;
   }
 
-private:
   const static int maxNumSignals = 2000;
+  SignalPtr activeSignals[maxNumSignals]; //!!
+  int nbActiveSignals = 0;
+
+private:
+  
   SignalPtr signals[maxNumSignals];  // all signals
   int partIds[maxNumSignals];        //for each signal: which part and voice does it belong to?
   int voiceIds[maxNumSignals];
@@ -82,8 +86,7 @@ private:
   int voiceId = 0;
 
 
-  SignalPtr activeSignals[maxNumSignals]; //!!
-  int nbActiveSignals = 0;
+  
 
   friend class SynthEngine;
 };
@@ -126,6 +129,11 @@ public:
   }
 
   float value = 0;  // make this public for speed reasons
+
+  // for stereo: signals that are never used by a mixerstereo or a vcastereo don't need to set this
+  // actual stereo signals use this as the right channel
+  // mono signals that are used by mixerStereo etc, need to set this to the same value as 'value'
+  float value1 = 0; 
 
 protected:
   float rateInverse = 1 / AUDIO_SAMPLE_RATE;
@@ -217,8 +225,6 @@ public:
     return "staticdiscrete";
   }
 
-private:
-
   int intValue = 0;
 };
 
@@ -258,17 +264,18 @@ public:
         return value;
         break;
     }
-    //return value;
   }
 
   void update() {
     value = 0;
     value1 = 0;
     for (int i = 0; i < nbSignals; i++) {
-      value += signals[i]->getValue(0);
+      //value += signals[i]->getValue(0);
+      value += signals[i]->value;
     }
     for (int i = 0; i < nbSignals; i++) {
-      value1 += signals[i]->getValue(1);
+      //value1 += signals[i]->getValue(1);
+      value1 += signals[i]->value1;
     }
     value *= gain;
     value1 *= gain;
@@ -282,7 +289,7 @@ protected:
   int nbSignals;
   SignalPtr signals[15];
   //float value = 0;
-  float value1 = 0;  // for stereo
+  //float value1 = 0;  // for stereo
   float gain = 1;
 };
 
@@ -307,6 +314,7 @@ public:
       value += signals[i]->value;
     }
     value *= gain;
+    value1 = value;
   }
 
   virtual String signame() const {
@@ -326,13 +334,13 @@ public:
   }
 
   void update() {
-    float pos = this->position->getValue();
+    float pos = this->position->value;
     pos = pos / 2 + 0.5f;
 
-    float intemp = in->getValue();
+    float intemp = in->value;
 
-    values[0] = (1 - pos) * intemp;
-    values[1] = (pos)*intemp;
+    value = (1 - pos) * intemp;
+    value1 = (pos)*intemp;
   }
 
   // position -1 is left, position 1 is right
@@ -348,12 +356,12 @@ public:
 
     }*/
   float getValue(int channel = 0) {
-    /*if (channel==0) {
-        return value0;
+    if (channel==0) {
+        return value;
       } else {
         return value1;
-      }*/
-    return values[channel];
+      }
+    //return values[channel];
   }
 
 
@@ -368,7 +376,7 @@ protected:
 
   //float value0 = 0;
   //float value1 = 0;
-  float values[2] = { 0, 0 };
+  //float values[2] = { 0, 0 };
 };
 
 
@@ -389,6 +397,7 @@ public:
   void update() {
     //value = signal->getValue() * gain->getValue();
     value = signal->value * gain->value;
+    value1=value;
   }
 
   virtual String signame() const {
@@ -410,13 +419,15 @@ class VcaStereo : public VCA {
     if (channel == 0 ) {
       return value;
       } else {
-      return valueR;
+      return value1;
     }
   }
 
   void update() {
-    value = signal->getValue(0) * gain->getValue(0);
-    valueR = signal->getValue(1) * gain->getValue(0);
+    //value = signal->getValue(0) * gain->getValue(0);
+    value = signal->value * gain->value;
+    value1 = signal->value1 * gain->value;
+    //valueR = signal->getValue(1) * gain->getValue(0);
   }
 
   virtual String signame() const {
@@ -424,7 +435,7 @@ class VcaStereo : public VCA {
   }
 
   private:
-  float valueR = 0;
+  //float valueR = 0;
 };
 
 
@@ -566,7 +577,7 @@ public:
     if (counter >= subsample) {
       counter = 0;
 
-      float increment = freq->getValue() * rateInverse;
+      float increment = freq->value * rateInverse;
       phase = phase + increment * subsample;
       if (phase > 1) phase -= 1;
       if (phase < 0) phase += 1; // to support through zero mod
@@ -824,10 +835,10 @@ public:
   }
 
   void update() {
-    float cut = this->cut->getValue();
+    float cut = this->cut->value;
     cut = std::min(1.0f, std::max(0.0f, cut));
-    float in = this->in->getValue();
-    float fb = this->res->getValue();
+    float in = this->in->value;
+    float fb = this->res->value;
     fb = std::min(2.0f, std::max(0.0f, fb));
     fb = fb + fb / (1.0f - cut + eps);
     v0 = v0 + cut * (in - v0 + fb * (v0 - v1));
@@ -861,8 +872,8 @@ public:
   }
 
   void update() {
-    float in = this->in->getValue();
-    float gain = this->gain->getValue();
+    float in = this->in->value;
+    float gain = this->gain->value;
     value = fast_tanh(in * gain) * 0.5f; // * (1/gain);
   }
 
@@ -887,8 +898,8 @@ public:
   }
 
   void update() {
-    float in = this->in->getValue();
-    float reduction = this->reduction->getValue();
+    float in = this->in->value;//  this->in->getValue();
+    float reduction = this->reduction->value; //this->reduction->getValue();
     //if(reduction > 0.99) reduction = 0.99;
     //int16_t quantized = (65535 * in * (1.0f - reduction));
     //value = quantized / (1.0f-reduction) / 65535;
@@ -925,9 +936,9 @@ public:
   }
 
   void update() {
-    float in = this->in->getValue();
-    float frac = fraction->getValue();
-    float bpm = this->bpm->getValue();
+    float in = this->in->value;
+    float frac = fraction->value;
+    float bpm = this->bpm->value;
 
     if (frac < 2) { // skip
       value = in;
@@ -985,8 +996,8 @@ public:
   }
 
   void update() {
-    float in = this->in->getValue();
-    float wet = this->wet->getValue();
+    float in = this->in->value;
+    float wet = this->wet->value;
     
 
     if (wet < 0.1) { // skip
@@ -995,9 +1006,9 @@ public:
       return;
     }
 
-    int delayTime = (int) (timeMs->getValue() * 44.1f);
-    int bpm = this->bpm->getValue();
-    int beats = this->timeBeat->getValueDiscrete();
+    int delayTime = (int) (timeMs->value * 44.1f);
+    int bpm = this->bpm->value;
+    int beats = this->timeBeat->intValue;
 
     delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
 
@@ -1009,7 +1020,7 @@ public:
     
     value = samples[readHead] * wet + in * (1-wet);
 
-    samples[writehead/subsample] = in + feedback->getValue() * samples[readHead];
+    samples[writehead/subsample] = in + feedback->value * samples[readHead];
 
     writehead++;
     if ((writehead/subsample) >= bufferLength) writehead = 0;
@@ -1146,11 +1157,11 @@ public:
   }
 
   void update() {
-    float in = this->in->getValue();
-    float vol = this->vol->getValue();
+    float in = this->in->value;
+    float vol = this->vol->value;
 
-    int delayTime = (int) (timeMs->getValue() * 44.1f);
-    int bpm = this->bpm->getValue();
+    int delayTime = (int) (timeMs->value * 44.1f);
+    int bpm = this->bpm->value;
     int beats = this->timeBeat->getValueDiscrete();
 
     // assuming unsigned byte, but this is wrong anyway
@@ -1176,7 +1187,7 @@ public:
 
     // without converting bufferValues to float all the time
     //in = in  +  ((float)rand()) / ((float)RAND_MAX*255);
-    int sampleToWrite = feedback->getValue() * sampleReadFromBuffer + in  * 255;
+    int sampleToWrite = feedback->value * sampleReadFromBuffer + in  * 255;
     
     if (sampleToWrite > 127) sampleToWrite = 127;
     if (sampleToWrite < -127) sampleToWrite = -127; // -128 in reality I think
@@ -1357,7 +1368,7 @@ public:
     }
 
     //float v0 = in->getValue();
-    double v0 = in->value;
+    float v0 = in->value;
 
     //float v1 = (ic1eq + g * (-ic2eq + v0)) / (1 + g * (g + k));
     //float v1 = (ic1eq + g * (-ic2eq + v0)) * intermed;
@@ -1365,16 +1376,16 @@ public:
 
 
 
-    double v1 = -((k * g3 + 2 * k * g2 + k * g) * ic4eq
+    float v1 = -((k * g3 + 2 * k * g2 + k * g) * ic4eq
                   + (k * g3 + k * g2) * ic3eq
                   + k * g3 * ic2eq
                   + (-g3 - 3 * g2 - 3 * g - 1) * ic1eq
                   + (-g4 - 3 * g3 - 3 * g2 - g) * v0)
                 / ((k + 1) * g4 + 4 * g3 + 6 * g2 + 4 * g + 1);
 
-    double v2 = (g * v1 + ic2eq) * intermed;
-    double v3 = (g * v2 + ic3eq) * intermed;
-    double v4 = (g * v3 + ic4eq) * intermed;
+    float v2 = (g * v1 + ic2eq) * intermed;
+    float v3 = (g * v2 + ic3eq) * intermed;
+    float v4 = (g * v3 + ic4eq) * intermed;
 
     //v4 = fast_tanh(v4); // this destroys all the math, but maybe helps to prevent explosion
 
@@ -1396,20 +1407,20 @@ public:
 
 private:
   Signal *in, *cut, *res;
-  double ic1eq = 0;
-  double ic2eq = 0;
-  double ic3eq = 0;
-  double ic4eq = 0;
+  float ic1eq = 0;
+  float ic2eq = 0;
+  float ic3eq = 0;
+  float ic4eq = 0;
   double Pi = 3.14159;
   //float value = 0;
 
   int counter = 0;  // a test to optimise code
-  double g = 0;
-  double k = 0;
-  double intermed = 0;
-  double g2 = 0;
-  double g3 = 0;
-  double g4 = 0;
+  float g = 0;
+  float k = 0;
+  float intermed = 0;
+  float g2 = 0;
+  float g3 = 0;
+  float g4 = 0;
 };
 
 class Part {

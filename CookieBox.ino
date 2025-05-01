@@ -58,9 +58,10 @@ AudioConnection          patchCordUSB6(engine, 6, usbOctOut, 6);
 AudioConnection          patchCordUSB7(engine, 7, usbOctOut, 7);
 
 const int buttonPin = 28;
+const int nbButtons = 10;
 
-const int buttonPins[] = {28, 29, 30, 31, 32, 35, 34, 33};
-Bounce* pushbuttons[8];
+const int buttonPins[] = {28, 29, 30, 31, 32, 35, 34, 33, 36, 37};
+Bounce* pushbuttons[nbButtons];
 Bounce pushbutton = Bounce(buttonPin, 10);  // 10 ms debounce
 
 //const int potPins[] = {A13, A12, A11, A10};
@@ -170,7 +171,7 @@ void setup()
   pinMode(led1Pin, OUTPUT);
   digitalWrite(led1Pin, LOW);
   
-  for(int i=0;i<8;i++){
+  for(int i=0;i<nbButtons;i++){
     pinMode(buttonPins[i], INPUT_PULLUP);
     Bounce *temp = new Bounce(buttonPins[i], 10);
     pushbuttons[i]= temp;
@@ -220,8 +221,8 @@ void loop()
 
   // print some stats
   unsigned int now = millis();
-  //if (now > startMillis + 10000) {
-  if (false) {
+  if (now > startMillis + 10000) {
+  //if (false) {
     startMillis = now;
 
     Serial.print("loops per second:");
@@ -235,9 +236,12 @@ void loop()
     Serial.println(AudioProcessorUsageMax());
     AudioProcessorUsageMaxReset();
 
+    
     // profiling info
-    for (int s = 0; s < engine.registry.getNbSignals(); s++) {
-      Signal* as = engine.registry.getSignals()[s];
+    //for (int s = 0; s < engine.registry.getNbSignals(); s++) {
+    //  Signal* as = engine.registry.getSignals()[s];
+    for (int s = 0; s < engine.registry.nbActiveSignals; s++) {
+      Signal* as = engine.registry.activeSignals[s];
       profiling[as->signame()] = profiling[as->signame()] + as->getAndResetLastSpentTime();
       moduleCounter[as->signame()] = moduleCounter[as->signame()] + 1;
     }
@@ -309,7 +313,7 @@ void loop()
 
   // check for buttons pressed
 
-  for (int i=0;i<8;i++) {
+  for (int i=0;i<nbButtons;i++) {
   if (pushbuttons[i]->update()) {
     if (pushbuttons[i]->fallingEdge()) {
       Serial.print(i);

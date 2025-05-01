@@ -11,6 +11,9 @@ class Sequence;
 #define NB_PARTS 6 
 #define NB_PATTERNS 4
 
+#define MODE_BUTTON 9
+#define PART_BUTTON 8
+
 
 class Mode {
 
