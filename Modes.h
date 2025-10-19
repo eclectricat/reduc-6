@@ -234,6 +234,36 @@ class SequencerModeGraphic : public Mode {
 
 };
 
+class KeyboardMode : public Mode {
+  public:
+
+  KeyboardMode(LiquidCrystal *lcd) {
+    this->lcd = lcd;
+  }
+
+  //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
+  virtual bool pushButtonPressed(int buttonIndex) override;
+  virtual bool pushButtonReleased(int buttonIndex) override;
+  //virtual void fullDisplayUpdate() {};
+
+  void setup();
+
+  private:
+  StaticSignalDiscrete *octave = NULL;
+  StaticSignalDiscrete *key = NULL;
+  StaticSignalDiscrete *centerNote = NULL;
+  StaticSignalDiscrete *mode = NULL;
+
+  ParameterInfoDiscrete *pOctave = NULL;
+  ParameterInfoDiscrete *pKey = NULL;
+  ParameterInfoDiscrete *pCenterNote = NULL;
+  ParameterInfoDiscrete *pMode = NULL;
+  int playingNotesPerKey[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+
+  int halfNotesIntervalsMajor[8] = {0,2,4,5,7,9,11,12}; 
+
+};
+
 class GlobalState {
 
   public:
@@ -244,6 +274,7 @@ class GlobalState {
   SequencerMode sequencerMode;
   SequencerModeGraphic sequencerModeGraphic;
   MixMuteMode mixMuteMode;
+  KeyboardMode keyboardMode;
   Mode *selectedMode = &synthMode;
 
 

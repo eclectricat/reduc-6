@@ -605,6 +605,10 @@ public:
     return value;
   }
 
+  void retrigger() {
+    phase = 0;
+  }
+
   int subsample = 50;
 
 private:
@@ -718,8 +722,8 @@ public:
 
           //float fDecay = pow(0.001f, 1.0f / (dSecs * AUDIO_SAMPLE_RATE));
           //float fDecay = powf(0.001f, 1.0f / (d->getValue() * AUDIO_SAMPLE_RATE));
-          float delta = (value - s->getValue()) * fDecay;
-          value = s->getValue() + delta;
+          float delta = (value - s->value) * fDecay;
+          value = s->value + delta;
           // never actually switch officially to the sustain phase...
           break;
         }
@@ -887,10 +891,11 @@ private:
 
 class Reduction : public Signal {
 public:
-  Reduction(Registry* r, Signal* in, Signal* reduction)
+  Reduction(Registry* r, Signal* in, Signal* reduction, Signal* rateReduction)
     : Signal(r) {
     this->in = in;
     this->reduction = reduction;
+    this->rateReduction = rateReduction;
   }
 
   float getValue(int channel = 0) {
@@ -900,16 +905,24 @@ public:
   void update() {
     float in = this->in->value;//  this->in->getValue();
     float reduction = this->reduction->value; //this->reduction->getValue();
+
+    float rateReduction = this->rateReduction->value;
+    float increment = 1.f / rateReduction;
+    phase = phase + increment;
+    if (phase >= 1) {
+      phase = phase - 1;
+      storedValue = in; // otherwise keep the stored value
+    }
     //if(reduction > 0.99) reduction = 0.99;
     //int16_t quantized = (65535 * in * (1.0f - reduction));
     //value = quantized / (1.0f-reduction) / 65535;
 
     if (reduction > 0.01) {
                 double resolution = (1-reduction) * 50 + 1 ; // TODO, what is the signal level here !?* 32767 + 1;
-                int quantized = (int) (in * resolution); // a Double(1) is mapped to the max reso Int
+                int quantized = (int) (storedValue * resolution); // a Double(1) is mapped to the max reso Int
                 value = quantized / resolution;
     } else {
-      value = in;
+      value = storedValue;
     }
     
   }
@@ -919,7 +932,9 @@ public:
   }
 
 private:
-  Signal *in, *reduction;
+  Signal *in, *reduction, *rateReduction;
+  float phase = 0;
+  float storedValue = 0;
 };
 
 class Stutter : public Signal {
@@ -1183,6 +1198,7 @@ public:
     float sampleReadFromBufferF = ((float)sampleReadFromBuffer) / 255 ;
 
     value = sampleReadFromBufferF * vol;
+    value1 = value; // in cases there is a MixerStereo behind this module
 
 
     // without converting bufferValues to float all the time
@@ -1355,7 +1371,7 @@ public:
 
       //g = cut * 0.5f;
       //float k = 2 - 2 * res;
-      k = 3 * res;  // above 3 it explodes...
+      k = 3.5 * res;  // above 3 it explodes...
 
       targetFreq = std::min(0.5, targetFreq);
       g = std::tan(Pi * targetFreq);  // targetfreq is at most 0.5
@@ -1548,6 +1564,7 @@ private:
 
   StaticSignal* overdriveGain = NULL;
   StaticSignal* reduction = NULL;
+  StaticSignal* rateReduction = NULL;
 };
 
 class DrumPart :  public Part {
@@ -1562,6 +1579,7 @@ public:
     Part::retriggerVoice(voiceId);
     this->stutter->retrigger();
     this->click->retrigger();
+    this->lfoAsOsc->retrigger();
   }
 
 private:
@@ -1588,6 +1606,7 @@ private:
 
   Stutter *stutter = NULL;
   Click *click = NULL;
+  LFO* lfoAsOsc = NULL;
 
   StaticSignal *bpm;
   

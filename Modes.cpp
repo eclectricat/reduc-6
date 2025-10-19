@@ -10,7 +10,7 @@ int freeram() {
 
 
 GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
-  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd), sequencerModeGraphic(lcd) {
+  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd), sequencerModeGraphic(lcd), keyboardMode(lcd) {
   this->engine = engine;
 
   for (int p = 0; p < NB_PARTS; p++) {
@@ -61,6 +61,7 @@ void GlobalState::setup() {
   sequencerMode.globalState = this;
   sequencerModeGraphic.globalState = this;
   mixMuteMode.globalState = this;
+  keyboardMode.globalState = this;
   for (int i = 0; i < this->engine->getNbParts(); i++) {
 
     for (int type = 0; type < this->engine->getNbPartTypes(); type++)
@@ -297,6 +298,11 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
       lcd->setCursor(0, 0);
       lcd->print("  MIX/MUTE      ");
       globalState->selectedMode->postPartOrModeSwitch();
+    } else if (buttonIndex == 7) {
+      globalState->selectedMode = &(globalState->keyboardMode);
+      lcd->setCursor(0, 0);
+      lcd->print("  KEYBOARD      ");
+      //globalState->selectedMode->postPartOrModeSwitch();
     }
 
     this->globalState->delayedDisplayRefresh = millis() + 1000;
@@ -752,7 +758,7 @@ void Mode::fullDisplayUpdate() {
 bool SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
-  if ((buttonIndex == 7) && (!globalState->shiftPressed)) {
+  if ((buttonIndex == 7) && (!globalState->shiftPressed) && (!globalState->pPressed)) {
     globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
 
@@ -1511,4 +1517,120 @@ void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
 
     }  // pattern step
   }    // pattern
+}
+
+void KeyboardMode::setup() {
+
+  octave = new StaticSignalDiscrete(NULL, 0);
+  key = new StaticSignalDiscrete(NULL, 0);
+  centerNote = new StaticSignalDiscrete(NULL, 0);
+  mode = new StaticSignalDiscrete(NULL, 0);
+
+  // ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param, String uniqueName, const std::vector<String>& strings=std::vector<String>() )
+
+  ParameterInfoDiscrete *pOctave = new ParameterInfoDiscrete("OCT", 0, 4, octave, "ko");
+
+  // Key means Tonart here, not the keyboard key
+  std::vector<String> keys = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "Bb", "B"};
+  ParameterInfoDiscrete *pKey = new ParameterInfoDiscrete("KEY", 0, 11, key, "key", keys);
+  ParameterInfoDiscrete *pCenterNote = new ParameterInfoDiscrete("CTR", 0, 7, centerNote, "ck");
+
+  std::vector<String> modes = {"ply", "rec", "dub"};
+  ParameterInfoDiscrete *pMode = new ParameterInfoDiscrete("MOD", 0, 3, mode, "md", modes);
+
+  allSynthParameters.push_back(new SynthParameters());
+  allSynthParameters[0]->addPage(vector<ParameterInfo *>{ pOctave, pKey, pCenterNote, pMode}, 0);
+  this->currentMenuPage = allSynthParameters[0]->getPage(0, 0);
+
+}
+
+bool KeyboardMode::pushButtonPressed(int buttonIndex) {
+
+  Serial.print("keyboard button pressed");
+
+  // when doing parameter switch, respect the fact that we have only one synthparameter here
+  int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
+  if (eventConsumed) return true;
+
+  if ((globalState->pPressed) || (globalState->shiftPressed)) return false;
+
+  // in every mode: play the note
+  int part = globalState->selectedPart;
+  // in seq play it looks like that: int newNote = 36 + s->data[0][wrappedPlayHead] * 12 + s->data[1][wrappedPlayHead];
+  int noteIndexInScale = (buttonIndex + centerNote->getValueDiscrete()) % 7;
+  int additionalOctave = 12 * ((buttonIndex + centerNote->getValueDiscrete()) / 7);
+  int noteToPlay = 36 + octave->getValueDiscrete() * 12 + key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale] + additionalOctave;
+  this->playingNotesPerKey[buttonIndex] = noteToPlay;
+
+  // todo: if the sequencer is currently playing/holding a note, stop the note so we can hear the button we are pressing (assuming monophonic synth)
+
+  globalState->myNoteOn(part+1, noteToPlay, 127); // TODO: mapping from seq-track to midi channel
+
+  // depending on the rec mode: record the note
+
+  // sequencer playing and REC: 
+  //     record the note in the closest position of the sequencer
+  //     TODO: if it is the first note, delete the entire sequence
+  //     (remember where in the sequence the recording started)
+  //     (if we did record one entire sequence, stop recording)
+  // sequencer playing and DUB:
+  //     the same but don't  delete the entire sequence in the beginning
+  // sequencer not playing, and REC or DUB
+  //     record the note in the current position of the cursor
+  //     when releasing the button, advance the sequencer by one
+
+
+  if (mode->getValueDiscrete() > 0) {
+    // playhead is always pointing to the next note to be played
+    Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
+
+    int positionToRecord = globalState->sequencerMode.cursorPos; // that is the position in case the seq is not playing
+
+
+    if (globalState->seqPlaying) {// TODO, also when synced to clock we are in this mode
+      int wrappedPlayHead = globalState->sequencerMode.playHead % globalState->sequencerMode.patternLengths[part]->getValueDiscrete();
+      positionToRecord = wrappedPlayHead;
+      int currentTime = millis();
+      int timeToNextTrig = globalState->sequencerMode.nextTriggerTime - currentTime;
+
+      if (timeToNextTrig > 0.5 * globalState->sequencerMode.interBeatMs) {
+        positionToRecord = positionToRecord - 1;
+      }
+    }
+
+    //stored: octave, note, on/off, length
+    s->data[2][positionToRecord] = 1;
+    s->data[0][positionToRecord] = (octave->getValueDiscrete() + additionalOctave) / 12;
+    s->data[1][positionToRecord] = key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale];
+    Serial.print("Recorded at position ");
+    Serial.println(positionToRecord);
+
+  }
+
+  return false;
+}
+
+bool KeyboardMode::pushButtonReleased(int buttonIndex) {
+
+  bool consumed = Mode::pushButtonReleased(buttonIndex);
+  if (consumed) return false;
+
+  if (buttonIndex > 7) return false;
+
+  if (playingNotesPerKey[buttonIndex] >=0) {
+    globalState->myNoteOff(globalState->selectedPart+1, playingNotesPerKey[buttonIndex], 0);
+  }
+
+  if (mode->getValueDiscrete() > 0) {
+    if (!globalState->seqPlaying) { // go to next step
+      int part = globalState->selectedPart;
+      globalState->sequencerMode.cursorPos = (globalState->sequencerMode.cursorPos + 1) % globalState->sequencerMode.patternLengths[part]->getValueDiscrete();
+    } else {
+      // TODO: store note length
+    }
+  }
+
+  
+
+  return true;
 }

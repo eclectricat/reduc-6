@@ -46,6 +46,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
   StaticSignal *delaySend = new StaticSignal(NULL, 0);
   reduction = new StaticSignal(NULL, 0);
+  rateReduction = new StaticSignal(NULL, 1);
   overdriveGain = new StaticSignal(NULL, 1); 
 
 
@@ -85,6 +86,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
   ParameterInfo *pDelaySend = new ParameterInfo("DEL", 0, 1, delaySend, "delaySend");
   ParameterInfo *pReduction = new ParameterInfo("BIT", 0, 1, reduction, "bitred");
+  ParameterInfo *pRateReduction = new ParameterInfo("SRR", 1, 20, rateReduction, "srred");
   ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "odGain");
 
 
@@ -105,7 +107,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   menu->addPage(vector<ParameterInfo *>{ pPanSpread, pDummy, pDummy, pDummy }, 3);
 
   menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
-  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pOverdriveGain, pReduction, pDummy}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pOverdriveGain, pReduction, pRateReduction}, 4);
 
 
   for (int i = 0; i < maxNbVoices; i++) {
@@ -170,7 +172,7 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
   VCA *vca = new VCA(registry, filter, env);
 
   Signal *od = new Overdrive(registry, vca, overdriveGain);
-  Signal *bitred = new Reduction(registry, od, reduction);
+  Signal *bitred = new Reduction(registry, od, reduction, rateReduction);
 
   // distribute voices evenly over stereo width
   float position = -1 + 2.0f * (float(i) / this->maxNbVoices);
@@ -204,6 +206,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   overdriveGain = new StaticSignal(registry, 1.0f);
   Signal *reductionAmount = new StaticSignal(NULL, 0);
+  Signal *rateReduction = new StaticSignal(NULL, 1);
 
   StaticSignal *hiPassCutoff2 = new StaticSignal(registry, 0.0f);
   StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
@@ -234,6 +237,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "overdriveGain");
   ParameterInfo *pReductionAmount = new ParameterInfo("BIT", 0, 1, reductionAmount, "bitRed");
+  ParameterInfo *pRateReduction = new ParameterInfo("SRR", 1, 10, rateReduction, "srRed");
 
   ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2, "hiPassCutoff2");
   ParameterInfo *pHiPassRes2 = new ParameterInfo("HPR ", 0, 1, hiPassRes2, "hiPassRes2");
@@ -267,7 +271,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
   //menu->addPage(vector<ParameterInfo *>{ pDelayMs, pDelayBeat, pDelayFb, pDelayWet}, 4);
   menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
-  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pReductionAmount, pDummy, pDummy}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pDelaySend, pReductionAmount, pRateReduction, pDummy}, 4);
 
   // create the chain of 'Signals'
   StaticSignal *baseFreq = new StaticSignal(registry, midiToFreq(59));
@@ -283,7 +287,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   Signal *totalFreq = new Mixer(registry, { octavedFreq1, new VCA(registry, pitchEnv, envPitchAmount)}, 1);
 
   //Signal *osc = new SawOsc(registry, totalFreq,new StaticSignal(registry, 0.5f), new StaticSignal(registry, 0), dummyS, dummyS);
-  LFO* lfoAsOsc = new LFO(registry, totalFreq, new StaticSignalDiscrete(registry, 1));
+  lfoAsOsc = new LFO(registry, totalFreq, new StaticSignalDiscrete(registry, 1));
   lfoAsOsc->subsample = 1; // update at audio freq
 
   Signal* osc = new VCA(registry, lfoAsOsc, sinVol);
@@ -308,7 +312,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   VCA *vca = new VCA(registry, hip, ampEnv);
 
   Signal *over = new Overdrive(registry, vca , overdriveGain);
-  Signal *bitRed = new Reduction(registry, over, reductionAmount);
+  Signal *bitRed = new Reduction(registry, over, reductionAmount, rateReduction);
 
   this->stutter = new Stutter(registry, bitRed, stutterFraction, this->bpm);
 

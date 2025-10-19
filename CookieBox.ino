@@ -185,6 +185,7 @@ void setup()
   globalState.sequencerMode.setup();
   globalState.sequencerModeGraphic.setup(&(globalState.sequencerMode));
   globalState.mixMuteMode.setup();
+  globalState.keyboardMode.setup();
   lockPotentiometers(true);
   globalState.partConfigMode.resetEngineTypeAndVoices();
 
