@@ -664,21 +664,17 @@ bool PartConfigMode::handleSeqAct() {
   for (int part = minPart; part<=maxPart; part++) {
     Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
 
-    if (this->seqActionOp->getValueDiscrete() == 0) {// clr
-      s->data = std::vector<std::vector<int8_t> >(4, std::vector<int8_t>(s->NB_STEPS, 0));
-      s->lockedParameters = std::vector<std::vector<ParameterInfo*> >(4, std::vector<ParameterInfo*>(s->NB_STEPS, NULL));
+    if (this->seqActionOp->getValueDiscrete() == 0) { // clr
+      Sequence::clearSequence(s);
     }
 
-    if (this->seqActionOp->getValueDiscrete() == 2) {// paste
-      if ((clipBoardPart<0) || (clipBoardPattern<0)) return false;
+    if (this->seqActionOp->getValueDiscrete() == 2) { // paste
+      if ((clipBoardPart < 0) || (clipBoardPattern < 0)) return false;
       int partToCopyFrom = (seqActionDest->getValueDiscrete() == 0) ? clipBoardPart : part;
       Sequence *source = this->globalState->patterns[clipBoardPattern][partToCopyFrom];
-      s->data = source->data;
-      if(partToCopyFrom == part) { // TODO: when copying a seq to another part, we could copy plocks if both parts use the same engine
-        s->lockedParameters = source->lockedParameters; 
-        s->lockedValues = source->lockedValues;
-      }
-    }     
+      Sequence::copySequence(s, source);
+    }
+    
   }
 
   return true;
@@ -830,26 +826,25 @@ void SequencerMode::processPotValue(int potIndex, int potVal, bool updateDisplay
   if (this->doubleShiftMode) return processDoubleShiftParameter(potIndex, potVal);
 
 
-  if (potIndex == 0) {  // octave
-    int oct = std::lround(1 + (potVal / 1024.0) * 4) - 2;
-    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
-    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-    s->data[0][cursorPos] = oct;
-    displayOctAndNote();
-  }
-  if (potIndex == 1) {  // note
-    int note = std::lround(0 + (potVal / 1024.0) * 12);
-    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
-    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-    s->data[1][cursorPos] = note;
-    displayOctAndNote();
-  }
-  if (potIndex == 2) {  // length
-    Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
+  Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
+  int32_t noteIndex = Sequence::ensureNoteAtStep(s, cursorPos);
 
-    int length = (potVal < 300) ? std::lround(8 * (potVal / 300.0)) : 8 +  std::lround((s->NB_STEPS-8) * ((potVal-300) / (1024-300.0)));
-    s->data[3][cursorPos] = length;
-    displayOctAndNote();
+  if (noteIndex != -1) {
+    if (potIndex == 0) {  // octave
+      int oct = std::lround(1 + (potVal / 1024.0) * 4) - 2;
+      globalNotes[noteIndex].octave = (int8_t)oct;
+      displayOctAndNote();
+    }
+    if (potIndex == 1) {  // note
+      int note = std::lround((potVal / 1024.0) * 12);
+      globalNotes[noteIndex].note = (int8_t)note;
+      displayOctAndNote();
+    }
+    if (potIndex == 2) {  // length
+      int length = (potVal < 300) ? std::lround(8 * (potVal / 300.0)) : 8 + std::lround((s->NB_STEPS - 8) * ((potVal - 300) / (1024.0 - 300.0)));
+      globalNotes[noteIndex].length = (int8_t)length;
+      displayOctAndNote();
+    }
   }
 
 }
@@ -872,26 +867,23 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   char buffer[] = "    ";
   lockParam->renderPrintableValueFromPotValue(buffer, potVal);
   lcd->print(buffer);
-  //lcd->print(lockParam->printableValueFromPotValue(potVal));
 
-
-  // store parameter value in sequence
   int selectedPart = this->globalState->selectedPart;
-  //Sequence *s = this->globalState->sequences[selectedPart];
-  Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-
-  for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
-    if ((s->lockedParameters[lockPosition][cursorPos] == NULL) || (s->lockedParameters[lockPosition][cursorPos] == lockParam)) {
-      s->lockedParameters[lockPosition][cursorPos] = lockParam;
-      s->lockedValues[lockPosition][cursorPos] = potVal;
-      Serial.print("locking parameter ");
-      Serial.print(lockParam->getName());
-      Serial.print(" in position ");
-      Serial.println(lockPosition);
-      return;
-    }
+  Sequence *s = this->globalState->patterns[globalState->selectedPattern][selectedPart];
+  int32_t noteIndex = Sequence::ensureNoteAtStep(s, cursorPos);
+  if (noteIndex == -1) {
+    Serial.println("failed to allocate note for lock");
+    return;
   }
-  Serial.println("all locking slots occupied");
+
+  if (!Sequence::addOrUpdateNoteLock(noteIndex, lockParam, potVal)) {
+    Serial.println("all locking slots occupied");
+  } else {
+    Serial.print("locking parameter ");
+    Serial.print(lockParam->getName());
+    Serial.print(" on note index ");
+    Serial.println(noteIndex);
+  }
 }
 
 void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
@@ -913,12 +905,13 @@ void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
   // if in plock mode, pressing 'no'/6/part button deletes all plocks of the current step
-  if(this->paramLockMode == 1) {
+  if (this->paramLockMode == 1) {
     if (buttonIndex == MODE_BUTTON) {
       Serial.println("deleting plocks");
       Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-      for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
-        s->lockedParameters[lockPosition][cursorPos] =NULL;
+      int32_t noteIndex = s->steps[cursorPos];
+      if (noteIndex != -1) {
+        Sequence::clearNoteLocks(noteIndex);
       }
     }
   }
@@ -956,17 +949,23 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
   }
 
   if (buttonIndex == 2) {
-    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
     Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-    int currentValue = s->data[2][cursorPos];
+    int32_t noteIndex = s->steps[cursorPos];
+    int currentValue = 0;
+    if (noteIndex != -1) currentValue = globalNotes[noteIndex].on;
     int newValue = 1 - currentValue;
+
+    if (noteIndex == -1 && newValue == 1) {
+      noteIndex = Sequence::ensureNoteAtStep(s, cursorPos);
+    }
+    if (noteIndex != -1) {
+      globalNotes[noteIndex].on = (int8_t)newValue;
+    }
 
     Serial.print("new value at position:");
     Serial.print(cursorPos);
     Serial.print(":");
     Serial.println(newValue);
-    s->data[2][cursorPos] = newValue;
-
     displayOctAndNote();
   }
 
@@ -1001,10 +1000,10 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
 void SequencerMode::cleanUpAfterStop() {
   for (int i = 0; i < globalState->engine->getNbParts(); i++) {
         globalState->myNoteOff(i + 1, lastPlayedNote[i], 0);  // TODO: mapping from seq part to midi channel
-        for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
-          if (this->parametersToReset[i * 4 + lockPosition] != NULL) {
-            this->parametersToReset[i * 4 + lockPosition]->unlock();
-            this->parametersToReset[i * 4 + lockPosition] = NULL;
+        for (int lockPosition = 0; lockPosition < 10; lockPosition++) {
+          if (this->parametersToReset[i * 10 + lockPosition] != NULL) {
+            this->parametersToReset[i * 10 + lockPosition]->unlock();
+            this->parametersToReset[i * 10 + lockPosition] = NULL;
           }
         }
     }
@@ -1104,16 +1103,23 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
 
 
   if (armedForToggle == buttonIndex) {
-    //Sequence *s = this->globalState->sequences[this->globalState->selectedPart];
     Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-    int currentValue = s->data[2][seqMode->cursorPos];
+    int32_t noteIndex = s->steps[seqMode->cursorPos];
+    int currentValue = 0;
+    if (noteIndex != -1) currentValue = globalNotes[noteIndex].on;
     int newValue = 1 - currentValue;
+
+    if (noteIndex == -1 && newValue == 1) {
+      noteIndex = Sequence::ensureNoteAtStep(s, seqMode->cursorPos);
+    }
+    if (noteIndex != -1) {
+      globalNotes[noteIndex].on = (int8_t)newValue;
+    }
 
     Serial.print("new value at position:");
     Serial.print(seqMode->cursorPos);
     Serial.print(":");
     Serial.println(newValue);
-    s->data[2][seqMode->cursorPos] = newValue;
   }
 
   //seqMode->displayStep();
@@ -1211,15 +1217,27 @@ void SequencerMode::displayStep() {
 void SequencerMode::displayOctAndNote() {
 
   Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
-  // oct and note
+  int32_t noteIndex = s->steps[cursorPos];
+  int8_t octave = 0;
+  int8_t note = 0;
+  int8_t length = 0;
+  int8_t on = 0;
+  if (noteIndex != -1) {
+    octave = globalNotes[noteIndex].octave;
+    note = globalNotes[noteIndex].note;
+    length = globalNotes[noteIndex].length;
+    on = globalNotes[noteIndex].on;
+  }
+
   lcd->setCursor(0, 1);
-  lcd->print(String("O") + String(s->data[0][cursorPos]) + String("N") + String(s->data[1][cursorPos]) + String("L") + String(s->data[3][cursorPos]) + String(" "));
+  lcd->print(String("O") + String(octave) + String("N") + String(note) + String("L") + String(length) + String(" "));
   lcd->setCursor(7, 1);
 
   String stepVisu = String("");
   int page = cursorPos / 8;
   for (int step = 0; step < 8; step++) {
-    String thisChar = s->data[2][page * 8 + step] ? "+" : "_";
+    int32_t stepIndex = s->steps[page * 8 + step];
+    String thisChar = (stepIndex != -1 && globalNotes[stepIndex].on) ? "+" : "_";
     stepVisu = stepVisu + thisChar;
   }
   lcd->setCursor(8, 0);
@@ -1269,26 +1287,34 @@ void SequencerMode::play() {
       }
 
       Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
-      if (s->data[2][wrappedPlayHead]) { // we have a new note to play
+      int32_t noteIndex = s->steps[wrappedPlayHead];
+      if (noteIndex != -1 && globalNotes[noteIndex].on) { // we have a new note to play
  
         // stop previous note if it is still playing
         if (lastPlayedNote[part] > -1) globalState->myNoteOff(part + 1, lastPlayedNote[part], 0);
-        int newNote = 36 + s->data[0][wrappedPlayHead] * 12 + s->data[1][wrappedPlayHead];
+        int newNote = 36 + globalNotes[noteIndex].octave * 12 + globalNotes[noteIndex].note;
         lastPlayedNote[part] = newNote;
-        remainingNoteDuration[part] = s->data[3][wrappedPlayHead];
-        // play
+        remainingNoteDuration[part] = globalNotes[noteIndex].length;
 
-        // automate locked parameter and/or reset original parameter values
-        for (int lockPosition = 0; lockPosition < 4; lockPosition++) {
-
-          if (this->parametersToReset[part * 4 + lockPosition] != NULL) {  // for the first note in the sequence after a restart, we will call unlock here, even though it is unlocked
-            this->parametersToReset[part * 4 + lockPosition]->unlock();
+        // clear previously applied locks for this part
+        for (int lockPosition = 0; lockPosition < 10; lockPosition++) {
+          if (this->parametersToReset[part * 10 + lockPosition] != NULL) {
+            this->parametersToReset[part * 10 + lockPosition]->unlock();
+            this->parametersToReset[part * 10 + lockPosition] = NULL;
           }
+        }
 
-          this->parametersToReset[part * 4 + lockPosition] = s->lockedParameters[lockPosition][wrappedPlayHead];  // also copy NULLs from lockedParameters
-          if (s->lockedParameters[lockPosition][wrappedPlayHead] != NULL) {
-            s->lockedParameters[lockPosition][wrappedPlayHead]->lock(s->lockedValues[lockPosition][wrappedPlayHead]);
+        int32_t lockNode = globalNotes[noteIndex].lockHead;
+        int lockPosition = 0;
+        while (lockNode != -1 && lockPosition < 10) {
+          ParameterInfo* param = globalLockNodes[lockNode].param;
+          float value = globalLockNodes[lockNode].value;
+          if (param != NULL) {
+            param->lock(value);
+            this->parametersToReset[part * 10 + lockPosition] = param;
           }
+          lockPosition++;
+          lockNode = globalLockNodes[lockNode].next;
         }
 
         // finally play new note
@@ -1438,31 +1464,33 @@ void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
   Serial.println("serializeSequencerData");
 
   JsonArray patterns = (*seqData)["Patterns"].to<JsonArray>();
-  //Sequence *s = this->globalState->sequences[partId];
 
   for (int patternId = 0; patternId < NB_PATTERNS; patternId++) {
-
     Sequence *s = this->globalState->patterns[patternId][partId];
-
     JsonArray pattern = patterns.add<JsonArray>();
     for (int step = 0; step < s->NB_STEPS; step++) {
       JsonObject stepData = pattern.add<JsonObject>();
-      /*stepData["octave"] = s->data[0][step];
-      stepData["note"] = s->data[1][step];
-      stepData["on/off"] = s->data[2][step];*/
-      stepData["o"] = s->data[0][step];
-      stepData["n"] = s->data[1][step];
-      stepData["o/o"] = s->data[2][step];
-      stepData["l"] = s->data[3][step];
+      int32_t noteIndex = s->steps[step];
+      if (noteIndex == -1) {
+        stepData["o"] = -1;
+        stepData["n"] = 0;
+        stepData["o/o"] = 0;
+        stepData["l"] = 0;
+      } else {
+        const NoteEntry &note = globalNotes[noteIndex];
+        stepData["o"] = note.octave;
+        stepData["n"] = note.note;
+        stepData["o/o"] = note.on;
+        stepData["l"] = note.length;
 
-      JsonArray lockedParams = stepData["pLocks"].to<JsonArray>();
-      int pIndex = 0;
-      while ((pIndex < 4) && (s->lockedParameters[pIndex][step] != NULL)) {
-        JsonObject onePlock = lockedParams.add<JsonObject>();
-        onePlock["name"] = s->lockedParameters[pIndex][step]->getUniqueName();
-        //onePlock["value"] = s->lockedParameters[pIndex][step]->getValue();
-        onePlock["value"] = s->lockedValues[pIndex][step];
-        pIndex++;
+        JsonArray lockedParams = stepData["pLocks"].to<JsonArray>();
+        int32_t lockNode = note.lockHead;
+        while (lockNode != -1) {
+          JsonObject onePlock = lockedParams.add<JsonObject>();
+          onePlock["name"] = globalLockNodes[lockNode].param->getUniqueName();
+          onePlock["value"] = globalLockNodes[lockNode].value;
+          lockNode = globalLockNodes[lockNode].next;
+        }
       }
     }
   }
@@ -1474,50 +1502,67 @@ void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
   JsonArray patterns = (*seqData)["Patterns"];
 
   for (int patternId = 0; ((patternId < patterns.size())&&(patternId < NB_PATTERNS)); patternId++) {
-    Sequence *s = this->globalState->patterns[patternId][partId];  
+    Sequence *s = this->globalState->patterns[patternId][partId];
     JsonArray pattern = patterns[patternId];
     for (int step = 0; step < pattern.size(); step++) {
       JsonObject stepData = pattern[step];
+      bool active = true;
+      int8_t octave = 0;
+      int8_t noteValue = 0;
+      int8_t onValue = 1;
+      int8_t length = 1;
 
-      if (stepData.containsKey("octave")) { // old format
-        s->data[0][step] = stepData["octave"];
-        s->data[1][step] = stepData["note"];
-        s->data[2][step] = stepData["on/off"];
+      if (stepData.containsKey("octave")) {
+        active = stepData["on/off"];
+        octave = stepData["octave"];
+        noteValue = stepData["note"];
+        onValue = stepData.containsKey("on/off") ? stepData["on/off"] : 1;
+        length = stepData.containsKey("l") ? stepData["l"] : 1;
       } else {
-        s->data[0][step] = stepData["o"];
-        s->data[1][step] = stepData["n"];
-        s->data[2][step] = stepData["o/o"];
-        s->data[3][step] = stepData["l"];
+        octave = stepData["o"];
+        noteValue = stepData["n"];
+        onValue = stepData["o/o"];
+        length = stepData["l"];
+        active = octave >= 0;
       }
 
-      // first delete existing pLocks
-      for (int pIndex = 0; pIndex < s->lockedParameters.size(); pIndex++) {
-        s->lockedParameters[pIndex][step] = NULL;
+      int32_t existingNoteIndex = s->steps[step];
+      if (existingNoteIndex != -1) {
+        Sequence::clearNoteLocks(existingNoteIndex);
+        Sequence::freeGlobalNoteIndex(existingNoteIndex);
+        s->steps[step] = -1;
       }
+
+      if (!active) {
+        s->steps[step] = -1;
+        continue;
+      }
+
+      NoteEntry newNote = {octave, noteValue, onValue, length, -1};
+      int32_t noteIndex = Sequence::allocateGlobalNote(newNote);
+      if (noteIndex == -1) {
+        s->steps[step] = -1;
+        continue;
+      }
+      s->steps[step] = noteIndex;
 
       if (stepData["pLocks"].is<JsonArray>()) {
         JsonArray pLocks = stepData["pLocks"];
         for (int pIndex = 0; pIndex < pLocks.size(); pIndex++) {
           String uniqueName = pLocks[pIndex]["name"];
-          Serial.print("Searching param ");
-          Serial.print(uniqueName);
-          Serial.print(" is null? ");
           float value = pLocks[pIndex]["value"];
-          // TODO mapping from sequencer Part ID to synth Part ID via midi channel settings, for now 1:1
           int synthPartId = this->effectivePartId(partId);
           ParameterInfo *paramToLock = globalState->synthMode.getParameterByNameAndPart(uniqueName, synthPartId);
-          Serial.println(paramToLock == NULL);
           if (paramToLock != NULL) {
-            Serial.println(value);
-            s->lockedParameters[pIndex][step] = paramToLock;
-            s->lockedValues[pIndex][step] = value;
+            Sequence::addOrUpdateNoteLock(noteIndex, paramToLock, value);
           }
         }
       }
-
-    }  // pattern step
-  }    // pattern
+    }
+  }
 }
+
+
 
 void KeyboardMode::setup() {
 
@@ -1598,12 +1643,14 @@ bool KeyboardMode::pushButtonPressed(int buttonIndex) {
       }
     }
 
-    //stored: octave, note, on/off, length
-    s->data[2][positionToRecord] = 1;
-    s->data[0][positionToRecord] = (octave->getValueDiscrete() + additionalOctave) / 12;
-    s->data[1][positionToRecord] = key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale];
-    Serial.print("Recorded at position ");
-    Serial.println(positionToRecord);
+    int32_t noteIndex = Sequence::ensureNoteAtStep(s, positionToRecord);
+    if (noteIndex != -1) {
+      globalNotes[noteIndex].on = 1;
+      globalNotes[noteIndex].octave = (int8_t)((octave->getValueDiscrete() + additionalOctave) / 12);
+      globalNotes[noteIndex].note = (int8_t)(key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale]);
+      Serial.print("Recorded at position ");
+      Serial.println(positionToRecord);
+    }
 
   }
 
