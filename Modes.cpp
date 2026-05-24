@@ -4,6 +4,307 @@
 #include <ArduinoJson.h>
 #include <SD.h>
 
+static const char *kCookieBoxSaveDir = "/CookieBoxV2";
+static const char *kPatchPrefix = "Patch_";
+static const char *kProgramPrefix = "Program_";
+static const char *kSaveExtension = ".cb2";
+static const size_t kLineJsonDocSize = 512;
+
+static bool ensureSaveDirectory() {
+  if (SD.exists(kCookieBoxSaveDir)) return true;
+  return SD.mkdir(kCookieBoxSaveDir);
+}
+
+static bool writeJsonLine(File &dataFile, JsonDocument &doc) {
+  if (!dataFile) return false;
+  size_t bytes = serializeJson(doc, dataFile);
+  dataFile.write('\n');
+  return bytes > 0;
+}
+
+static String patchSlotFilename(int bank, int patch) {
+  return String(kCookieBoxSaveDir) + "/" + String(kPatchPrefix) + bank + "_" + patch + String(kSaveExtension);
+}
+
+static String programSlotFilename(int bank, int patch) {
+  return String(kCookieBoxSaveDir) + "/" + String(kProgramPrefix) + bank + "_" + patch + String(kSaveExtension);
+}
+
+static bool patchSlotTaken(int bank, int patch) {
+  return SD.exists(patchSlotFilename(bank, patch).c_str());
+}
+
+static bool programSlotTaken(int bank, int patch) {
+  return SD.exists(programSlotFilename(bank, patch).c_str());
+}
+
+static bool slotCacheInitialized = false;
+static bool patchSlotCache[100] = {false};
+static bool programSlotCache[100] = {false};
+
+static void refreshSaveSlotCache() {
+  for (int i = 0; i < 100; i++) {
+    patchSlotCache[i] = false;
+    programSlotCache[i] = false;
+  }
+
+  if (!ensureSaveDirectory()) {
+    slotCacheInitialized = true;
+    return;
+  }
+
+  File dir = SD.open(kCookieBoxSaveDir);
+  if (!dir) {
+    slotCacheInitialized = true;
+    return;
+  }
+
+  File entry = dir.openNextFile();
+  while (entry) {
+    String name = entry.name();
+    if (name.startsWith(kPatchPrefix) && name.endsWith(kSaveExtension)) {
+      String core = name.substring(strlen(kPatchPrefix), name.length() - strlen(kSaveExtension));
+      int sep = core.indexOf('_');
+      if (sep > 0) {
+        int bank = core.substring(0, sep).toInt();
+        int patch = core.substring(sep + 1).toInt();
+        if (bank >= 0 && bank < 10 && patch >= 0 && patch < 10) {
+          patchSlotCache[bank * 10 + patch] = true;
+        }
+      }
+    } else if (name.startsWith(kProgramPrefix) && name.endsWith(kSaveExtension)) {
+      String core = name.substring(strlen(kProgramPrefix), name.length() - strlen(kSaveExtension));
+      int sep = core.indexOf('_');
+      if (sep > 0) {
+        int bank = core.substring(0, sep).toInt();
+        int patch = core.substring(sep + 1).toInt();
+        if (bank >= 0 && bank < 10 && patch >= 0 && patch < 10) {
+          programSlotCache[bank * 10 + patch] = true;
+        }
+      }
+    }
+    entry.close();
+    entry = dir.openNextFile();
+  }
+  dir.close();
+  slotCacheInitialized = true;
+}
+
+static bool patchSlotCached(int bank, int patch) {
+  if (!slotCacheInitialized) refreshSaveSlotCache();
+  if (bank < 0 || bank >= 10 || patch < 0 || patch >= 10) return false;
+  return patchSlotCache[bank * 10 + patch];
+}
+
+static bool programSlotCached(int bank, int patch) {
+  if (!slotCacheInitialized) refreshSaveSlotCache();
+  if (bank < 0 || bank >= 10 || patch < 0 || patch >= 10) return false;
+  return programSlotCache[bank * 10 + patch];
+}
+
+static void writeParameterLines(File &dataFile, Mode *mode, int partId, const char *kind) {
+  SynthParameters *params = mode->allSynthParameters[partId];
+  int nbLanes = params->getNbLanes();
+  for (int lane = 0; lane < nbLanes; lane++) {
+    int nbPages = params->getNbPages(lane);
+    for (int page = 0; page < nbPages; page++) {
+      std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+        ParameterInfo *pinfo = (*pOnPage)[elementId];
+        StaticJsonDocument<kLineJsonDocSize> lineDoc;
+        lineDoc["kind"] = kind;
+        lineDoc["part"] = partId;
+        lineDoc["name"] = pinfo->getUniqueName();
+        lineDoc["value"] = pinfo->getValue();
+        writeJsonLine(dataFile, lineDoc);
+      }
+    }
+  }
+}
+
+static void writePatchParameterLines(File &dataFile, Mode *mode, int partId) {
+  SynthParameters *params = mode->allSynthParameters[partId];
+  int nbLanes = params->getNbLanes();
+  for (int lane = 0; lane < nbLanes; lane++) {
+    int nbPages = params->getNbPages(lane);
+    for (int page = 0; page < nbPages; page++) {
+      std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
+      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+        ParameterInfo *pinfo = (*pOnPage)[elementId];
+        StaticJsonDocument<kLineJsonDocSize> lineDoc;
+        lineDoc["kind"] = "patch-param";
+        lineDoc["name"] = pinfo->getUniqueName();
+        lineDoc["value"] = pinfo->getValue();
+        writeJsonLine(dataFile, lineDoc);
+      }
+    }
+  }
+}
+
+static void writeSequencerNoteLine(File &dataFile, GlobalState *globalState, int partId, int patternId, int step, const NoteEntry &note) {
+  StaticJsonDocument<kLineJsonDocSize> lineDoc;
+  lineDoc["kind"] = "program-sequencer-note";
+  lineDoc["part"] = partId;
+  lineDoc["pattern"] = patternId;
+  lineDoc["step"] = step;
+  lineDoc["octave"] = note.octave;
+  lineDoc["note"] = note.note;
+  lineDoc["on"] = note.on;
+  lineDoc["length"] = note.length;
+  JsonArray locks = lineDoc["locks"].to<JsonArray>();
+  int32_t lockNode = note.lockHead;
+  while (lockNode != -1) {
+    JsonObject oneLock = locks.add<JsonObject>();
+    oneLock["name"] = globalLockNodes[lockNode].param->getUniqueName();
+    oneLock["value"] = globalLockNodes[lockNode].value;
+    lockNode = globalLockNodes[lockNode].next;
+  }
+  writeJsonLine(dataFile, lineDoc);
+}
+
+static void writeProgramFile(File &dataFile, GlobalState *globalState) {
+  StaticJsonDocument<kLineJsonDocSize> headerDoc;
+  headerDoc["kind"] = "program-header";
+  headerDoc["format"] = "CookieBoxV2";
+  headerDoc["version"] = 1;
+  writeJsonLine(dataFile, headerDoc);
+
+  for (int i = 0; i < NB_PARTS; i++) {
+    writeParameterLines(dataFile, &globalState->partConfigMode, i, "program-part-config");
+  }
+
+  for (int i = 0; i < NB_PARTS; i++) {
+    writeParameterLines(dataFile, &globalState->synthMode, i, "program-part-param");
+  }
+
+  for (int patternId = 0; patternId < NB_PATTERNS; patternId++) {
+    for (int partId = 0; partId < NB_PARTS; partId++) {
+      Sequence *s = globalState->patterns[patternId][partId];
+      for (int step = 0; step < Sequence::NB_STEPS; step++) {
+        int32_t noteIndex = s->steps[step];
+        if (noteIndex == -1) continue;
+        const NoteEntry &note = globalNotes[noteIndex];
+        writeSequencerNoteLine(dataFile, globalState, partId, patternId, step, note);
+      }
+    }
+  }
+}
+
+static void clearAllSequences(GlobalState *globalState) {
+  for (int patternId = 0; patternId < NB_PATTERNS; patternId++) {
+    for (int partId = 0; partId < NB_PARTS; partId++) {
+      Sequence *s = globalState->patterns[patternId][partId];
+      if (s) {
+        Sequence::clearSequence(s);
+      }
+    }
+  }
+}
+
+static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
+  clearAllSequences(globalState);
+  globalState->partConfigMode.resetEngineTypeAndVoices();
+
+  char lineBuffer[512];
+  while (dataFile.available()) {
+    size_t len = dataFile.readBytesUntil('\n', lineBuffer, sizeof(lineBuffer) - 1);
+    lineBuffer[len] = '\0';
+    if (len == 0) continue;
+
+    StaticJsonDocument<kLineJsonDocSize> lineDoc;
+    DeserializationError err = deserializeJson(lineDoc, lineBuffer);
+    if (err) continue;
+
+    const char *kind = lineDoc["kind"];
+    if (!kind) continue;
+
+    if (strcmp(kind, "program-part-config") == 0) {
+      int partId = lineDoc["part"];
+      String name = lineDoc["name"].as<String>();
+      float value = lineDoc["value"];
+      ParameterInfo *param = globalState->partConfigMode.getParameterByNameAndPart(name, partId);
+      if (param) param->setValue(value);
+      continue;
+    }
+
+    if (strcmp(kind, "program-part-param") == 0) {
+      int partId = lineDoc["part"];
+      String name = lineDoc["name"].as<String>();
+      float value = lineDoc["value"];
+      int effPartId = globalState->synthMode.effectivePartId(partId);
+      ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(name, effPartId);
+      if (param) param->setValue(value);
+      continue;
+    }
+
+    if (strcmp(kind, "program-sequencer-note") == 0) {
+      int partId = lineDoc["part"];
+      int patternId = lineDoc["pattern"];
+      int step = lineDoc["step"];
+      if (partId < 0 || partId >= NB_PARTS) continue;
+      if (patternId < 0 || patternId >= NB_PATTERNS) continue;
+      if (step < 0 || step >= Sequence::NB_STEPS) continue;
+
+      Sequence *s = globalState->patterns[patternId][partId];
+      if (!s) continue;
+      int32_t existingNoteIndex = s->steps[step];
+      if (existingNoteIndex != -1) {
+        Sequence::clearNoteLocks(existingNoteIndex);
+        Sequence::freeGlobalNoteIndex(existingNoteIndex);
+        s->steps[step] = -1;
+      }
+
+      NoteEntry note;
+      note.octave = lineDoc["octave"];
+      note.note = lineDoc["note"];
+      note.on = lineDoc["on"];
+      note.length = lineDoc["length"];
+      note.lockHead = -1;
+
+      int32_t noteIndex = Sequence::allocateGlobalNote(note);
+      if (noteIndex == -1) continue;
+      s->steps[step] = noteIndex;
+
+      if (lineDoc["locks"].is<JsonArray>()) {
+        JsonArray locks = lineDoc["locks"].as<JsonArray>();
+        int effPartId = globalState->synthMode.effectivePartId(partId);
+        for (JsonObject lockEntry : locks) {
+          String lockName = lockEntry["name"].as<String>();
+          float lockValue = lockEntry["value"];
+          ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(lockName, effPartId);
+          if (param) {
+            Sequence::addOrUpdateNoteLock(noteIndex, param, lockValue);
+          }
+        }
+      }
+      continue;
+    }
+  }
+}
+
+static void loadPatchNewFormat(File &dataFile, GlobalState *globalState, int selectedPart) {
+  int effPartId = globalState->synthMode.effectivePartId(selectedPart);
+  char lineBuffer[512];
+  while (dataFile.available()) {
+    size_t len = dataFile.readBytesUntil('\n', lineBuffer, sizeof(lineBuffer) - 1);
+    lineBuffer[len] = '\0';
+    if (len == 0) continue;
+
+    StaticJsonDocument<kLineJsonDocSize> lineDoc;
+    DeserializationError err = deserializeJson(lineDoc, lineBuffer);
+    if (err) continue;
+
+    const char *kind = lineDoc["kind"];
+    if (!kind) continue;
+    if (strcmp(kind, "patch-param") != 0) continue;
+
+    String name = lineDoc["name"].as<String>();
+    float value = lineDoc["value"];
+    ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(name, effPartId);
+    if (param) param->setValue(value);
+  }
+}
+
 int freeram() {
   return (char *)&_heap_end - __brkval;
 }
@@ -462,35 +763,29 @@ void PartConfigMode::handleConfirmed() {
 
   //if ((buttonIndex == 5)&&(selectedLaneBefore == 5)) {  // save current state
   if ((paramName == "PTCSave") || (paramName == "BNKSave")) {
-
-    JsonDocument doc;
-    //doc["PartParameters"] = JsonObject();
-    JsonObject obj = doc["PartParameters"].to<JsonObject>();
+    if (!ensureSaveDirectory()) {
+      Serial.println("failed to create save dir");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+      return;
+    }
 
     int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
-    globalState->synthMode.serializePart(&obj, effPartId);
-
-
-    char output[2560];
-    int nbBytes = serializeJson(doc, output);
-
-    String filename = String("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    String filename = String(kCookieBoxSaveDir) + "/" + String(kPatchPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
     Serial.println(filename);
 
     SD.remove(filename.c_str());  // don't append to existing file
-
     File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-
-    Serial.print(output);
-
-    Serial.print("number bytes: ");
-    Serial.println(nbBytes);
-
-    // if the file is available, write the contents of datastring to it
     if (dataFile) {
-      dataFile.println(output);
-
+      writePatchParameterLines(dataFile, &globalState->synthMode, effPartId);
       dataFile.close();
+      if (slotCacheInitialized) {
+        int bank = this->selectedBank->getValueDiscrete();
+        int patch = this->selectedPatch->getValueDiscrete();
+        if (bank >= 0 && bank < 10 && patch >= 0 && patch < 10) {
+          patchSlotCache[bank * 10 + patch] = true;
+        }
+      }
       Serial.println("wrote file");
       lcd->setCursor(4 * 3, 0);
       lcd->print("w-ok");
@@ -499,84 +794,80 @@ void PartConfigMode::handleConfirmed() {
       lcd->setCursor(4 * 3, 0);
       lcd->print("err ");
     }
+
+    /* Legacy JSON patch save for reference:
+    JsonDocument doc;
+    JsonObject obj = doc["PartParameters"].to<JsonObject>();
+    int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
+    globalState->synthMode.serializePart(&obj, effPartId);
+    char output[2560];
+    int nbBytes = serializeJson(doc, output);
+    String filename = String("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    SD.remove(filename.c_str());
+    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
+    if (dataFile) {
+      dataFile.println(output);
+      dataFile.close();
+    }
+    */
   }
 
-  //if ((buttonIndex == 4)&&(selectedLaneBefore == 4)) {  // load saved state
   if ((paramName == "PTCLoad") || (paramName == "BNKLoad")) {
-    Serial.println("listing files");
-    File dir = SD.open("/");
-    File entry = dir.openNextFile();
-    while (entry) {
-      Serial.println(entry.name());
-      entry.close();
-      entry = dir.openNextFile();
-    }
-    Serial.println("done listing files");
-
-    JsonDocument doc;
-    //JsonObject obj = doc["PartParameters"].to<JsonObject>();
-    String filename = String("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    String filename = String(kCookieBoxSaveDir) + "/" + String(kPatchPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
     Serial.println(filename);
 
     File dataFile = SD.open(filename.c_str());
     if (dataFile) {
       Serial.println("reading patch file:");
-
-      deserializeJson(doc, dataFile);
-
-      //Serial.println("read file:");
-      //Serial.println("Deserialize, this is what we got");
-      //serializeJson(doc["PartParameters"], Serial);
-
-      JsonObject obj = doc["PartParameters"];  //.to<JsonObject>();
-      //Serial.println(doc["PartParameters"].to<JsonObject>());
-      int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
-      globalState->synthMode.deserializePart(&obj, effPartId);
-      // close the file:
+      loadPatchNewFormat(dataFile, globalState, globalState->selectedPart);
       dataFile.close();
-
-      Serial.println(freeram());
-
       lcd->setCursor(4 * 3, 0);
       lcd->print("l-ok");
-
     } else {
       Serial.println("error opening - patch does not exist");
       lcd->setCursor(4 * 3, 0);
       lcd->print("err ");
     }
+
+    /* Legacy JSON patch load for reference:
+    JsonDocument doc;
+    String filename = String("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    File dataFile = SD.open(filename.c_str());
+    if (dataFile) {
+      deserializeJson(doc, dataFile);
+      JsonObject obj = doc["PartParameters"];
+      int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
+      globalState->synthMode.deserializePart(&obj, effPartId);
+      dataFile.close();
+    }
+    */
   }
 
   if ((paramName == "GlobalBNKSave") || (paramName == "GlobalPRGSave")) {
     Serial.println("save global prg");
 
-    JsonDocument doc;
-    JsonObject obj = doc["Program"].to<JsonObject>();
+    if (!ensureSaveDirectory()) {
+      Serial.println("failed to create save dir");
+      lcd->setCursor(4 * 3, 0);
+      lcd->print("err ");
+      return;
+    }
 
-    //globalState->synthMode.serializeSynthPart(&obj, globalState->selectedPart);
-    globalState->serializeProgram(&obj);
-
-    //char output[25600];
-    char output[100000];
-    int nbBytes = serializeJson(doc, output);
-
-    String filename = String("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    String filename = String(kCookieBoxSaveDir) + "/" + String(kProgramPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
     Serial.println(filename);
 
     SD.remove(filename.c_str());  // don't append to existing file
-
     File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-
-    Serial.print(output);
-
-    Serial.print("number bytes: ");
-    Serial.println(nbBytes);
-
-    // if the file is available, write the contents of datastring to it
     if (dataFile) {
-      dataFile.println(output);
-
+      writeProgramFile(dataFile, globalState);
       dataFile.close();
+      if (slotCacheInitialized) {
+        int bank = this->selectedBank->getValueDiscrete();
+        int patch = this->selectedPatch->getValueDiscrete();
+        if (bank >= 0 && bank < 10 && patch >= 0 && patch < 10) {
+          programSlotCache[bank * 10 + patch] = true;
+        }
+      }
       Serial.println("wrote file");
       lcd->setCursor(4 * 3, 0);
       lcd->print("w-ok");
@@ -585,13 +876,26 @@ void PartConfigMode::handleConfirmed() {
       lcd->setCursor(4 * 3, 0);
       lcd->print("err ");
     }
+
+    /* Legacy JSON program save for reference:
+    JsonDocument doc;
+    JsonObject obj = doc["Program"].to<JsonObject>();
+    globalState->serializeProgram(&obj);
+    char output[100000];
+    int nbBytes = serializeJson(doc, output);
+    String filename = String("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    SD.remove(filename.c_str());
+    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
+    if (dataFile) {
+      dataFile.println(output);
+      dataFile.close();
+    }
+    */
   }
 
   if ((paramName == "GlobalBNKLoad") || (paramName == "GlobalPRGLoad")) {
     Serial.println("load global prg");
-    JsonDocument doc;
-    //JsonObject obj = doc["PartParameters"].to<JsonObject>();
-    String filename = String("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    String filename = String(kCookieBoxSaveDir) + "/" + String(kProgramPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
     Serial.println(filename);
 
     Serial.print("RAM before:");
@@ -599,14 +903,8 @@ void PartConfigMode::handleConfirmed() {
 
     File dataFile = SD.open(filename.c_str());
     if (dataFile) {
-      Serial.println("reading patch file:");
-
-      deserializeJson(doc, dataFile);
-
-      JsonObject obj = doc["Program"];
-      //globalState->synthMode.deserializeSynthPart(&obj, globalState->selectedPart);
-      globalState->deserializeProgram(&obj);
-      // close the file:
+      Serial.println("reading program file:");
+      loadProgramNewFormat(dataFile, globalState);
       dataFile.close();
 
       Serial.print("RAM after:");
@@ -614,12 +912,23 @@ void PartConfigMode::handleConfirmed() {
 
       lcd->setCursor(4 * 3, 0);
       lcd->print("l-ok");
-
     } else {
-      Serial.println("error opening - patch does not exist");
+      Serial.println("error opening - program does not exist");
       lcd->setCursor(4 * 3, 0);
       lcd->print("err ");
     }
+
+    /* Legacy JSON program load for reference:
+    JsonDocument doc;
+    String filename = String("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    File dataFile = SD.open(filename.c_str());
+    if (dataFile) {
+      deserializeJson(doc, dataFile);
+      JsonObject obj = doc["Program"];
+      globalState->deserializeProgram(&obj);
+      dataFile.close();
+    }
+    */
   }
 
   if ((paramName == "nbVoices") || (paramName == "engineType")) {
@@ -791,6 +1100,39 @@ void SynthMode::postPartOrModeSwitch() {
 void PartConfigMode::postPartOrModeSwitch() {
   int partId = globalState->selectedPart;
   this->currentMenuPage = allSynthParameters[partId]->getPage(selectedLane, selectedPage);
+}
+
+void PartConfigMode::fullDisplayUpdate() {
+  Mode::fullDisplayUpdate();
+
+  this->updateFilExistenceFeedback();
+}
+
+void PartConfigMode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
+  Mode::processPotValue(potIndex, potVal, updateDisplay);
+
+  this->updateFilExistenceFeedback();
+}
+
+void PartConfigMode::updateFilExistenceFeedback() {
+
+  if ((selectedLane != 4) && (selectedLane != 5)) return;
+  if (!currentMenuPage) return;
+  if (currentMenuPage->size() < 3) return;
+
+  if (!slotCacheInitialized) refreshSaveSlotCache();
+
+  String actionName = currentMenuPage->at(0)->getName();
+  bool isGlobal = (actionName == "GLD") || (actionName == "GSV");
+  int bank = selectedBank->getValueDiscrete();
+  int patch = selectedPatch->getValueDiscrete();
+  bool slotTaken = isGlobal ? programSlotCached(bank, patch) : patchSlotCached(bank, patch);
+
+  char buffer[] = "____";
+  currentMenuPage->at(2)->renderPrintableValue(buffer);
+  buffer[3] = slotTaken ? '*' : '.';
+  lcd->setCursor(4 * 2, 1);
+  lcd->print(buffer);
 }
 
 void MixMuteMode::postPartOrModeSwitch() {

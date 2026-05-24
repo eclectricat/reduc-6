@@ -123,8 +123,11 @@ class PartConfigMode: public Mode {
   }
 
   void setup();
+  virtual void fullDisplayUpdate() override;
+  virtual void processPotValue(int potIndex, int potVal,  bool updateDisplay) override;
   virtual void postPartOrModeSwitch();
   virtual void handleConfirmed();
+  void updateFilExistenceFeedback();
 
   bool handleSeqAct();
 

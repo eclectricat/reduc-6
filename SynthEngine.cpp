@@ -87,7 +87,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   ParameterInfo *pDelaySend = new ParameterInfo("DEL", 0, 1, delaySend, "delaySend");
   ParameterInfo *pReduction = new ParameterInfo("BIT", 0, 1, reduction, "bitred");
   ParameterInfo *pRateReduction = new ParameterInfo("SRR", 1, 20, rateReduction, "srred");
-  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "odGain");
+  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 0, 10, overdriveGain, "odGain");
 
 
   StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
@@ -191,6 +191,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   StaticSignal *clickVol = new StaticSignal(registry, 1.0f);
 
   o1Oct = new StaticSignal(registry, 1.0f); 
+  drumOscType = new StaticSignalDiscrete(registry, 0);
   pitchEnvDR = new StaticSignal(registry, 1.0f);
   envPitchAmount = new StaticSignal(registry, 1.0f);
 
@@ -205,8 +206,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   loPassCutoff = new StaticSignal(registry, 1.0f);
 
   overdriveGain = new StaticSignal(registry, 1.0f);
-  Signal *reductionAmount = new StaticSignal(NULL, 0);
-  Signal *rateReduction = new StaticSignal(NULL, 1);
+  StaticSignal *reductionAmount = new StaticSignal(NULL, 0);
+  StaticSignal *rateReduction = new StaticSignal(NULL, 1);
 
   StaticSignal *hiPassCutoff2 = new StaticSignal(registry, 0.0f);
   StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
@@ -223,6 +224,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   StaticSignal *delayWet = new StaticSignal(NULL, 0);*/
 
   ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct, "o1Oct");
+  ParameterInfo *pDrumOscType = new ParameterInfoDiscrete("TYP", 0, 3, drumOscType, "drumOscType");
   ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR, "pitchEnvDR");
   ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 1000, envPitchAmount, "envPitchAmount");
 
@@ -235,8 +237,8 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pHiPassRes = new ParameterInfo("HPR ", 0, 1, hiPassRes, "hiPassRes");
   ParameterInfo *pLoPassCutoff = new ParameterInfo("LP ", 0, 1, loPassCutoff, "loPassCutoff");
 
-  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 1, 10, overdriveGain, "overdriveGain");
-  ParameterInfo *pReductionAmount = new ParameterInfo("BIT", 0, 1, reductionAmount, "bitRed");
+  ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 0, 10, overdriveGain, "overdriveGain");
+  ParameterInfo *pReductionAmount = new ParameterInfo("BIT", 0, 1, reductionAmount, "bitRed"); 
   ParameterInfo *pRateReduction = new ParameterInfo("SRR", 1, 10, rateReduction, "srRed");
 
   ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2, "hiPassCutoff2");
@@ -266,10 +268,13 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //menu->addPage(vector<ParameterInfo *>{ pSinVol, pO1Oct, pPitchEnvDR, pEnvPitchAmount }, 0);
   //menu->addPage(vector<ParameterInfo *>{ pNoiseVol, pAmpEnvDR, pHiPassCutoff, pLoPassCutoff}, 1);
   menu->addPage(vector<ParameterInfo *>{ pSinVol, pNoiseVol, pClickVol, pAmpEnvDR }, 0);
-  menu->addPage(vector<ParameterInfo *>{ pO1Oct, pPitchEnvDR, pEnvPitchAmount, pClickLPF }, 1);
-  menu->addPage(vector<ParameterInfo *>{ pHiPassCutoff, pHiPassRes, pLoPassCutoff, pNoiseType }, 2);
-  menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pOverdriveGain, pHiPassCutoff2, pHiPassRes2}, 3);
-  //menu->addPage(vector<ParameterInfo *>{ pDelayMs, pDelayBeat, pDelayFb, pDelayWet}, 4);
+  menu->addPage(vector<ParameterInfo *>{ pO1Oct, pDrumOscType, pPitchEnvDR, pEnvPitchAmount}, 1);
+
+  menu->addPage(vector<ParameterInfo *>{ pNoiseType, pHiPassCutoff, pHiPassRes, pClickLPF }, 1);
+
+  menu->addPage(vector<ParameterInfo *>{ pLoPassCutoff, pOverdriveGain,  pHiPassCutoff2, pHiPassRes2, pDummy }, 2);
+
+  menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pDummy, pDummy, pDummy}, 3);
   menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
   menu->addPage(vector<ParameterInfo *>{ pDelaySend, pReductionAmount, pRateReduction, pDummy}, 4);
 
@@ -286,28 +291,25 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   Signal *totalFreq = new Mixer(registry, { octavedFreq1, new VCA(registry, pitchEnv, envPitchAmount)}, 1);
 
-  //Signal *osc = new SawOsc(registry, totalFreq,new StaticSignal(registry, 0.5f), new StaticSignal(registry, 0), dummyS, dummyS);
-  lfoAsOsc = new LFO(registry, totalFreq, new StaticSignalDiscrete(registry, 1));
-  lfoAsOsc->subsample = 1; // update at audio freq
+  Signal* drumOsc = new MultiOsc(registry, totalFreq, drumOscType); // 
 
-  Signal* osc = new VCA(registry, lfoAsOsc, sinVol);
+  Signal* osc = new VCA(registry, drumOsc, sinVol);
 
-  //Signal* noise = new VCA(registry, new NoiseOsc(registry),noiseVol);
-  //Signal* noise = new VCA(registry, new Noise808(registry),noiseVol);
+
   Signal* noise = new VCA(registry, new MultiNoise(registry, noiseType),noiseVol);
 
   noise = new DigitalHiPass(registry, noise, hiPassCutoff, hiPassRes);
-  noise = new Digital2Pole(registry, noise, loPassCutoff, dummyS);
-  
+
   this->envs[0] = ampEnv;
   this->fenvs[0] = pitchEnv; // TODO: misusing filter env slot for pitch env here
 
   this->click = new Click(registry);
-  Signal *clickLP = new Digital2Pole(registry, click, clickLPF, new StaticSignal(NULL, 0));
-  Signal *clickVCA = new VCA(registry, clickLP, clickVol);
+  //Signal *clickLP = new Digital2Pole(registry, click, clickLPF, new StaticSignal(NULL, 0));
+  Signal *clickVCA = new VCA(registry, this->click, clickVol);
 
-  
-  Signal *hip = new DigitalHiPass(registry, new Mixer(registry, {noise, osc, clickVCA}, 1), hiPassCutoff2, hiPassRes2);
+  Signal *loPassed = new Digital2Pole(registry, new Mixer(registry, {noise, osc, clickVCA}, 1), loPassCutoff, dummyS);
+
+  Signal *hip = new DigitalHiPass(registry, loPassed, hiPassCutoff2, hiPassRes2);
 
   VCA *vca = new VCA(registry, hip, ampEnv);
 
@@ -316,14 +318,9 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   this->stutter = new Stutter(registry, bitRed, stutterFraction, this->bpm);
 
-  //Signal *delay = new Delay8bit(registry, this->stutter, delayMs, this->bpm, delayBeat, delayFeedback, delayWet);
   *fxBus = new VCA(registry, stutter, delaySend);
 
   Signal *output = new VCA(registry, stutter, this->partVolume);
-
-
-
-  //Signal *output = this->stutter;
 
   return output;
 }
@@ -395,8 +392,9 @@ void Part::noteOff(int note, int velo) {
   // polyphonic case: kill all voices that are currently playing this notes
   for (int i = 0; i < maxNbVoices; i++) {
     if (notes[i] == note) {
-      envs[i]->release();
-      fenvs[i]->release();
+      //envs[i]->release();
+      //fenvs[i]->release();
+      releaseVoice(i);
       notes[i] = -1;
 
       int returnedVoiceSpot = (leastRecentlyReleasedVoiceId + nbAvailableVoices) % activeNbVoices;

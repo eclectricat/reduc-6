@@ -621,6 +621,67 @@ private:
 
 };
 
+// oscillator with selectable waveform: sin, saw, square, triangle
+
+class MultiOsc : public Signal {
+public:  MultiOsc(Registry* r, Signal* freq, StaticSignalDiscrete* wave)
+    : Signal(r) {
+    this->freq = freq;
+    this->wave = wave;
+    value = 0;
+    phase = 0;
+
+      for (int i=0; i<1024; i++) {
+        sineTable[i] = arm_sin_f32((i / 1024.0f) * 2 * PI) * 0.5f;
+      }
+  }   
+
+  void update() {
+
+    float increment = freq->value * rateInverse;
+    phase = phase + increment;
+    if (phase > 1) phase -= 1;
+    if (phase < 0) phase += 1; // to support through zero mod
+
+    switch (wave->getValueDiscrete()) {
+      case 0:
+        value = phase - 0.5f; // saw
+        break;
+      case 1: // triangle
+        value = (phase < 0.5f) ? phase : 1 - phase;
+        value = (value * 2) - 0.5;
+        break;
+      case 2: // square
+        value = (phase < 0.5f) ? -0.5f : 0.5f;
+        break;
+      case 3: // sine
+        value = sineTable[(int)(phase * 1024) % 1024];
+        break;
+      default:
+        value = 0;
+        break;
+    }
+  }
+
+  virtual String signame() const {
+    return "multiOsc";
+  }
+
+  float getValue(int channel = 0) {
+    return value;
+  } 
+
+private:
+  Signal* freq;
+  StaticSignalDiscrete* wave;
+  float phase;
+  float sineTable[1024]; // with 1024 samples, we can represent frequencies up to around 20kHz without too much aliasing, which is enough for our purposes
+};  
+
+
+
+
+
 class MultiNoise : public Signal {
 public:
   MultiNoise(Registry* r, StaticSignalDiscrete *type)
@@ -961,18 +1022,35 @@ public:
     }
 
     int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
-    loopLength = loopLength % bufferLength; // avoid buffer overrun
-    
-    if (samplecounter < loopLength) samples[samplecounter]=in;
-    value = samples[samplecounter % loopLength];
-    
-    samplecounter++;
-    
 
+    // loop length should not be longer than the buffer, otherwise we get buffer overrun and thus noise
+    loopLength = std::min(loopLength, bufferLength);
+    //loopLength = loopLength % bufferLength; // avoid buffer overrun
+    
+    //if (playhead < loopLength) 
+    samples[writehead]=in;
+    value = samples[playhead];
+    
+    if (playhead < loopLength-1) {
+      playhead++;
+    } else if (loopingActive) {
+      playhead = 0;
+    } // else stay at the end of the buffer, which contains the input signal, and stop looping
+
+    if(writehead < loopLength-1) {
+      writehead++;
+    } // else stay at the end of the buffer, so that it contains the input signal, and stop writing (but this should not actually happen because the loop length should be shorter than the buffer length)
   }
 
   void retrigger() {
-    samplecounter = 0;
+    playhead = 0;
+    writehead = 0; 
+    loopingActive = true;
+  }
+
+  void release() {
+    // stop looping, continue playing the last sample of the buffer, which contains the input signal
+    loopingActive = false;
   }
 
   virtual String signame() const {
@@ -983,10 +1061,12 @@ public:
 
 private:
   Signal *in, *fraction, *bpm;
-  const static int bufferLength = 2800;
-  float samples[bufferLength]; // slowest speed: 60 -> 16th is 248 ms, -> 10937 samples 
-  int samplecounter = 0;
-  //int loopLength = (int) (60.0f / (120 * 16) * 44100);
+  const static int bufferLength = 5512;
+  float samples[bufferLength]; // slowest speed: 60 -> 16th is 11025 samples (44100/4) 
+  // for actual beat repeat, maybe half of that is ok... 11025/2 =
+  int playhead = 0;
+  int writehead = 0;
+  bool loopingActive = false;
 };
 
 class Delay : public Signal {
@@ -1468,6 +1548,11 @@ class Part {
     this->fenvs[voiceId]->retrigger();
   }
 
+  virtual void releaseVoice(int voiceId) {
+    this->envs[voiceId]->release();
+    this->fenvs[voiceId]->release();
+  }
+
   float midiToFreq(int note) {
     return (440.0f * pow(2, ((note)-69) / 12.0f));
   }
@@ -1582,6 +1667,11 @@ public:
     this->lfoAsOsc->retrigger();
   }
 
+  virtual void releaseVoice(int voiceId) {
+    Part::releaseVoice(voiceId);
+    this->stutter->release();
+  }
+
 private:
 
   //void createSynthVoice(int i, Registry* registry); 
@@ -1589,6 +1679,7 @@ private:
   // store all parameters, so all the voices can access them:
   
   StaticSignal* o1Oct = NULL;
+  StaticSignalDiscrete* drumOscType = NULL;
   StaticSignal* pitchEnvDR = NULL;
   StaticSignal* ampEnvDR = NULL;
   
