@@ -121,6 +121,9 @@ public:
   virtual void update() = 0;
   virtual float getValue(int channel = 0) = 0;
 
+  virtual void retrigger() {}
+  virtual void release() {}
+
 
   uint32_t getAndResetLastSpentTime() {
     uint32_t result = lastSpentTime;
@@ -560,6 +563,29 @@ protected:
   //float value = 0;
 };
 
+class ContinuousOctaver : public Signal {
+public:
+  ContinuousOctaver(Registry* r, Signal* exponent)
+    : Signal(r) {
+    this->exponent = exponent;
+  }
+
+  void update() override {
+    value = fast_exp2f(exponent->value);
+  }
+
+  float getValue(int channel = 0) override {
+    return value;
+  }
+
+  virtual String signame() const override {
+    return "continuousOctaver";
+  }
+
+protected:
+  Signal* exponent;
+};
+
 class LFO : public Signal {
 public:
   LFO(Registry* r, Signal* lfoFreq, StaticSignalDiscrete* lfoWave)
@@ -849,6 +875,35 @@ private:
   
 };
 
+class DrumEnv : public Signal {
+public:
+  DrumEnv(Registry* r, Signal* decay) : Signal(r) {
+    this->d = decay;
+  }
+
+  void update() override {
+    if (value > 0.0001f) {
+      value *= fDecay;
+    } else {
+      value = 0;
+    }
+  }
+
+  void retrigger() override {
+    value = 1.0f;
+    // Match the timing logic of the standard Env for consistency
+    float dSecs = pow(1.03f, d->value) - 1.0f;
+    fDecay = pow(0.001f, 1.0f / (dSecs * AUDIO_SAMPLE_RATE + 1.0f));
+  }
+
+  float getValue(int channel = 0) override { return value; }
+  virtual String signame() const override { return "drumenv"; }
+
+private:
+  Signal* d;
+  float fDecay = 1.0f;
+};
+
 class Digital2Pole : public Signal {
 public:
   Digital2Pole(Registry* r, Signal* in, Signal* cut, Signal* res)
@@ -1000,11 +1055,14 @@ private:
 
 class Stutter : public Signal {
 public:
-  Stutter(Registry* r, Signal* in, Signal* fraction, Signal* bpm)
+  Stutter(Registry* r, Signal* in, Signal* loopStart, Signal* loopEnd, Signal* bpm, Signal* enable, Signal* move)
     : Signal(r) {
     this->in = in;
-    this->fraction = fraction;
+    this->loopStart = loopStart;
+    this->loopEnd = loopEnd;
     this->bpm = bpm;
+    this->enable = enable;
+    this->move = move;
   }
 
   float getValue(int channel = 0) {
@@ -1012,40 +1070,84 @@ public:
   }
 
   void update() {
-    float in = this->in->value;
-    float frac = fraction->value;
-    float bpm = this->bpm->value;
+    float inVal = this->in->value;
 
-    if (frac < 2) { // skip
-      value = in;
+    if (enable->value < 0.5f) {
+      loopingActive = false;
+      value = inVal;
       return;
     }
 
-    int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
+    float currentBpm = this->bpm->value;
 
-    // loop length should not be longer than the buffer, otherwise we get buffer overrun and thus noise
-    loopLength = std::min(loopLength, bufferLength);
-    //loopLength = loopLength % bufferLength; // avoid buffer overrun
-    
-    //if (playhead < loopLength) 
-    samples[writehead]=in;
-    value = samples[playhead];
-    
-    if (playhead < loopLength-1) {
-      playhead++;
-    } else if (loopingActive) {
-      playhead = 0;
-    } // else stay at the end of the buffer, which contains the input signal, and stop looping
+    // Calculate samples in one 16th note (60/BPM/4 * 44100)
+    float stepSamples = std::min((float)bufferLength, (60.0f / (currentBpm * 4.0f)) * 44100.0f);
+    float mVal = move->value;
 
-    if(writehead < loopLength-1) {
+    // Calculate base indices and apply drift
+    int baseStart = (int)(loopStart->value * (stepSamples - 1));
+    int baseEnd = (int)(loopEnd->value * (stepSamples - 1));
+    
+    // Wrap indices within the 1/16th note range
+    int startIdx = (baseStart + (int)driftOffset) % (int)stepSamples;
+    int endIdx = (baseEnd + (int)driftOffset) % (int)stepSamples;
+    
+    if (startIdx < 0) startIdx += (int)stepSamples;
+    if (endIdx < 0) endIdx += (int)stepSamples;
+
+    // Capture input into the buffer (one step only)
+    if (writehead < (int)stepSamples) {
+      samples[writehead] = inVal;
       writehead++;
-    } // else stay at the end of the buffer, so that it contains the input signal, and stop writing (but this should not actually happen because the loop length should be shorter than the buffer length)
+    }
+
+    if (loopingActive) {
+      value = samples[playhead];
+      playhead += direction;
+
+      if (direction == 1) {
+        if (startIdx < endIdx) {
+          // Normal forward loop
+          if (playhead >= endIdx) {
+            playhead = startIdx;
+            driftOffset += mVal * (endIdx - startIdx);
+          }
+        } else {
+          // Reverse mode: play forward until startIdx, then reverse
+          if (playhead >= startIdx) {
+            direction = -1;
+            playhead = startIdx;
+          }
+        }
+      } else {
+        // direction == -1: Backwards loop
+        if (playhead <= endIdx) {
+          playhead = startIdx;
+          direction = 1;
+          driftOffset += mVal * (startIdx - endIdx);
+        }
+      }
+
+      // Final safety bounds
+      if (playhead < 0) playhead = 0;
+      if (playhead >= bufferLength) playhead = bufferLength - 1;
+
+      // Keep driftOffset wrapped within the capture buffer
+      if (driftOffset >= stepSamples) driftOffset -= stepSamples;
+      if (driftOffset < -stepSamples) driftOffset += stepSamples;
+    } else {
+      value = inVal;
+    }
   }
 
   void retrigger() {
-    playhead = 0;
-    writehead = 0; 
-    loopingActive = true;
+    if (enable->value > 0.5f) {
+      writehead = 0;
+      playhead = 0;
+      driftOffset = 0;
+      direction = 1;
+      loopingActive = true;
+    }
   }
 
   void release() {
@@ -1057,16 +1159,16 @@ public:
     return "stutter";
   }
 
-  //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
-
 private:
-  Signal *in, *fraction, *bpm;
+  Signal *in, *loopStart, *loopEnd, *bpm, *enable, *move;
   const static int bufferLength = 5512;
   float samples[bufferLength]; // slowest speed: 60 -> 16th is 11025 samples (44100/4) 
   // for actual beat repeat, maybe half of that is ok... 11025/2 =
   int playhead = 0;
   int writehead = 0;
+  int direction = 1;
   bool loopingActive = false;
+  float driftOffset = 0;
 };
 
 class Delay : public Signal {
@@ -1579,8 +1681,8 @@ class Part {
   
 
   StaticSignal* baseFreqs[maxNbVoices];
-  Env* envs[maxNbVoices];
-  Env* fenvs[maxNbVoices];
+  Signal* envs[maxNbVoices];
+  Signal* fenvs[maxNbVoices];
 
   // the per voice signals that go into the last mixer
   SignalPtr signals[maxNbVoices];
@@ -1664,7 +1766,7 @@ public:
     Part::retriggerVoice(voiceId);
     this->stutter->retrigger();
     this->click->retrigger();
-    this->lfoAsOsc->retrigger();
+    //this->lfoAsOsc->retrigger();
   }
 
   virtual void releaseVoice(int voiceId) {
@@ -1693,11 +1795,14 @@ private:
   StaticSignal* loPassCutoff = NULL;
 
   StaticSignal* overdriveGain = NULL;
-  StaticSignal* stutterFraction = NULL;
+  StaticSignal* stutterStart = NULL;
+  StaticSignal* stutterEnd = NULL;
+  StaticSignal* stutterMove = NULL;
+  StaticSignalDiscrete* stutterEnable = NULL;
 
   Stutter *stutter = NULL;
   Click *click = NULL;
-  LFO* lfoAsOsc = NULL;
+  //LFO* lfoAsOsc = NULL;
 
   StaticSignal *bpm;
   

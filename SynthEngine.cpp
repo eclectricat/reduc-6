@@ -193,7 +193,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   o1Oct = new StaticSignal(registry, 1.0f); 
   drumOscType = new StaticSignalDiscrete(registry, 0);
   pitchEnvDR = new StaticSignal(registry, 1.0f);
-  envPitchAmount = new StaticSignal(registry, 1.0f);
+  envPitchAmount = new StaticSignal(registry, 0.0f); // Now in Octaves (0-5)
 
   ampEnvDR = new StaticSignal(registry, 5.0f);
 
@@ -213,6 +213,11 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
 
   StaticSignal* stutterFraction = new StaticSignalDiscrete(registry, 0);
+  this->stutterEnable = new StaticSignalDiscrete(registry, 0);
+  StaticSignal* stutterStart = new StaticSignal(registry, 0.0f);
+  StaticSignal* stutterEnd = new StaticSignal(registry, 0.5f);
+  this->stutterMove = new StaticSignal(registry, 0.0f);
+
   //StaticSignal* bpmTemp = new StaticSignalDiscrete(registry, 120); // TODO: take actual tempo of the sequencer here
   StaticSignalDiscrete *noiseType = new StaticSignalDiscrete(registry, 0);
 
@@ -226,12 +231,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pO1Oct = new ParameterInfo("Oct", 0.25f, 4.0f, o1Oct, "o1Oct");
   ParameterInfo *pDrumOscType = new ParameterInfoDiscrete("TYP", 0, 3, drumOscType, "drumOscType");
   ParameterInfo *pPitchEnvDR = new ParameterInfo("PDR ", 0, 10, pitchEnvDR, "pitchEnvDR");
-  ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 1000, envPitchAmount, "envPitchAmount");
+  ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 5, envPitchAmount, "envPitchAmount"); // 0 to 5 octaves
 
   ParameterInfo *pAmpEnvDR = new ParameterInfo("ADR ", 0, 30, ampEnvDR, "ampEnvDR");
 
   ParameterInfo *pNoiseVol = new ParameterInfo("Noi ", 0, 1, noiseVol, "noiseVol");
-  ParameterInfo *pSinVol = new ParameterInfo("Sin ", 0, 1, sinVol, "sinVol");
+  ParameterInfo *pSinVol = new ParameterInfo("Osc ", 0, 1, sinVol, "sinVol");
 
   ParameterInfo *pHiPassCutoff = new ParameterInfo("HP ", 0, 1, hiPassCutoff, "hiPassCutoff");
   ParameterInfo *pHiPassRes = new ParameterInfo("HPR ", 0, 1, hiPassRes, "hiPassRes");
@@ -244,9 +249,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pHiPassCutoff2 = new ParameterInfo("HP2", 0, 1, hiPassCutoff2, "hiPassCutoff2");
   ParameterInfo *pHiPassRes2 = new ParameterInfo("HPR ", 0, 1, hiPassRes2, "hiPassRes2");
 
-  ParameterInfo *pStutterFraction = new ParameterInfoDiscrete("STU", 0, 16, stutterFraction, "stutterFraction");
+  ParameterInfo *pStutterEnable = new ParameterInfoDiscrete("STU", 0, 1, stutterEnable, "stutterEnable");
+  ParameterInfo *pStutterStart = new ParameterInfo("STA ", 0, 1, stutterStart, "stutterStart");
+  ParameterInfo *pStutterEnd = new ParameterInfo("END ", 0, 1, stutterEnd, "stutterEnd");
+  ParameterInfo *pStutterMove = new ParameterInfo("MOV ", -0.2, 0.2, stutterMove, "stutterMove");
 
-  ParameterInfo *pNoiseType = new ParameterInfoDiscrete("TYP", 0, 2, noiseType, "noiseType");
+  ParameterInfo *pNoiseType = new ParameterInfoDiscrete("NTP", 0, 2, noiseType, "noiseType");
 
   ParameterInfo *pClickVol = new ParameterInfo("CLK", 0, 1, clickVol, "clickVol");
   ParameterInfo *pClickLPF = new ParameterInfo("CLP", 0, 1, clickLPF, "clickLPF");
@@ -273,8 +281,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   menu->addPage(vector<ParameterInfo *>{ pNoiseType, pHiPassCutoff, pHiPassRes, pClickLPF }, 1);
 
   menu->addPage(vector<ParameterInfo *>{ pLoPassCutoff, pOverdriveGain,  pHiPassCutoff2, pHiPassRes2, pDummy }, 2);
-
-  menu->addPage(vector<ParameterInfo *>{ pStutterFraction, pDummy, pDummy, pDummy}, 3);
+  menu->addPage(vector<ParameterInfo *>{ pStutterEnable, pStutterStart, pStutterEnd, pStutterMove }, 3);
   menu->addPage(vector<ParameterInfo *>{ delayParams[0], delayParams[1], delayParams[2], delayParams[3]}, 4);
   menu->addPage(vector<ParameterInfo *>{ pDelaySend, pReductionAmount, pRateReduction, pDummy}, 4);
 
@@ -286,10 +293,12 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   Signal *octavedFreq1 = new VCA(registry, baseFreq, o1Oct);
   // lfo pitch mod: normally we would use 2^mod, but maybe we could use baseFreq * (1 + s * lfo)
 
-  Env *pitchEnv = new Env(registry, dummyS, pitchEnvDR, dummyS, pitchEnvDR);
-  Env *ampEnv = new Env(registry, dummyS, ampEnvDR, dummyS, ampEnvDR);
+  DrumEnv *pitchEnv = new DrumEnv(registry, pitchEnvDR);
+  DrumEnv *ampEnv = new DrumEnv(registry, ampEnvDR);
 
-  Signal *totalFreq = new Mixer(registry, { octavedFreq1, new VCA(registry, pitchEnv, envPitchAmount)}, 1);
+  // Modulation in the Pitch domain: BaseFreq * 2^(Env * Amount)
+  Signal *envInOctaves = new VCA(registry, pitchEnv, envPitchAmount);
+  Signal *totalFreq = new VCA(registry, octavedFreq1, new ContinuousOctaver(registry, envInOctaves));
 
   Signal* drumOsc = new MultiOsc(registry, totalFreq, drumOscType); // 
 
@@ -316,7 +325,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   Signal *over = new Overdrive(registry, vca , overdriveGain);
   Signal *bitRed = new Reduction(registry, over, reductionAmount, rateReduction);
 
-  this->stutter = new Stutter(registry, bitRed, stutterFraction, this->bpm);
+  this->stutter = new Stutter(registry, bitRed, stutterStart, stutterEnd, this->bpm, this->stutterEnable, this->stutterMove);
 
   *fxBus = new VCA(registry, stutter, delaySend);
 
