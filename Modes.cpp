@@ -8,7 +8,7 @@ static const char *kCookieBoxSaveDir = "/CookieBoxV2";
 static const char *kPatchPrefix = "Patch_";
 static const char *kProgramPrefix = "Program_";
 static const char *kSaveExtension = ".cb2";
-static const size_t kLineJsonDocSize = 512;
+static const size_t kLineJsonDocSize = 1024;
 
 static bool ensureSaveDirectory() {
   if (SD.exists(kCookieBoxSaveDir)) return true;
@@ -17,9 +17,19 @@ static bool ensureSaveDirectory() {
 
 static bool writeJsonLine(File &dataFile, JsonDocument &doc) {
   if (!dataFile) return false;
+  if (doc.overflowed()) {
+    Serial.println("JSON serialize overflow");
+    return false;
+  }
   size_t bytes = serializeJson(doc, dataFile);
+  if (bytes == 0) {
+    if (doc.overflowed()) {
+      Serial.println("JSON serialize overflow");
+    }
+    return false;
+  }
   dataFile.write('\n');
-  return bytes > 0;
+  return true;
 }
 
 static String patchSlotFilename(int bank, int patch) {
@@ -102,8 +112,8 @@ static bool programSlotCached(int bank, int patch) {
   return programSlotCache[bank * 10 + patch];
 }
 
-static void writeParameterLines(File &dataFile, Mode *mode, int partId, const char *kind) {
-  SynthParameters *params = mode->allSynthParameters[partId];
+static void writeParameterLines(File &dataFile, Mode *mode, int paramsIdx, const char *kind, int logicalPartId) {
+  SynthParameters *params = mode->allSynthParameters[paramsIdx];
   int nbLanes = params->getNbLanes();
   for (int lane = 0; lane < nbLanes; lane++) {
     int nbPages = params->getNbPages(lane);
@@ -113,7 +123,7 @@ static void writeParameterLines(File &dataFile, Mode *mode, int partId, const ch
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         StaticJsonDocument<kLineJsonDocSize> lineDoc;
         lineDoc["kind"] = kind;
-        lineDoc["part"] = partId;
+        lineDoc["part"] = logicalPartId;
         lineDoc["name"] = pinfo->getUniqueName();
         lineDoc["value"] = pinfo->getValue();
         writeJsonLine(dataFile, lineDoc);
@@ -170,11 +180,12 @@ static void writeProgramFile(File &dataFile, GlobalState *globalState) {
   writeJsonLine(dataFile, headerDoc);
 
   for (int i = 0; i < NB_PARTS; i++) {
-    writeParameterLines(dataFile, &globalState->partConfigMode, i, "program-part-config");
+    writeParameterLines(dataFile, &globalState->partConfigMode, i, "program-part-config", i);
   }
 
   for (int i = 0; i < NB_PARTS; i++) {
-    writeParameterLines(dataFile, &globalState->synthMode, i, "program-part-param");
+    int effPartId = globalState->synthMode.effectivePartId(i);
+    writeParameterLines(dataFile, &globalState->synthMode, effPartId, "program-part-param", i);
   }
 
   for (int patternId = 0; patternId < NB_PATTERNS; patternId++) {
@@ -203,27 +214,57 @@ static void clearAllSequences(GlobalState *globalState) {
 
 static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
   clearAllSequences(globalState);
-  globalState->partConfigMode.resetEngineTypeAndVoices();
 
-  char lineBuffer[512];
+  Serial.println("Loading program from file...");
+
+  bool configApplied = false;
+
+  char lineBuffer[1024];
   while (dataFile.available()) {
     size_t len = dataFile.readBytesUntil('\n', lineBuffer, sizeof(lineBuffer) - 1);
     lineBuffer[len] = '\0';
+
     if (len == 0) continue;
+    if (len == sizeof(lineBuffer) - 1) {
+      Serial.println("Skipped overlong JSON line");
+      int c;
+      while (dataFile.available() && (c = dataFile.read()) != '\n' && c != -1) {}
+      continue;
+    }
+
+    Serial.print("Read line: ");
+    Serial.println(lineBuffer);
 
     StaticJsonDocument<kLineJsonDocSize> lineDoc;
     DeserializationError err = deserializeJson(lineDoc, lineBuffer);
-    if (err) continue;
+    if (err) {
+      Serial.print("JSON parse error: ");
+      Serial.println(err.c_str());
+      continue;
+    }
 
     const char *kind = lineDoc["kind"];
     if (!kind) continue;
+
+    // Transition from config lines to parameter/note lines: apply configuration first
+    if (!configApplied && (strcmp(kind, "program-part-param") == 0 || strcmp(kind, "program-sequencer-note") == 0)) {
+      globalState->partConfigMode.resetEngineTypeAndVoices();
+      configApplied = true;
+    }
 
     if (strcmp(kind, "program-part-config") == 0) {
       int partId = lineDoc["part"];
       String name = lineDoc["name"].as<String>();
       float value = lineDoc["value"];
       ParameterInfo *param = globalState->partConfigMode.getParameterByNameAndPart(name, partId);
-      if (param) param->setValue(value);
+      if (param) {
+        param->setValue(value);
+        Serial.print("Applied part config ");   
+      } else
+      {
+        Serial.print("Warning: no parameter found for part config line: ");
+        Serial.println(name);
+      }
       continue;
     }
 
@@ -233,7 +274,14 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
       float value = lineDoc["value"];
       int effPartId = globalState->synthMode.effectivePartId(partId);
       ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(name, effPartId);
-      if (param) param->setValue(value);
+      if (param) {
+        param->setValue(value);
+        Serial.print("Applied part param ");   
+      } else
+      {
+        Serial.print("Warning: no parameter found for part param line: ");
+        Serial.println(name);
+      } 
       continue;
     }
 
@@ -252,6 +300,7 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
         Sequence::clearNoteLocks(existingNoteIndex);
         Sequence::freeGlobalNoteIndex(existingNoteIndex);
         s->steps[step] = -1;
+        Serial.print("Warning: overwriting existing note at pattern ");
       }
 
       NoteEntry note;
@@ -274,25 +323,44 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
           ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(lockName, effPartId);
           if (param) {
             Sequence::addOrUpdateNoteLock(noteIndex, param, lockValue);
+            Serial.print("Applied lock for note at pattern ");
+          } else {
+            Serial.print("Warning: no parameter found for lock line: ");
+            Serial.println(lockName);
           }
         }
       }
       continue;
     }
   }
+
+  // Ensure config is applied even if no params or notes were in the file
+  if (!configApplied) {
+    globalState->partConfigMode.resetEngineTypeAndVoices();
+  }
 }
 
 static void loadPatchNewFormat(File &dataFile, GlobalState *globalState, int selectedPart) {
   int effPartId = globalState->synthMode.effectivePartId(selectedPart);
-  char lineBuffer[512];
+  char lineBuffer[1024];
   while (dataFile.available()) {
     size_t len = dataFile.readBytesUntil('\n', lineBuffer, sizeof(lineBuffer) - 1);
     lineBuffer[len] = '\0';
     if (len == 0) continue;
+    if (len == sizeof(lineBuffer) - 1) {
+      Serial.println("Skipped overlong JSON line");
+      int c;
+      while (dataFile.available() && (c = dataFile.read()) != '\n' && c != -1) {}
+      continue;
+    }
 
     StaticJsonDocument<kLineJsonDocSize> lineDoc;
     DeserializationError err = deserializeJson(lineDoc, lineBuffer);
-    if (err) continue;
+    if (err) {
+      Serial.print("JSON parse error: ");
+      Serial.println(err.c_str());
+      continue;
+    }
 
     const char *kind = lineDoc["kind"];
     if (!kind) continue;
@@ -363,11 +431,16 @@ void GlobalState::setup() {
   sequencerModeGraphic.globalState = this;
   mixMuteMode.globalState = this;
   keyboardMode.globalState = this;
+
+  // Initialize synth parameters: Type 0 (Synth) for all parts, then Type 1 (Drum) for all parts
+  // This grouping matches effectivePartId: partId + 6 * type
+  for (int type = 0; type < this->engine->getNbPartTypes(); type++) {
+    for (int i = 0; i < this->engine->getNbParts(); i++) {
+      synthMode.allSynthParameters.push_back(new SynthParameters());
+    }
+  }
+
   for (int i = 0; i < this->engine->getNbParts(); i++) {
-
-    for (int type = 0; type < this->engine->getNbPartTypes(); type++)
-      synthMode.allSynthParameters.push_back(new SynthParameters());  // one for every effective part
-
     Serial.println("created synth parameters");
     partConfigMode.allSynthParameters.push_back(new SynthParameters());  // one for every logical part
     //sequences.push_back(new Sequence());
@@ -1707,10 +1780,9 @@ void Mode::deserializePart(JsonObject *jsonObject, int partId) {
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         //(*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
 
-        // TODO: check (doc["value"].is<int>())
-        if ((*jsonObject)[pinfo->getUniqueName()].is<float>()) {
-          float extractedValue = (*jsonObject)[pinfo->getUniqueName()];
-          pinfo->setValue(extractedValue);
+        JsonVariant value = (*jsonObject)[pinfo->getUniqueName()];
+        if (!value.isNull()) {
+          pinfo->setValue(value.as<float>());
         }
         //Serial.print("Deserialized ");
         //Serial.print(pinfo->getName());
