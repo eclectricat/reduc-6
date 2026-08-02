@@ -21,19 +21,25 @@
 
 #include <stdlib.h>
 
-//#include <usb_audio.h>
+#include <usb_audio.h>
 
 //#include <LiquidCrystal_I2C.h>
 //#include <LiquidCrystal_PCF8574.h>
 #include <LiquidCrystal.h>
 
+#include <usb_midi.h>
+
 #include "SynthEngine.h"
 #include "Menu.h"
 #include "Modes.h"
+#include "teensy/TeensySynthEngine.h"
+// Project-local 8-channel USB output (wraps core AudioOutputUSB)
+// Temporarily disabled while debugging multi-channel USB audio build issues
+#include "teensy/ProjectAudioOutputUSBOct.h"
 
 
 // GUItool: begin automatically generated code
-SynthEngine       engine;      //xy=227,175
+TeensySynthEngine engine;      //xy=227,175
 AudioAmplifier ampL;
 AudioAmplifier ampR;
 AudioOutputI2S           i2s1;           //xy=494,158
@@ -44,18 +50,19 @@ AudioConnection          patchCord3(ampR, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=448,312
 // GUItool: end automatically generated code
 
-//AudioOutputUSB usbAudio;
-AudioOutputUSBOct usbOctOut; 
+// Use standard 2-channel USB audio for now
+ProjectAudioOutputUSBOct usbOctOut;
 //AudioConnection          patchCord4(ampL, 0, usbAudio, 0);
 //AudioConnection          patchCord5(ampR, 0, usbAudio, 1);
 AudioConnection          patchCordUSB0(engine, 0, usbOctOut, 0);
 AudioConnection          patchCordUSB1(engine, 1, usbOctOut, 1);
-AudioConnection          patchCordUSB2(engine, 2, usbOctOut, 2);
-AudioConnection          patchCordUSB3(engine, 3, usbOctOut, 3);
-AudioConnection          patchCordUSB4(engine, 4, usbOctOut, 4);
-AudioConnection          patchCordUSB5(engine, 5, usbOctOut, 5);
-AudioConnection          patchCordUSB6(engine, 6, usbOctOut, 6);
-AudioConnection          patchCordUSB7(engine, 7, usbOctOut, 7);
+// Remaining 6 USB channels are commented out temporarily:
+// AudioConnection          patchCordUSB2(engine, 2, usbOctOut, 2);
+// AudioConnection          patchCordUSB3(engine, 3, usbOctOut, 3);
+// AudioConnection          patchCordUSB4(engine, 4, usbOctOut, 4);
+// AudioConnection          patchCordUSB5(engine, 5, usbOctOut, 5);
+// AudioConnection          patchCordUSB6(engine, 6, usbOctOut, 6);
+// AudioConnection          patchCordUSB7(engine, 7, usbOctOut, 7);
 
 const int buttonPin = 28;
 const int nbButtons = 10;
@@ -91,8 +98,8 @@ int currentPotVals[] = {0,0,0,0};
 int nbLoopPasses=0;
 unsigned long startMillis=0;
 
-std::map<String, int> profiling;
-std::map<String, int> moduleCounter;
+std::map<std::string, int> profiling;
+std::map<std::string, int> moduleCounter;
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -101,7 +108,18 @@ std::map<String, int> moduleCounter;
 const int rs = 12, en = 11, d4 = 38, d5 = 39, d6 = 40, d7 = 41;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-GlobalState globalState(&engine, &lcd);
+#include "teensy/TeensyStorage.h"
+#include "teensy/TeensyAudio.h"
+#include "teensy/TeensyMidi.h"
+#include "teensy/TeensyDisplay.h"
+#include "core/System.h"
+
+TeensyStorage teensyStorage;
+TeensyAudio teensyAudio;
+TeensyMidi teensyMidi;
+TeensyDisplay teensyDisplay(&lcd);
+
+GlobalState globalState(&engine, &teensyDisplay);
 
 //globalState.setup(); // intialise, so the Modes can call back into globalState
 
@@ -138,7 +156,7 @@ void sequencerCallback() {
 void setup()
 {
   Serial.begin(9600); // USB is always 12 Mbit/sec
-  delay(1000); // wait for serial
+  System::delay(1000); // wait for serial
   //waveform1.frequency(500);
   //engine.frequency(500);
   globalState.setup(); // intialise, so the Modes can call back into globalState
@@ -166,7 +184,7 @@ void setup()
   usbMIDI.setHandleContinue(myContinueHandler);
   //usbMIDI.setHandleControlChange(myControlChange);
 
-  delay(100);
+  System::delay(100);
 
   pinMode(led1Pin, OUTPUT);
   digitalWrite(led1Pin, LOW);
@@ -189,7 +207,7 @@ void setup()
   lockPotentiometers(true);
   globalState.partConfigMode.resetEngineTypeAndVoices();
 
-  delay(100);
+  System::delay(100);
 
   if ( ARM_DWT_CYCCNT == ARM_DWT_CYCCNT ) {
 		// Enable CPU Cycle Count
@@ -199,16 +217,20 @@ void setup()
 
   Serial.print("Initializing SD card...");
   
-  // see if the card is present and can be initialized:
-  for(int c=0;c<10;c++) {
-    if (!SD.begin(BUILTIN_SDCARD)) {
-      Serial.println("Card failed, or not present");
-      delay(1000);
-    } else {
-      Serial.println("card initialized.");
-      break;  
-    }
+  // Initialize storage via the platform adapter and inject into core
+  Serial.print("Initializing storage adapter...");
+  if (!teensyStorage.begin()) {
+    Serial.println(" Storage init failed or card not present");
+  } else {
+    Serial.println(" Storage initialized.");
   }
+  globalState.setStorage(&teensyStorage);
+  
+  // initialize audio and midi adapters and inject into core
+  teensyAudio.begin();
+  globalState.setAudio(&teensyAudio);
+  teensyMidi.begin();
+  globalState.setMidi(&teensyMidi);
 
   //seqCallbackTimer.priority(250);
   //seqCallbackTimer.begin(sequencerCallback, 10000);
@@ -221,7 +243,7 @@ void loop()
   nbLoopPasses++;
 
   // print some stats
-  unsigned int now = millis();
+  unsigned int now = System::millis();
   if (now > startMillis + 10000) {
   //if (false) {
     startMillis = now;
@@ -248,7 +270,7 @@ void loop()
     }
     
 
-    std::map<String, int>::iterator itr;
+    std::map<std::string, int>::iterator itr;
     for (itr = profiling.begin(); itr != profiling.end(); ++itr) {
       Serial.print(itr->first.c_str());
       Serial.print(" - ");
@@ -266,10 +288,10 @@ void loop()
 
   // sequencer
     sequencerCallback();
-    delay(5);
+    System::delay(5);
 
    //for (int i=0;i<30;i++) {
-    int received = usbMIDI.read();
+    usbMIDI.read();
     /*if(received) {
       Serial.print(usbMIDI.getType());
       Serial.print("-");
@@ -282,7 +304,7 @@ void loop()
 
   // delayed display update
   if (globalState.delayedDisplayRefresh > 0) {
-    if (millis() > globalState.delayedDisplayRefresh) {
+    if ((int32_t)System::millis() > globalState.delayedDisplayRefresh) {
       globalState.delayedDisplayRefresh = -1;
       globalState.selectedMode->fullDisplayUpdate();
     }
@@ -323,9 +345,9 @@ void loop()
       // TODO: only reset this if an actual page change has happened, But it is not totally broken like that...
       // also for e.g. sequencermode, params need to be locked e.g. when step changes
       
-      int starttime = millis();
+      int starttime = System::millis();
       bool needToLock = globalState.selectedMode->pushButtonPressed(i);
-      Serial.println(millis()-starttime);
+      Serial.println(System::millis()-starttime);
       if (needToLock) lockPotentiometers(false); // typically after changing parameter pages. 
 
       //if(i==6) {

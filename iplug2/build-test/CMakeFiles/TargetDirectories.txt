@@ -1,0 +1,3 @@
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/build-test/CMakeFiles/CookieBoxPlugin.dir
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/build-test/CMakeFiles/edit_cache.dir
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/build-test/CMakeFiles/rebuild_cache.dir

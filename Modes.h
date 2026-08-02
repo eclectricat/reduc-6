@@ -1,9 +1,14 @@
 #include "Menu.h"
+#include "core/Storage.h"
+#include "core/Audio.h"
+#include "core/Midi.h"
+#include "core/Display.h"
+#include "core/Log.h"
+#include "core/System.h"
 #include <array>
 #include <cstdint>
 
 class Mode;
-class LiquidCrystal;
 class SynthEngine;
 class GlobalState;
 class Sequence;
@@ -79,10 +84,10 @@ class Mode {
 
   void serializePart(JsonObject *jsonObject, int partId);
   void deserializePart(JsonObject *jsonObject, int partId);
-  ParameterInfo* getParameterByNameAndPart(String uniqueName, int partId);
+  ParameterInfo* getParameterByNameAndPart(std::string uniqueName, int partId);
 
   GlobalState *globalState;
-  LiquidCrystal *lcd;
+  Display *display;
 
   int selectedLane = 0;
   int selectedPage = 0;
@@ -98,7 +103,7 @@ class Mode {
 class SynthMode : public Mode {
   public:
 
-  SynthMode(LiquidCrystal *lcd);
+  SynthMode(Display *display);
   //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
   virtual bool pushButtonPressed(int buttonIndex) override;
   virtual bool pushButtonReleased(int buttonIndex) override;
@@ -118,8 +123,8 @@ class PartConfig {
 class PartConfigMode: public Mode {
 
   public:
-  PartConfigMode(LiquidCrystal *lcd) {
-    this->lcd = lcd;
+  PartConfigMode(Display *display) {
+    this->display = display;
   }
 
   void setup();
@@ -153,8 +158,8 @@ class PartConfigMode: public Mode {
 class MixMuteMode: public Mode {
 
   public:
-  MixMuteMode(LiquidCrystal *lcd) {
-    this->lcd = lcd;
+  MixMuteMode(Display *display) {
+    this->display = display;
   }
   void setup();
   virtual void postPartOrModeSwitch();
@@ -168,8 +173,8 @@ class MixMuteMode: public Mode {
 class SequencerMode: public Mode {
 
   public: 
-  SequencerMode(LiquidCrystal *lcd, SynthEngine *engine) {
-    this->lcd = lcd;
+  SequencerMode(Display *display, SynthEngine *engine) {
+    this->display = display;
 
     for (int p = 0; p<NB_PARTS; p++) {
       patternLengths[p] = new StaticSignalDiscrete(&(engine->registry), 16);
@@ -204,10 +209,10 @@ class SequencerMode: public Mode {
   void tick() { 
     if (tickCounter == 0) {
       if (playingSync) {
-        Serial.println("tick -> play");
+        CBLog.println("tick -> play");
         play();
       } else {
-        Serial.println("tick (no play)"); // looks like this is not happening, at least with reaper
+        CBLog.println("tick (no play)"); // looks like this is not happening, at least with reaper
       }
     }
     tickCounter = (tickCounter + 1 ) % 6;
@@ -260,8 +265,8 @@ class SequencerMode: public Mode {
 class SequencerModeGraphic : public Mode {
   public:
 
-  SequencerModeGraphic(LiquidCrystal *lcd) {
-    this->lcd = lcd;
+  SequencerModeGraphic(Display *display) {
+    this->display = display;
   }
 
   virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
@@ -283,8 +288,8 @@ class SequencerModeGraphic : public Mode {
 class KeyboardMode : public Mode {
   public:
 
-  KeyboardMode(LiquidCrystal *lcd) {
-    this->lcd = lcd;
+  KeyboardMode(Display *display) {
+    this->display = display;
   }
 
   //virtual void processPotValue(int potIndex, int potVal, bool updateDisplay) override;
@@ -313,7 +318,16 @@ class KeyboardMode : public Mode {
 class GlobalState {
 
   public:
-  GlobalState(SynthEngine *engine, LiquidCrystal *lcd); 
+  GlobalState(SynthEngine *engine, Display *display); 
+
+  // Dependency injection setters
+  void setStorage(Storage* s);
+  void setAudio(Audio* a);
+  void setMidi(Midi* m);
+
+  Storage* storage = nullptr;
+  Audio* audio = nullptr;
+  Midi* midi = nullptr;
   
   SynthMode synthMode;
   PartConfigMode partConfigMode;

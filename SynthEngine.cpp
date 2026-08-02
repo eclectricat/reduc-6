@@ -76,7 +76,7 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
   ParameterInfo *pPanSpread = new ParameterInfo("Pan  ", 0, 1, panSpread, "panSpread");
 
-  std::vector<String> lfoTypes = {"saw", "tri"};
+  std::vector<std::string> lfoTypes = {"saw", "tri"};
   ParameterInfo *pLfoWave = new ParameterInfoDiscrete("LFO  ", 0, 1, lfoWave, "lfoWave", lfoTypes);
   ParameterInfo *pLfoFreq = new ParameterInfo("Frq  ", 0.1, 10, lfoFreq, "lfoFreq");
   ParameterInfo *pLfoToPitch = new ParameterInfo("Vib  ", -0.12, 0.12, lfoToPitch, "lfoToPitch"); // TODO: try to avoid exp function
@@ -90,8 +90,6 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   ParameterInfo *pOverdriveGain = new ParameterInfo("OD", 0, 10, overdriveGain, "odGain");
 
 
-  StaticSignal *dummyS = new StaticSignal(registry, 1.0f);
-  //ParameterInfo *pDummy = new ParameterInfo("....", 0, 10, dummyS, "dummyS");
   ParameterInfo *pDummy = new DummyParameterInfo("    ");
 
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pO1Wave, pO1Vol, pDetune }, 0);
@@ -212,7 +210,6 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   StaticSignal *hiPassCutoff2 = new StaticSignal(registry, 0.0f);
   StaticSignal *hiPassRes2 = new StaticSignal(registry, 0.0f);
 
-  StaticSignal* stutterFraction = new StaticSignalDiscrete(registry, 0);
   this->stutterEnable = new StaticSignalDiscrete(registry, 0);
   StaticSignal* stutterStart = new StaticSignal(registry, 0.0f);
   StaticSignal* stutterEnd = new StaticSignal(registry, 0.5f);
@@ -385,13 +382,13 @@ void Part::noteOn(int note, int velo) {
   /*
   for(int i=0;i<activeNbVoices;i++) {
     if (i==leastRecentlyReleasedVoiceId) {
-      Serial.print("E");
+      CBLog.print("E");
     }
-    Serial.print(lru[i]);
-    Serial.print("_");
+    CBLog.print(lru[i]);
+    CBLog.print("_");
   }
-  Serial.print("nbVoicesAvailable: ");
-  Serial.println(nbAvailableVoices);
+  CBLog.print("nbVoicesAvailable: ");
+  CBLog.println(nbAvailableVoices);
   */
   
 }
@@ -416,102 +413,15 @@ void Part::noteOff(int note, int velo) {
   /*
   for(int i=0;i<activeNbVoices;i++) {
     if (i==leastRecentlyReleasedVoiceId) {
-      Serial.print("E");
+      CBLog.print("E");
     }
-    Serial.print(lru[i]);
-    Serial.print("_");
+    CBLog.print(lru[i]);
+    CBLog.print("_");
   }
-  Serial.print("nbVoicesAvailable: ");
-  Serial.println(nbAvailableVoices);
+  CBLog.print("nbVoicesAvailable: ");
+  CBLog.println(nbAvailableVoices);
   */
   
-}
-
-void SynthEngine::update(void) {
-  unsigned int i;  //, n;
-  audio_block_t *block;
-  audio_block_t *blockR;
-
-  audio_block_t *blockD0;
-  audio_block_t *blockD1;
-  audio_block_t *blockD2;
-  audio_block_t *blockD3;
-  audio_block_t *blockD4;
-  audio_block_t *blockD5;
-
-  // allocate the audio blocks to transmit
-  block = allocate();
-  if (block == NULL) return;
-  blockR = allocate();
-  if (blockR == NULL) return;
-
-  blockD0 = allocate();
-  if (blockD0 == NULL) return;
-  blockD1 = allocate();
-  if (blockD1 == NULL) return;
-  blockD2 = allocate();
-  if (blockD2 == NULL) return;
-  blockD3 = allocate();
-  if (blockD3 == NULL) return;
-  blockD4 = allocate();
-  if (blockD4 == NULL) return;
-  blockD5 = allocate();
-  if (blockD5 == NULL) return;
-
-  if (outputSignal == NULL) return;
-
-  float currentSample[2];
-  float tempval;
-
-  for (i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
-
-    // update all Signals in order
-    for (int s = 0; s < registry.nbActiveSignals; s++) {
-      registry.activeSignals[s]->update_instrumented();
-    }
-
-    for (int s = 0; s < 2; s++) {
-      tempval = outputSignal->getValue(s);
-      if (abs(tempval) > maxSignalLevel) {
-        maxSignalLevel = abs(tempval);
-      }
-
-      //currentSample[s] = std::min(0.5f, std::max(-0.5f, currentSample[s]));
-      //currentSample[s] = tempval <= -0.5f ? -0.5f :  tempval >= 0.5f ? 0.5f : tempval;
-      currentSample[s] = 0.5f * fast_tanh(tempval * 2); // softclip
-    }
-
-    block->data[i] = (short)(55000 * currentSample[0]);    // TODO: do all the scaling in a single place
-    blockR->data[i] = (short)(55000 * currentSample[1]);  // TODO: do all the scaling in a single place
-
-    // TODO: clip, for the direct outs, should we take the left channel, or sum/avg left and right?
-    // TODO: get the signals before the mix volume?
-    blockD0->data[i] = (short)(55000 * (signals[0]->getValue() + signals[0+NB_PARTS]->getValue()) );
-    blockD1->data[i] = (short)(55000 * (signals[1]->getValue() + signals[1+NB_PARTS]->getValue()) );
-    blockD2->data[i] = (short)(55000 * (signals[2]->getValue() + signals[2+NB_PARTS]->getValue()) );
-    blockD3->data[i] = (short)(55000 * (signals[3]->getValue() + signals[3+NB_PARTS]->getValue()) );
-    blockD4->data[i] = (short)(55000 * (signals[4]->getValue() + signals[4+NB_PARTS]->getValue()) );
-    blockD5->data[i] = (short)(55000 * (signals[5]->getValue() + signals[5+NB_PARTS]->getValue()) );
-  }
-
-  transmit(block);
-  transmit(blockR, 1);
-
-  transmit(blockD0, 2);
-  transmit(blockD1, 3);
-  transmit(blockD2, 4);
-  transmit(blockD3, 5);
-  transmit(blockD4, 6);
-  transmit(blockD5, 7);
-
-  release(block);
-  release(blockR);
-  release(blockD0);
-  release(blockD1);
-  release(blockD2);
-  release(blockD3);
-  release(blockD4);
-  release(blockD5);
 }
 
 void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSignal *bpm) {
@@ -543,7 +453,7 @@ void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSig
     effectsBusSignals[i] = fxBus;
     signals[i+nbParts]=parts[i+nbParts]->buildSynth(&registry, allParams[i+nbParts], i+nbParts, delayParams, &fxBus);
     effectsBusSignals[i+nbParts] = fxBus;
-    Serial.println("created synth part");
+    CBLog.println("created synth part");
 
 
   }
@@ -564,6 +474,57 @@ void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSig
   parts[3 + 6]->setActiveNbVoices(1);
 
   markRequiredSignals();
+}
+
+void SynthEngine::renderBlock(double** outputs, int nFrames, int nChannels) {
+  if (outputs == nullptr || nFrames <= 0 || nChannels <= 0) return;
+  if (outputSignal == nullptr) return;
+
+  const int availableChannels = std::max(0, nChannels);
+
+  for (int i = 0; i < nFrames; i++) {
+    // Update all active signals in dependency order once per sample.
+    for (int s = 0; s < this->registry.nbActiveSignals; s++) {
+#if defined(ARDUINO)
+      this->registry.activeSignals[s]->update_instrumented();
+#else
+      this->registry.activeSignals[s]->update();
+#endif
+    }
+
+    float mainL = this->outputSignal->getValue(0);
+    float mainR = this->outputSignal->getValue(1);
+
+    const float absL = std::abs(mainL);
+    if (absL > this->maxSignalLevel) {
+      this->maxSignalLevel = absL;
+    }
+    const float absR = std::abs(mainR);
+    if (absR > this->maxSignalLevel) {
+      this->maxSignalLevel = absR;
+    }
+
+    // Keep the same soft-clipping as the Teensy renderer.
+    mainL = 0.5f * fast_tanh(mainL * 2.0f);
+    mainR = 0.5f * fast_tanh(mainR * 2.0f);
+
+    if (availableChannels > 0) {
+      outputs[0][i] = static_cast<double>(mainL);
+    }
+    if (availableChannels > 1 && outputs[1] != nullptr) {
+      outputs[1][i] = static_cast<double>(mainR);
+    }
+
+    // Optional direct part outs: channels 2..7 mirror Teensy USB channel routing.
+    /*for (int part = 0; part < NB_PARTS; part++) {
+      const int ch = part + 2;
+      if (ch >= availableChannels || outputs[ch] == nullptr) continue;
+
+      float direct = this->signals[part]->getValue() + this->signals[part + NB_PARTS]->getValue();
+      direct = 0.5f * fast_tanh(direct * 2.0f);
+      outputs[ch][i] = static_cast<double>(direct);
+    }*/
+  }
 }
 
 void SawOsc::update() {

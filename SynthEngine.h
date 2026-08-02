@@ -3,16 +3,16 @@
 
 
 #include <Arduino.h>
-#include <AudioStream.h>
 #include <initializer_list>
 #include <algorithm>
 #include <cmath>
-#include <bits/stl_tree.h>
-#include <bits/stl_map.h>
+#include <map>
 #include <arm_math.h>
+#include <cstddef>
 #include <vector>
 
 #include "Utils.h"
+#include "core/Log.h"
 #include <ArduinoJson.h>
 
 
@@ -33,6 +33,14 @@ extern char* __brkval;
 #define NB_PARTS 6
 #define NB_PART_TYPES 2
 
+#ifndef AUDIO_SAMPLE_RATE
+#define AUDIO_SAMPLE_RATE 44100.0f
+#endif
+
+#ifndef AUDIO_BLOCK_SAMPLES
+#define AUDIO_BLOCK_SAMPLES 128
+#endif
+
 
 class Registry {
 
@@ -43,9 +51,9 @@ public:
     partIds[nbSignals] = partId;
     voiceIds[nbSignals] = voiceId;
     nbSignals++;
-    Serial.print("Enrolled Signal; now in total ");
-    Serial.println(nbSignals);
-    Serial.println(freeram());
+    CBLog.print("Enrolled Signal; now in total ");
+    CBLog.println(nbSignals);
+    CBLog.println(freeram());
   }
 
   int freeram() {
@@ -92,7 +100,7 @@ private:
 };
 
 // instrumentation
-extern std::map<String, int> profiling;
+extern std::map<std::string, int> profiling;
 extern JsonDocument jprofiling;
 
 
@@ -114,7 +122,7 @@ public:
     //profiling["test"]=duration ; // profiling[signame()] + duration;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "signal";
   }
 
@@ -167,7 +175,7 @@ public:
     return value;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "osc";
   }
 
@@ -199,7 +207,7 @@ public:
     value = newValue;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "static";
   }
 
@@ -224,7 +232,7 @@ public:
     return intValue;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "staticdiscrete";
   }
 
@@ -284,7 +292,7 @@ public:
     value1 *= gain;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "mixerstereo";
   }
 
@@ -320,7 +328,7 @@ public:
     value1 = value;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "mixermono";
   }
 
@@ -368,7 +376,7 @@ public:
   }
 
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "pan";
   }
 
@@ -403,7 +411,7 @@ public:
     value1=value;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "vca";
   }
 
@@ -433,7 +441,7 @@ class VcaStereo : public VCA {
     //valueR = signal->getValue(1) * gain->getValue(0);
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "vcaStereo";
   }
 
@@ -465,7 +473,7 @@ public:
     value = ((float) b_noise) - 0.5f;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "noiseOsc";
   }
 
@@ -499,7 +507,7 @@ public:
     
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "noise808";
   }
 
@@ -553,7 +561,7 @@ public:
     return value;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "octaver";
   }
 
@@ -578,7 +586,7 @@ public:
     return value;
   }
 
-  virtual String signame() const override {
+  virtual std::string signame() const override {
     return "continuousOctaver";
   }
 
@@ -623,7 +631,7 @@ public:
     }
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "lfo";
   }
 
@@ -689,7 +697,7 @@ public:  MultiOsc(Registry* r, Signal* freq, StaticSignalDiscrete* wave)
     }
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "multiOsc";
   }
 
@@ -750,7 +758,7 @@ public:
      
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "multiNoise";
   }
 
@@ -853,7 +861,7 @@ public:
     return (state >= 3);
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "env";
   }
 
@@ -897,7 +905,7 @@ public:
   }
 
   float getValue(int channel = 0) override { return value; }
-  virtual String signame() const override { return "drumenv"; }
+  virtual std::string signame() const override { return "drumenv"; }
 
 private:
   Signal* d;
@@ -929,7 +937,7 @@ public:
     value = v1;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "2pole";
   }
 
@@ -967,7 +975,7 @@ public:
     value = in - v1;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "hipass";
   }
 
@@ -997,7 +1005,7 @@ public:
     value = fast_tanh(in * gain) * 0.5f; // * (1/gain);
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "overdrive";
   }
 
@@ -1043,7 +1051,7 @@ public:
     
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "reduction";
   }
 
@@ -1155,7 +1163,7 @@ public:
     loopingActive = false;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "stutter";
   }
 
@@ -1225,7 +1233,7 @@ public:
   }
 
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "delay";
   }
 
@@ -1318,7 +1326,7 @@ public:
   }
 
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "delay8Bit";
   }
 
@@ -1396,7 +1404,7 @@ public:
     if (writehead >= bufferLength) writehead = 0;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "GlobalDelay8Bit";
   }
 
@@ -1431,7 +1439,7 @@ public:
     counter = 0;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "click";
   }
 
@@ -1497,7 +1505,7 @@ public:
     return value;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "simper";
   }
 
@@ -1599,7 +1607,7 @@ public:
     return value;
   }
 
-  virtual String signame() const {
+  virtual std::string signame() const {
     return "4Pole";
   }
 
@@ -1640,7 +1648,7 @@ class Part {
     leastRecentlyReleasedVoiceId = 0;
   }
 
-  virtual SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId, ParameterInfo* delayParams[], Signal **fxBus);
+  virtual SignalPtr buildSynth(Registry* registry, SynthParameters* menu, int partId, ParameterInfo* delayParams[], Signal **fxBus) = 0;
 
   void noteOn(int note, int velo);
   void noteOff(int note, int velo);
@@ -1808,21 +1816,17 @@ private:
   
 };
 
-class SynthEngine : public AudioStream {
+class SynthEngine {
 public:
-  SynthEngine()
-    : AudioStream(0, NULL) {
-    // any extra initialization
-  }
+  SynthEngine() {}
 
   void buildEngine(std::vector<SynthParameters*>, StaticSignal *bpm);
+  void renderBlock(double** outputs, int nFrames, int nChannels);
   //void buildEngine(std::vector<SynthParameters*> allParams);
 
   // destruction:
   // - destroy all Signals in registry
   // - destroy all paramInfos in Menu
-
-  virtual void update(void);
 
   int getNbParts() {
     return nbParts;
@@ -1849,9 +1853,9 @@ public:
   // mark those voices as active that are needed
   void markRequiredSignals() {
 
-    Serial.println("markRequiredSignals");
-    Serial.print("number total registered signals: ");
-    Serial.println(registry.nbSignals);
+    CBLog.println("markRequiredSignals");
+    CBLog.print("number total registered signals: ");
+    CBLog.println(registry.nbSignals);
 
     registry.nbActiveSignals = 0;
 
@@ -1863,8 +1867,8 @@ public:
       }
     }
 
-    Serial.print("number signals marked as active: ");
-    Serial.println(registry.nbActiveSignals);
+    CBLog.print("number signals marked as active: ");
+    CBLog.println(registry.nbActiveSignals);
   }
 
   Registry registry;  // put it here for debugging
@@ -1875,7 +1879,7 @@ public:
     return parts[partId];
   }
 
-private:
+protected:
 
   // for each voice:
   // the main outputsignal

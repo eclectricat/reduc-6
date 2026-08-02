@@ -1,8 +1,8 @@
 #include "Modes.h"
 #include "SynthEngine.h"
-#include <LiquidCrystal.h>
 #include <ArduinoJson.h>
-#include <SD.h>
+#include <string>
+#include <vector>
 
 static const char *kCookieBoxSaveDir = "/CookieBoxV2";
 static const char *kPatchPrefix = "Patch_";
@@ -10,148 +10,148 @@ static const char *kProgramPrefix = "Program_";
 static const char *kSaveExtension = ".cb2";
 static const size_t kLineJsonDocSize = 1024;
 
-static bool ensureSaveDirectory() {
-  if (SD.exists(kCookieBoxSaveDir)) return true;
-  return SD.mkdir(kCookieBoxSaveDir);
+static bool ensureSaveDirectory(Storage *storage) {
+  if (!storage) return false;
+  if (storage->exists(kCookieBoxSaveDir)) return true;
+  return storage->mkdir(kCookieBoxSaveDir);
 }
 
-static bool writeJsonLine(File &dataFile, JsonDocument &doc) {
-  if (!dataFile) return false;
+static bool writeJsonLine(std::vector<std::string> &outLines, JsonDocument &doc) {
   if (doc.overflowed()) {
-    Serial.println("JSON serialize overflow");
+    CBLog.println("JSON serialize overflow");
     return false;
   }
-  size_t bytes = serializeJson(doc, dataFile);
+  std::string line;
+  size_t bytes = serializeJson(doc, line);
   if (bytes == 0) {
     if (doc.overflowed()) {
-      Serial.println("JSON serialize overflow");
+      CBLog.println("JSON serialize overflow");
     }
     return false;
   }
-  dataFile.write('\n');
+  outLines.push_back(line);
   return true;
 }
 
-static String patchSlotFilename(int bank, int patch) {
-  return String(kCookieBoxSaveDir) + "/" + String(kPatchPrefix) + bank + "_" + patch + String(kSaveExtension);
+static bool writeLinesToStorage(Storage *storage, const std::string &path, const std::vector<std::string> &lines) {
+  if (!storage) return false;
+  storage->remove(path);
+  return storage->writeLines(path, lines);
 }
 
-static String programSlotFilename(int bank, int patch) {
-  return String(kCookieBoxSaveDir) + "/" + String(kProgramPrefix) + bank + "_" + patch + String(kSaveExtension);
+static bool readLinesFromStorage(Storage *storage, const std::string &path, std::vector<std::string> &outLines) {
+  if (!storage) return false;
+  return storage->readLines(path, outLines);
 }
 
-static bool patchSlotTaken(int bank, int patch) {
-  return SD.exists(patchSlotFilename(bank, patch).c_str());
+static std::string patchSlotFilename(int bank, int patch) {
+  return std::string(kCookieBoxSaveDir) + "/" + kPatchPrefix + std::to_string(bank) + "_" + std::to_string(patch) + kSaveExtension;
 }
 
-static bool programSlotTaken(int bank, int patch) {
-  return SD.exists(programSlotFilename(bank, patch).c_str());
+static std::string programSlotFilename(int bank, int patch) {
+  return std::string(kCookieBoxSaveDir) + "/" + kProgramPrefix + std::to_string(bank) + "_" + std::to_string(patch) + kSaveExtension;
 }
 
 static bool slotCacheInitialized = false;
 static bool patchSlotCache[100] = {false};
 static bool programSlotCache[100] = {false};
 
-static void refreshSaveSlotCache() {
+static void refreshSaveSlotCache(Storage *storage) {
   for (int i = 0; i < 100; i++) {
     patchSlotCache[i] = false;
     programSlotCache[i] = false;
   }
 
-  if (!ensureSaveDirectory()) {
+  if (!ensureSaveDirectory(storage)) {
     slotCacheInitialized = true;
     return;
   }
 
-  File dir = SD.open(kCookieBoxSaveDir);
-  if (!dir) {
+  std::vector<std::string> entries;
+  if (!storage->listDir(kCookieBoxSaveDir, entries)) {
     slotCacheInitialized = true;
     return;
   }
 
-  File entry = dir.openNextFile();
-  while (entry) {
-    String name = entry.name();
-    if (name.startsWith(kPatchPrefix) && name.endsWith(kSaveExtension)) {
-      String core = name.substring(strlen(kPatchPrefix), name.length() - strlen(kSaveExtension));
-      int sep = core.indexOf('_');
-      if (sep > 0) {
-        int bank = core.substring(0, sep).toInt();
-        int patch = core.substring(sep + 1).toInt();
+  for (const std::string &name : entries) {
+    if (name.rfind(kPatchPrefix, 0) == 0 && name.size() > strlen(kPatchPrefix) + strlen(kSaveExtension) && name.compare(name.size() - strlen(kSaveExtension), strlen(kSaveExtension), kSaveExtension) == 0) {
+      std::string core = name.substr(strlen(kPatchPrefix), name.size() - strlen(kPatchPrefix) - strlen(kSaveExtension));
+      size_t sep = core.find('_');
+      if (sep != std::string::npos) {
+        int bank = std::stoi(core.substr(0, sep));
+        int patch = std::stoi(core.substr(sep + 1));
         if (bank >= 0 && bank < 10 && patch >= 0 && patch < 10) {
           patchSlotCache[bank * 10 + patch] = true;
         }
       }
-    } else if (name.startsWith(kProgramPrefix) && name.endsWith(kSaveExtension)) {
-      String core = name.substring(strlen(kProgramPrefix), name.length() - strlen(kSaveExtension));
-      int sep = core.indexOf('_');
-      if (sep > 0) {
-        int bank = core.substring(0, sep).toInt();
-        int patch = core.substring(sep + 1).toInt();
+    } else if (name.rfind(kProgramPrefix, 0) == 0 && name.size() > strlen(kProgramPrefix) + strlen(kSaveExtension) && name.compare(name.size() - strlen(kSaveExtension), strlen(kSaveExtension), kSaveExtension) == 0) {
+      std::string core = name.substr(strlen(kProgramPrefix), name.size() - strlen(kProgramPrefix) - strlen(kSaveExtension));
+      size_t sep = core.find('_');
+      if (sep != std::string::npos) {
+        int bank = std::stoi(core.substr(0, sep));
+        int patch = std::stoi(core.substr(sep + 1));
         if (bank >= 0 && bank < 10 && patch >= 0 && patch < 10) {
           programSlotCache[bank * 10 + patch] = true;
         }
       }
     }
-    entry.close();
-    entry = dir.openNextFile();
   }
-  dir.close();
+
   slotCacheInitialized = true;
 }
 
-static bool patchSlotCached(int bank, int patch) {
-  if (!slotCacheInitialized) refreshSaveSlotCache();
+static bool patchSlotCached(Storage *storage, int bank, int patch) {
+  if (!slotCacheInitialized) refreshSaveSlotCache(storage);
   if (bank < 0 || bank >= 10 || patch < 0 || patch >= 10) return false;
   return patchSlotCache[bank * 10 + patch];
 }
 
-static bool programSlotCached(int bank, int patch) {
-  if (!slotCacheInitialized) refreshSaveSlotCache();
+static bool programSlotCached(Storage *storage, int bank, int patch) {
+  if (!slotCacheInitialized) refreshSaveSlotCache(storage);
   if (bank < 0 || bank >= 10 || patch < 0 || patch >= 10) return false;
   return programSlotCache[bank * 10 + patch];
 }
 
-static void writeParameterLines(File &dataFile, Mode *mode, int paramsIdx, const char *kind, int logicalPartId) {
+static void writeParameterLines(std::vector<std::string> &outLines, Mode *mode, int paramsIdx, const char *kind, int logicalPartId) {
   SynthParameters *params = mode->allSynthParameters[paramsIdx];
   int nbLanes = params->getNbLanes();
   for (int lane = 0; lane < nbLanes; lane++) {
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
       std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+      for (int elementId = 0; elementId < (int)pOnPage->size(); elementId++) {
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         StaticJsonDocument<kLineJsonDocSize> lineDoc;
         lineDoc["kind"] = kind;
         lineDoc["part"] = logicalPartId;
         lineDoc["name"] = pinfo->getUniqueName();
         lineDoc["value"] = pinfo->getValue();
-        writeJsonLine(dataFile, lineDoc);
+        writeJsonLine(outLines, lineDoc);
       }
     }
   }
 }
 
-static void writePatchParameterLines(File &dataFile, Mode *mode, int partId) {
+static void writePatchParameterLines(std::vector<std::string> &outLines, Mode *mode, int partId) {
   SynthParameters *params = mode->allSynthParameters[partId];
   int nbLanes = params->getNbLanes();
   for (int lane = 0; lane < nbLanes; lane++) {
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
       std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+      for (int elementId = 0; elementId < (int)pOnPage->size(); elementId++) {
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         StaticJsonDocument<kLineJsonDocSize> lineDoc;
         lineDoc["kind"] = "patch-param";
         lineDoc["name"] = pinfo->getUniqueName();
         lineDoc["value"] = pinfo->getValue();
-        writeJsonLine(dataFile, lineDoc);
+        writeJsonLine(outLines, lineDoc);
       }
     }
   }
 }
 
-static void writeSequencerNoteLine(File &dataFile, GlobalState *globalState, int partId, int patternId, int step, const NoteEntry &note) {
+static void writeSequencerNoteLine(std::vector<std::string> &outLines, GlobalState *globalState, int partId, int patternId, int step, const NoteEntry &note) {
   StaticJsonDocument<kLineJsonDocSize> lineDoc;
   lineDoc["kind"] = "program-sequencer-note";
   lineDoc["part"] = partId;
@@ -164,28 +164,28 @@ static void writeSequencerNoteLine(File &dataFile, GlobalState *globalState, int
   JsonArray locks = lineDoc["locks"].to<JsonArray>();
   int32_t lockNode = note.lockHead;
   while (lockNode != -1) {
-    JsonObject oneLock = locks.add<JsonObject>();
+    JsonObject oneLock = locks.createNestedObject();
     oneLock["name"] = globalLockNodes[lockNode].param->getUniqueName();
     oneLock["value"] = globalLockNodes[lockNode].value;
     lockNode = globalLockNodes[lockNode].next;
   }
-  writeJsonLine(dataFile, lineDoc);
+  writeJsonLine(outLines, lineDoc);
 }
 
-static void writeProgramFile(File &dataFile, GlobalState *globalState) {
+static void writeProgramFile(std::vector<std::string> &outLines, GlobalState *globalState) {
   StaticJsonDocument<kLineJsonDocSize> headerDoc;
   headerDoc["kind"] = "program-header";
   headerDoc["format"] = "CookieBoxV2";
   headerDoc["version"] = 1;
-  writeJsonLine(dataFile, headerDoc);
+  writeJsonLine(outLines, headerDoc);
 
   for (int i = 0; i < NB_PARTS; i++) {
-    writeParameterLines(dataFile, &globalState->partConfigMode, i, "program-part-config", i);
+    writeParameterLines(outLines, &globalState->partConfigMode, i, "program-part-config", i);
   }
 
   for (int i = 0; i < NB_PARTS; i++) {
     int effPartId = globalState->synthMode.effectivePartId(i);
-    writeParameterLines(dataFile, &globalState->synthMode, effPartId, "program-part-param", i);
+    writeParameterLines(outLines, &globalState->synthMode, effPartId, "program-part-param", i);
   }
 
   for (int patternId = 0; patternId < NB_PATTERNS; patternId++) {
@@ -195,7 +195,7 @@ static void writeProgramFile(File &dataFile, GlobalState *globalState) {
         int32_t noteIndex = s->steps[step];
         if (noteIndex == -1) continue;
         const NoteEntry &note = globalNotes[noteIndex];
-        writeSequencerNoteLine(dataFile, globalState, partId, patternId, step, note);
+        writeSequencerNoteLine(outLines, globalState, partId, patternId, step, note);
       }
     }
   }
@@ -212,41 +212,27 @@ static void clearAllSequences(GlobalState *globalState) {
   }
 }
 
-static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
+static void loadProgramNewFormat(const std::vector<std::string> &lines, GlobalState *globalState) {
   clearAllSequences(globalState);
 
-  Serial.println("Loading program from file...");
+  CBLog.println("Loading program from file...");
 
   bool configApplied = false;
 
-  char lineBuffer[1024];
-  while (dataFile.available()) {
-    size_t len = dataFile.readBytesUntil('\n', lineBuffer, sizeof(lineBuffer) - 1);
-    lineBuffer[len] = '\0';
-
-    if (len == 0) continue;
-    if (len == sizeof(lineBuffer) - 1) {
-      Serial.println("Skipped overlong JSON line");
-      int c;
-      while (dataFile.available() && (c = dataFile.read()) != '\n' && c != -1) {}
-      continue;
-    }
-
-    Serial.print("Read line: ");
-    Serial.println(lineBuffer);
+  for (const std::string &line : lines) {
+    if (line.empty()) continue;
 
     StaticJsonDocument<kLineJsonDocSize> lineDoc;
-    DeserializationError err = deserializeJson(lineDoc, lineBuffer);
+    DeserializationError err = deserializeJson(lineDoc, line);
     if (err) {
-      Serial.print("JSON parse error: ");
-      Serial.println(err.c_str());
+      CBLog.print("JSON parse error: ");
+      CBLog.println(err.c_str());
       continue;
     }
 
     const char *kind = lineDoc["kind"];
     if (!kind) continue;
 
-    // Transition from config lines to parameter/note lines: apply configuration first
     if (!configApplied && (strcmp(kind, "program-part-param") == 0 || strcmp(kind, "program-sequencer-note") == 0)) {
       globalState->partConfigMode.resetEngineTypeAndVoices();
       configApplied = true;
@@ -254,34 +240,32 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
 
     if (strcmp(kind, "program-part-config") == 0) {
       int partId = lineDoc["part"];
-      String name = lineDoc["name"].as<String>();
+      std::string name = lineDoc["name"].as<std::string>();
       float value = lineDoc["value"];
       ParameterInfo *param = globalState->partConfigMode.getParameterByNameAndPart(name, partId);
       if (param) {
         param->setValue(value);
-        Serial.print("Applied part config ");   
-      } else
-      {
-        Serial.print("Warning: no parameter found for part config line: ");
-        Serial.println(name);
+        CBLog.print("Applied part config ");
+      } else {
+        CBLog.print("Warning: no parameter found for part config line: ");
+        CBLog.println(name.c_str());
       }
       continue;
     }
 
     if (strcmp(kind, "program-part-param") == 0) {
       int partId = lineDoc["part"];
-      String name = lineDoc["name"].as<String>();
+      std::string name = lineDoc["name"].as<std::string>();
       float value = lineDoc["value"];
       int effPartId = globalState->synthMode.effectivePartId(partId);
       ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(name, effPartId);
       if (param) {
         param->setValue(value);
-        Serial.print("Applied part param ");   
-      } else
-      {
-        Serial.print("Warning: no parameter found for part param line: ");
-        Serial.println(name);
-      } 
+        CBLog.print("Applied part param ");
+      } else {
+        CBLog.print("Warning: no parameter found for part param line: ");
+        CBLog.println(name.c_str());
+      }
       continue;
     }
 
@@ -300,7 +284,7 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
         Sequence::clearNoteLocks(existingNoteIndex);
         Sequence::freeGlobalNoteIndex(existingNoteIndex);
         s->steps[step] = -1;
-        Serial.print("Warning: overwriting existing note at pattern ");
+        CBLog.print("Warning: overwriting existing note at pattern ");
       }
 
       NoteEntry note;
@@ -318,15 +302,15 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
         JsonArray locks = lineDoc["locks"].as<JsonArray>();
         int effPartId = globalState->synthMode.effectivePartId(partId);
         for (JsonObject lockEntry : locks) {
-          String lockName = lockEntry["name"].as<String>();
+          std::string lockName = lockEntry["name"].as<std::string>();
           float lockValue = lockEntry["value"];
           ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(lockName, effPartId);
           if (param) {
             Sequence::addOrUpdateNoteLock(noteIndex, param, lockValue);
-            Serial.print("Applied lock for note at pattern ");
+            CBLog.print("Applied lock for note at pattern ");
           } else {
-            Serial.print("Warning: no parameter found for lock line: ");
-            Serial.println(lockName);
+            CBLog.print("Warning: no parameter found for lock line: ");
+            CBLog.println(lockName.c_str());
           }
         }
       }
@@ -334,39 +318,28 @@ static void loadProgramNewFormat(File &dataFile, GlobalState *globalState) {
     }
   }
 
-  // Ensure config is applied even if no params or notes were in the file
   if (!configApplied) {
     globalState->partConfigMode.resetEngineTypeAndVoices();
   }
 }
 
-static void loadPatchNewFormat(File &dataFile, GlobalState *globalState, int selectedPart) {
+static void loadPatchNewFormat(const std::vector<std::string> &lines, GlobalState *globalState, int selectedPart) {
   int effPartId = globalState->synthMode.effectivePartId(selectedPart);
-  char lineBuffer[1024];
-  while (dataFile.available()) {
-    size_t len = dataFile.readBytesUntil('\n', lineBuffer, sizeof(lineBuffer) - 1);
-    lineBuffer[len] = '\0';
-    if (len == 0) continue;
-    if (len == sizeof(lineBuffer) - 1) {
-      Serial.println("Skipped overlong JSON line");
-      int c;
-      while (dataFile.available() && (c = dataFile.read()) != '\n' && c != -1) {}
-      continue;
-    }
+  for (const std::string &line : lines) {
+    if (line.empty()) continue;
 
     StaticJsonDocument<kLineJsonDocSize> lineDoc;
-    DeserializationError err = deserializeJson(lineDoc, lineBuffer);
+    DeserializationError err = deserializeJson(lineDoc, line);
     if (err) {
-      Serial.print("JSON parse error: ");
-      Serial.println(err.c_str());
+      CBLog.print("JSON parse error: ");
+      CBLog.println(err.c_str());
       continue;
     }
 
     const char *kind = lineDoc["kind"];
-    if (!kind) continue;
-    if (strcmp(kind, "patch-param") != 0) continue;
+    if (!kind || strcmp(kind, "patch-param") != 0) continue;
 
-    String name = lineDoc["name"].as<String>();
+    std::string name = lineDoc["name"].as<std::string>();
     float value = lineDoc["value"];
     ParameterInfo *param = globalState->synthMode.getParameterByNameAndPart(name, effPartId);
     if (param) param->setValue(value);
@@ -378,8 +351,8 @@ int freeram() {
 }
 
 
-GlobalState::GlobalState(SynthEngine *engine, LiquidCrystal *lcd)
-  : synthMode(lcd), partConfigMode(lcd), sequencerMode(lcd, engine), mixMuteMode(lcd), sequencerModeGraphic(lcd), keyboardMode(lcd) {
+GlobalState::GlobalState(SynthEngine *engine, Display *display)
+  : synthMode(display), partConfigMode(display), sequencerMode(display, engine), sequencerModeGraphic(display), mixMuteMode(display), keyboardMode(display) {
   this->engine = engine;
 
   for (int p = 0; p < NB_PARTS; p++) {
@@ -399,12 +372,12 @@ void GlobalState::myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
   }
 
   channel = synthMode.effectivePartId(channel - 1) + 1;
-  Serial.print("Note On, ch=");
-  Serial.print(channel, DEC);
-  Serial.print(", note=");
-  Serial.print(note, DEC);
-  Serial.print(", velocity=");
-  Serial.println(velocity, DEC);
+  CBLog.print("Note On, ch=");
+  CBLog.print(channel, DEC);
+  CBLog.print(", note=");
+  CBLog.print(note, DEC);
+  CBLog.print(", velocity=");
+  CBLog.println(velocity, DEC);
   engine->noteOn(channel, note, velocity);
   //digitalWrite(led1Pin, HIGH);
 }
@@ -413,12 +386,12 @@ void GlobalState::myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
   // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
   // to read which of the virtual MIDI cables received this message.
   channel = channel + 6 * this->partConfigMode.partTypes[channel - 1];  //
-  Serial.print("Note Off, ch=");
-  Serial.print(channel, DEC);
-  Serial.print(", note=");
-  Serial.print(note, DEC);
-  Serial.print(", velocity=");
-  Serial.println(velocity, DEC);
+  CBLog.print("Note Off, ch=");
+  CBLog.print(channel, DEC);
+  CBLog.print(", note=");
+  CBLog.print(note, DEC);
+  CBLog.print(", velocity=");
+  CBLog.println(velocity, DEC);
   engine->noteOff(channel, note, velocity);
 
   //digitalWrite(led1Pin, LOW);
@@ -441,40 +414,52 @@ void GlobalState::setup() {
   }
 
   for (int i = 0; i < this->engine->getNbParts(); i++) {
-    Serial.println("created synth parameters");
+    CBLog.println("created synth parameters");
     partConfigMode.allSynthParameters.push_back(new SynthParameters());  // one for every logical part
     //sequences.push_back(new Sequence());
   }
 
-  Serial.print("patterns: ");
+  CBLog.print("patterns: ");
 
-  Serial.println(patterns.size());
-  Serial.println(patterns[0].size());
+  CBLog.println(patterns.size());
+  CBLog.println(patterns[0].size());
   for (int pat = 0; pat < NB_PATTERNS; pat++) {
     //patterns.push_back(std::vector<Sequence*>());
     for (int track = 0; track < this->engine->getNbParts(); track++) {
       //patterns[pat].push_back(new Sequence());
       //patterns[pat][track] = new Sequence();
-      Serial.println("create sequence:");
-      Serial.println(pat);
-      Serial.println(track);
-      Serial.println(freeram());
-      Serial.println(patterns[pat][track] == NULL);
+      CBLog.println("create sequence:");
+      CBLog.println(pat);
+      CBLog.println(track);
+      CBLog.println(freeram());
+      CBLog.println(patterns[pat][track] == NULL);
       patterns[pat][track] = new Sequence();
     }
   }
 
-  this->delayedDisplayRefresh = millis() + 2000;
+  this->delayedDisplayRefresh = System::millis() + 2000;
 }
 
-SynthMode::SynthMode(LiquidCrystal *lcd) {
-  this->lcd = lcd;
+void GlobalState::setStorage(Storage* s) {
+  this->storage = s;
+}
+
+void GlobalState::setAudio(Audio* a) {
+  this->audio = a;
+}
+
+void GlobalState::setMidi(Midi* m) {
+  this->midi = m;
+}
+
+SynthMode::SynthMode(Display *display) {
+  this->display = display;
 }
 
 void SynthMode::setup() {
-  Serial.println("getting initial page");
+  CBLog.println("getting initial page");
   currentMenuPage = allSynthParameters[effectivePartId(0)]->getPage(0, 0);
-  Serial.println("got initial page");
+  CBLog.println("got initial page");
 }
 
 void PartConfigMode::setup() {
@@ -491,8 +476,8 @@ void PartConfigMode::setup() {
 
   seqActionDest = new StaticSignalDiscrete(NULL, 0);
   seqActionOp = new StaticSignalDiscrete(NULL, 0);
-  std::vector<String> destinations = {"seq", "ptn"};
-  std::vector<String> actions = {"clr", "cop", "pas"};
+  std::vector<std::string> destinations = {"seq", "ptn"};
+  std::vector<std::string> actions = {"clr", "cop", "pas"};
 
   /*ParameterInfo *pSave = new ParameterInfoDiscrete("SAV", 0, 9, dummyS, "SAV");
   ParameterInfo *pLoad = new ParameterInfoDiscrete("LOD", 0, 9, dummyS, "LOD");
@@ -546,9 +531,9 @@ void PartConfigMode::setup() {
     allSynthParameters[p]->addPage(vector<ParameterInfo *>{ pSaveGlobal, pGlobalBankSave, pGlobalProgSave, pQuestion }, 5);
   }
 
-  Serial.println("Part info mode: getting initial page");
+  CBLog.println("Part info mode: getting initial page");
   currentMenuPage = allSynthParameters[0]->getPage(0, 0);
-  Serial.println("got initial page");
+  CBLog.println("got initial page");
 }
 
 void MixMuteMode::setup() {
@@ -567,16 +552,16 @@ void MixMuteMode::setup() {
 
     //char[] name = "Vx  ";
     //sprintf(name[1], "%d", p);
-    ParameterInfo *pPatternVolume = new ParameterInfo("V" + String(p), 0, 1, globalState->engine->partVolumes[p], "partVolume" + String(p));
-    ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p], "playProb" + String(p));
-    ParameterInfo *pMute = new ParameterInfoDiscrete("On ", 0, 1, globalState->sequencerMode.sequencerActive[p], "UnMuted" + String(p));
+    ParameterInfo *pPatternVolume = new ParameterInfo("V" + std::to_string(p), 0, 1, globalState->engine->partVolumes[p], "partVolume" + std::to_string(p));
+    ParameterInfo *pPlayingProb = new ParameterInfo("prb", 0, 1, globalState->playingProb[p], "playProb" + std::to_string(p));
+    ParameterInfo *pMute = new ParameterInfoDiscrete("On ", 0, 1, globalState->sequencerMode.sequencerActive[p], "UnMuted" + std::to_string(p));
     allSynthParameters[0]->addPage(vector<ParameterInfo *>{ pPatternVolume, pMute, pDummy, pPlayingProb }, p);
     armedForMuteToggle[p] = 0;
   }
 
-  Serial.println("MixMuteMode info mode: getting initial page");
+  CBLog.println("MixMuteMode info mode: getting initial page");
   currentMenuPage = allSynthParameters[0]->getPage(0, 0);
-  Serial.println("got initial page");
+  CBLog.println("got initial page");
 }
 
 int Mode::effectivePartId(int partId) {  // map from logical part id 0-5 to effective partId for synthEngine
@@ -600,14 +585,14 @@ bool MixMuteMode::pushButtonReleased(int buttonIndex) {
     armedForMuteToggle[buttonIndex] = 0;
 
     int paramPos = 1;  // position of this parameter on display
-    lcd->setCursor(4 * paramPos, 1);
-    lcd->print("    ");
-    lcd->setCursor(4 * paramPos, 1);
+    display->setCursor(4 * paramPos, 1);
+    display->print("    ");
+    display->setCursor(4 * paramPos, 1);
 
     char buffer[] = "____";
     currentMenuPage->at(paramPos)->renderPrintableValue(buffer);
-    lcd->print(buffer);
-    //lcd->print(currentMenuPage->at(paramPos)->printableValue());
+    display->print(buffer);
+    //display->print(currentMenuPage->at(paramPos)->printableValue());
   }
   return true;
 }
@@ -619,15 +604,15 @@ void Mode::processPotValue(int potIndex, int potVal, bool updateDisplay) {
   // only refresh if value changed, and print all 4 digits in one go
 
   if (updateDisplay) {
-    //lcd->setCursor(4 * potIndex, 1);
-    //lcd->print("    ");
-    //lcd->setCursor(4 * potIndex, 1);
-    //lcd->print(currentMenuPage->at(potIndex)->printableValue());
+    //display->setCursor(4 * potIndex, 1);
+    //display->print("    ");
+    //display->setCursor(4 * potIndex, 1);
+    //display->print(currentMenuPage->at(potIndex)->printableValue());
 
-    lcd->setCursor(4 * potIndex, 1);
+    display->setCursor(4 * potIndex, 1);
     char buffer[] = "____";
     currentMenuPage->at(potIndex)->renderPrintableValue(buffer);
-    lcd->print(buffer);
+    display->print(buffer);
   }
 }
 
@@ -645,59 +630,59 @@ int Mode::handleGenericPushButtonEvents(int buttonIndex) {
   }
 
   if (globalState->pPressed) {  // mode switch
-    Serial.println("mode switch");
+    CBLog.println("mode switch");
 
     if ((buttonIndex == 0) && (globalState->selectedMode != &(globalState->sequencerMode))) {
       globalState->selectedMode = &(globalState->sequencerMode);
-      lcd->setCursor(0, 0);
-      lcd->print("  SEQUENCER         ");
+      display->setCursor(0, 0);
+      display->print("  SEQUENCER         ");
       globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 0) {  // state is already sequencer
       globalState->selectedMode = &(globalState->sequencerModeGraphic);
-      lcd->setCursor(0, 0);
-      lcd->print("  SEQ GRAPHIC    ");
+      display->setCursor(0, 0);
+      display->print("  SEQ GRAPHIC    ");
       globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 3) {
       globalState->selectedMode = &(globalState->partConfigMode);
-      lcd->setCursor(0, 0);
-      lcd->print("  PART CONFIG      ");
+      display->setCursor(0, 0);
+      display->print("  PART CONFIG      ");
       globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 1) {
       globalState->selectedMode = &(globalState->synthMode);
-      lcd->setCursor(0, 0);
-      lcd->print("  SYNTH         ");
+      display->setCursor(0, 0);
+      display->print("  SYNTH         ");
       globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 2) {
       globalState->selectedMode = &(globalState->mixMuteMode);
-      lcd->setCursor(0, 0);
-      lcd->print("  MIX/MUTE      ");
+      display->setCursor(0, 0);
+      display->print("  MIX/MUTE      ");
       globalState->selectedMode->postPartOrModeSwitch();
     } else if (buttonIndex == 7) {
       globalState->selectedMode = &(globalState->keyboardMode);
-      lcd->setCursor(0, 0);
-      lcd->print("  KEYBOARD      ");
+      display->setCursor(0, 0);
+      display->print("  KEYBOARD      ");
       //globalState->selectedMode->postPartOrModeSwitch();
     }
 
-    this->globalState->delayedDisplayRefresh = millis() + 1000;
+    this->globalState->delayedDisplayRefresh = System::millis() + 1000;
 
     return 2;
   }
 
   if ((globalState->shiftPressed) && (buttonIndex < NB_PARTS)) {  // part switch
-    Serial.println("part switch");
+    CBLog.println("part switch");
 
     globalState->selectedPart = buttonIndex;  
 
     postPartOrModeSwitch();  //this->currentMenuPage = allSynthParameters[globalState->selectedPart]->getPage(selectedLane, selectedPage);
     //fullDisplayUpdate();
-    lcd->setCursor(0, 0);
-    lcd->print("Part ");
-    lcd->setCursor(5, 0);
-    lcd->print(buttonIndex + 1);
-    lcd->setCursor(6, 0);
-    lcd->print("               ");
-    this->globalState->delayedDisplayRefresh = millis() + 1000;
+    display->setCursor(0, 0);
+    display->print("Part ");
+    display->setCursor(5, 0);
+    display->print(buttonIndex + 1);
+    display->setCursor(6, 0);
+    display->print("               ");
+    this->globalState->delayedDisplayRefresh = System::millis() + 1000;
 
     return 2;
   }
@@ -735,19 +720,19 @@ bool Mode::pushButtonPressed(int buttonIndex) {
 
   if (synthParameters->existPage(selectedLane, selectedPage)) {
     currentMenuPage = synthParameters->getPage(selectedLane, selectedPage);
-    Serial.print("Selected param:");
-    /*lcd->clear();
+    CBLog.print("Selected param:");
+    /*display->clear();
     for (unsigned int p = 0; p < currentMenuPage.size(); p++) {
-      Serial.print(currentMenuPage.at(p)->getName());
-      Serial.print("__");
+      CBLog.print(currentMenuPage.at(p)->getName());
+      CBLog.print("__");
 
-      lcd->setCursor(4 * p, 0);
-      lcd->print(currentMenuPage.at(p)->getName());
-      lcd->setCursor(4 * p, 1);
-      lcd->print(currentMenuPage.at(p)->printableValue());
+      display->setCursor(4 * p, 0);
+      display->print(currentMenuPage.at(p)->getName());
+      display->setCursor(4 * p, 1);
+      display->print(currentMenuPage.at(p)->printableValue());
     }*/
     fullDisplayUpdate();
-    Serial.println("");
+    CBLog.println("");
     return true;
   }
 
@@ -755,28 +740,28 @@ bool Mode::pushButtonPressed(int buttonIndex) {
 }
 
 void Mode::confirmationDisplayNotification() {
-  int now = millis() / 500;  // in half seconds
+  int now = System::millis() / 500;  // in half seconds
   if (now != this->lastConfDisplayUpdate) {
-    lcd->setCursor(4 * 3, 0);
+    display->setCursor(4 * 3, 0);
     if (2 * (now / 2) == now) {
-      lcd->print("    ");
+      display->print("    ");
     } else {
-      lcd->print("???");
+      display->print("???");
     }
   }
 }
 
 void Mode::handleConfirmed() {
   parameterRequestingConfirmation = NULL;
-  Serial.println("Confirmed");
-  lcd->setCursor(4 * 3, 0);
-  lcd->print("proc");
+  CBLog.println("Confirmed");
+  display->setCursor(4 * 3, 0);
+  display->print("proc");
 }
 void Mode::handleCancelled() {
   parameterRequestingConfirmation = NULL;
-  Serial.println("Cancelled");
-  lcd->setCursor(4 * 3, 0);
-  lcd->print("    ");
+  CBLog.println("Cancelled");
+  display->setCursor(4 * 3, 0);
+  display->print("    ");
 }
 
 // in conform mode, we only look at buttons 6 and 7
@@ -819,9 +804,9 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
 
   if (synthParameters->existPage(selectedLane, selectedPage)) {
     currentMenuPage = synthParameters->getPage(selectedLane, selectedPage);
-    Serial.print("Selected param:");
+    CBLog.print("Selected param:");
     fullDisplayUpdate();
-    Serial.println("");
+    CBLog.println("");
   }
 
   return true;
@@ -831,27 +816,25 @@ bool MixMuteMode::pushButtonPressed(int buttonIndex) {
 void PartConfigMode::handleConfirmed() {
   // find out WHAT was confirmed
   // we can look at the lane, or at the parameter that was asking for confirmation
-  String paramName = this->parameterRequestingConfirmation->getUniqueName();
+  std::string paramName = this->parameterRequestingConfirmation->getUniqueName();
   Mode::handleConfirmed();
 
   //if ((buttonIndex == 5)&&(selectedLaneBefore == 5)) {  // save current state
   if ((paramName == "PTCSave") || (paramName == "BNKSave")) {
-    if (!ensureSaveDirectory()) {
-      Serial.println("failed to create save dir");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+    if (!ensureSaveDirectory(globalState->storage)) {
+      CBLog.println("failed to create save dir");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
       return;
     }
 
     int effPartId = globalState->synthMode.effectivePartId(globalState->selectedPart);
-    String filename = String(kCookieBoxSaveDir) + "/" + String(kPatchPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
-    Serial.println(filename);
+    std::string filename = patchSlotFilename(this->selectedBank->getValueDiscrete(), this->selectedPatch->getValueDiscrete());
+    CBLog.println(filename.c_str());
 
-    SD.remove(filename.c_str());  // don't append to existing file
-    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-    if (dataFile) {
-      writePatchParameterLines(dataFile, &globalState->synthMode, effPartId);
-      dataFile.close();
+    std::vector<std::string> lines;
+    writePatchParameterLines(lines, &globalState->synthMode, effPartId);
+    if (writeLinesToStorage(globalState->storage, filename, lines)) {
       if (slotCacheInitialized) {
         int bank = this->selectedBank->getValueDiscrete();
         int patch = this->selectedPatch->getValueDiscrete();
@@ -859,13 +842,13 @@ void PartConfigMode::handleConfirmed() {
           patchSlotCache[bank * 10 + patch] = true;
         }
       }
-      Serial.println("wrote file");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("w-ok");
+      CBLog.println("wrote file");
+      display->setCursor(4 * 3, 0);
+      display->print("w-ok");
     } else {
-      Serial.println("error opening file for write");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+      CBLog.println("error opening file for write");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
     }
 
     /* Legacy JSON patch save for reference:
@@ -875,36 +858,31 @@ void PartConfigMode::handleConfirmed() {
     globalState->synthMode.serializePart(&obj, effPartId);
     char output[2560];
     int nbBytes = serializeJson(doc, output);
-    String filename = String("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
-    SD.remove(filename.c_str());
-    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-    if (dataFile) {
-      dataFile.println(output);
-      dataFile.close();
-    }
+    std::string filename = std::string("Patch_") + std::to_string(this->selectedBank->getValueDiscrete()) + "_" + std::to_string(this->selectedPatch->getValueDiscrete()) + ".json";
+    storage->remove(filename);
+    // File write example removed; using writeLinesToStorage instead if needed.
     */
   }
 
   if ((paramName == "PTCLoad") || (paramName == "BNKLoad")) {
-    String filename = String(kCookieBoxSaveDir) + "/" + String(kPatchPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
-    Serial.println(filename);
+    std::string filename = patchSlotFilename(this->selectedBank->getValueDiscrete(), this->selectedPatch->getValueDiscrete());
+    CBLog.println(filename.c_str());
 
-    File dataFile = SD.open(filename.c_str());
-    if (dataFile) {
-      Serial.println("reading patch file:");
-      loadPatchNewFormat(dataFile, globalState, globalState->selectedPart);
-      dataFile.close();
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("l-ok");
+    std::vector<std::string> lines;
+    if (readLinesFromStorage(globalState->storage, filename, lines)) {
+      CBLog.println("reading patch file:");
+      loadPatchNewFormat(lines, globalState, globalState->selectedPart);
+      display->setCursor(4 * 3, 0);
+      display->print("l-ok");
     } else {
-      Serial.println("error opening - patch does not exist");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+      CBLog.println("error opening - patch does not exist");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
     }
 
     /* Legacy JSON patch load for reference:
     JsonDocument doc;
-    String filename = String("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    std::string filename = std::string("Patch_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
     File dataFile = SD.open(filename.c_str());
     if (dataFile) {
       deserializeJson(doc, dataFile);
@@ -917,23 +895,21 @@ void PartConfigMode::handleConfirmed() {
   }
 
   if ((paramName == "GlobalBNKSave") || (paramName == "GlobalPRGSave")) {
-    Serial.println("save global prg");
+    CBLog.println("save global prg");
 
-    if (!ensureSaveDirectory()) {
-      Serial.println("failed to create save dir");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+    if (!ensureSaveDirectory(globalState->storage)) {
+      CBLog.println("failed to create save dir");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
       return;
     }
 
-    String filename = String(kCookieBoxSaveDir) + "/" + String(kProgramPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
-    Serial.println(filename);
+    std::string filename = programSlotFilename(this->selectedBank->getValueDiscrete(), this->selectedPatch->getValueDiscrete());
+    CBLog.println(filename.c_str());
 
-    SD.remove(filename.c_str());  // don't append to existing file
-    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-    if (dataFile) {
-      writeProgramFile(dataFile, globalState);
-      dataFile.close();
+    std::vector<std::string> lines;
+    writeProgramFile(lines, globalState);
+    if (writeLinesToStorage(globalState->storage, filename, lines)) {
       if (slotCacheInitialized) {
         int bank = this->selectedBank->getValueDiscrete();
         int patch = this->selectedPatch->getValueDiscrete();
@@ -941,13 +917,13 @@ void PartConfigMode::handleConfirmed() {
           programSlotCache[bank * 10 + patch] = true;
         }
       }
-      Serial.println("wrote file");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("w-ok");
+      CBLog.println("wrote file");
+      display->setCursor(4 * 3, 0);
+      display->print("w-ok");
     } else {
-      Serial.println("error opening file for write");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+      CBLog.println("error opening file for write");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
     }
 
     /* Legacy JSON program save for reference:
@@ -956,44 +932,39 @@ void PartConfigMode::handleConfirmed() {
     globalState->serializeProgram(&obj);
     char output[100000];
     int nbBytes = serializeJson(doc, output);
-    String filename = String("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
-    SD.remove(filename.c_str());
-    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
-    if (dataFile) {
-      dataFile.println(output);
-      dataFile.close();
-    }
+    std::string filename = std::string("Program_") + std::to_string(this->selectedBank->getValueDiscrete()) + "_" + std::to_string(this->selectedPatch->getValueDiscrete()) + ".json";
+    storage->remove(filename);
+    // File write example removed; using writeLinesToStorage instead if needed.
     */
   }
 
   if ((paramName == "GlobalBNKLoad") || (paramName == "GlobalPRGLoad")) {
-    Serial.println("load global prg");
-    String filename = String(kCookieBoxSaveDir) + "/" + String(kProgramPrefix) + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + String(kSaveExtension);
-    Serial.println(filename);
+    CBLog.println("load global prg");
+    std::string filename = programSlotFilename(this->selectedBank->getValueDiscrete(), this->selectedPatch->getValueDiscrete());
+    CBLog.println(filename.c_str());
 
-    Serial.print("RAM before:");
-    Serial.println(freeram());
+    CBLog.print("RAM before:");
+    CBLog.println(freeram());
 
-    File dataFile = SD.open(filename.c_str());
-    if (dataFile) {
-      Serial.println("reading program file:");
-      loadProgramNewFormat(dataFile, globalState);
-      dataFile.close();
+    std::vector<std::string> lines;
+    if (readLinesFromStorage(globalState->storage, filename, lines)) {
+      CBLog.println("reading program file:");
+      loadProgramNewFormat(lines, globalState);
 
-      Serial.print("RAM after:");
-      Serial.println(freeram());
+      CBLog.print("RAM after:");
+      CBLog.println(freeram());
 
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("l-ok");
+      display->setCursor(4 * 3, 0);
+      display->print("l-ok");
     } else {
-      Serial.println("error opening - program does not exist");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+      CBLog.println("error opening - program does not exist");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
     }
 
     /* Legacy JSON program load for reference:
     JsonDocument doc;
-    String filename = String("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
+    std::string filename = std::string("Program_") + this->selectedBank->getValueDiscrete() + "_" + this->selectedPatch->getValueDiscrete() + ".json";
     File dataFile = SD.open(filename.c_str());
     if (dataFile) {
       deserializeJson(doc, dataFile);
@@ -1006,19 +977,19 @@ void PartConfigMode::handleConfirmed() {
 
   if ((paramName == "nbVoices") || (paramName == "engineType")) {
     resetEngineTypeAndVoices();
-    lcd->setCursor(4 * 3, 0);
-    lcd->print("done");
+    display->setCursor(4 * 3, 0);
+    display->print("done");
   }
 
   if ((paramName == "actDst") || (paramName == "actOp")) {
     bool success = handleSeqAct();
     if (!success) {
-      Serial.println("error executing action");
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("err ");
+      CBLog.println("error executing action");
+      display->setCursor(4 * 3, 0);
+      display->print("err ");
     } else {
-      lcd->setCursor(4 * 3, 0);
-      lcd->print("done");
+      display->setCursor(4 * 3, 0);
+      display->print("done");
     }
   }
 
@@ -1063,13 +1034,13 @@ bool PartConfigMode::handleSeqAct() {
 }
 
 void PartConfigMode::resetEngineTypeAndVoices() {
-  Serial.println("resetting all engine Types and nbVoices");
+  CBLog.println("resetting all engine Types and nbVoices");
 
   // first disable all voices
   for (int p = 0; p < NB_PARTS; p++) {
     int partId = globalState->synthMode.effectivePartId(p);
-    Serial.print("effectivePartId ");
-    Serial.println(partId);
+    CBLog.print("effectivePartId ");
+    CBLog.println(partId);
     globalState->engine->getPart(partId)->setActiveNbVoices(0);
   }
 
@@ -1088,11 +1059,11 @@ void PartConfigMode::resetEngineTypeAndVoices() {
   for (int p = 0; p < NB_PARTS; p++) {
     int partId = globalState->synthMode.effectivePartId(p);
     int requestedVoices = nbVoicesParams[p]->getValueDiscrete();
-    Serial.print("effectivePartId ");
-    Serial.println(partId);
-    Serial.print("Engine ");
-    Serial.print(partTypes[p]);
-    Serial.print("/ nbVoices ");
+    CBLog.print("effectivePartId ");
+    CBLog.println(partId);
+    CBLog.print("Engine ");
+    CBLog.print(partTypes[p]);
+    CBLog.print("/ nbVoices ");
 
     if ((partTypes[p] == 1) && (requestedVoices > 1)) {
       requestedVoices = 1;
@@ -1102,14 +1073,14 @@ void PartConfigMode::resetEngineTypeAndVoices() {
     if (nbVoicesAssigned + requestedVoices <= maxVoiceAssign) {  // can give it all the requested voices
       globalState->engine->getPart(partId)->setActiveNbVoices(requestedVoices);
       nbVoicesAssigned += requestedVoices;
-      //Serial.println(requestedVoices);
+      //CBLog.println(requestedVoices);
     } else {  // give as many voices as we have left
       globalState->engine->getPart(partId)->setActiveNbVoices(maxVoiceAssign - nbVoicesAssigned);
       nbVoicesParams[p]->setValue(maxVoiceAssign - nbVoicesAssigned);  // reflect in parameter what is the actual voice number
-      //Serial.println(maxVoiceAssign - nbVoicesAssigned);
+      //CBLog.println(maxVoiceAssign - nbVoicesAssigned);
       nbVoicesAssigned = maxVoiceAssign;
     }
-    Serial.println(globalState->engine->getPart(partId)->getActiveNbVoices());
+    CBLog.println(globalState->engine->getPart(partId)->getActiveNbVoices());
   }
 
   globalState->engine->markRequiredSignals();
@@ -1118,18 +1089,18 @@ void PartConfigMode::resetEngineTypeAndVoices() {
 
 
 void Mode::fullDisplayUpdate() {
-  lcd->clear();
+  display->clear();
   for (unsigned int p = 0; p < currentMenuPage->size(); p++) {
-    Serial.print(currentMenuPage->at(p)->getName());
-    Serial.print("__");
+    CBLog.print(currentMenuPage->at(p)->getName().c_str());
+    CBLog.print("__");
 
-    lcd->setCursor(4 * p, 0);
-    lcd->print(currentMenuPage->at(p)->getName());
-    lcd->setCursor(4 * p, 1);
+    display->setCursor(4 * p, 0);
+    display->print(currentMenuPage->at(p)->getName().c_str());
+    display->setCursor(4 * p, 1);
     char buffer[] = "____";
     currentMenuPage->at(p)->renderPrintableValue(buffer);
-    lcd->print(buffer);
-    //lcd->print(currentMenuPage->at(p)->printableValue());
+    display->print(buffer);
+    //display->print(currentMenuPage->at(p)->printableValue());
   }
 }
 
@@ -1137,6 +1108,7 @@ bool SynthMode::pushButtonPressed(int buttonIndex) {
   Mode::pushButtonPressed(buttonIndex);
 
   if ((buttonIndex == 7) && (!globalState->shiftPressed) && (!globalState->pPressed)) {
+    CBLog.println("[Modes] SynthMode: button 7 (I) -> NoteOn 36");
     globalState->myNoteOn(globalState->selectedPart + 1, 36, 127);
   }
 
@@ -1160,6 +1132,7 @@ bool Mode::pushButtonReleased(int buttonIndex) {
 bool SynthMode::pushButtonReleased(int buttonIndex) {
   Mode::pushButtonReleased(buttonIndex);
   if (buttonIndex == 7) {
+    CBLog.println("[Modes] SynthMode: button 7 (I) -> NoteOff 36");
     globalState->myNoteOff(globalState->selectedPart + 1, 36, 127);
   }
   return false;
@@ -1193,19 +1166,19 @@ void PartConfigMode::updateFilExistenceFeedback() {
   if (!currentMenuPage) return;
   if (currentMenuPage->size() < 3) return;
 
-  if (!slotCacheInitialized) refreshSaveSlotCache();
+  if (!slotCacheInitialized) refreshSaveSlotCache(globalState->storage);
 
-  String actionName = currentMenuPage->at(0)->getName();
+  std::string actionName = currentMenuPage->at(0)->getName();
   bool isGlobal = (actionName == "GLD") || (actionName == "GSV");
   int bank = selectedBank->getValueDiscrete();
   int patch = selectedPatch->getValueDiscrete();
-  bool slotTaken = isGlobal ? programSlotCached(bank, patch) : patchSlotCached(bank, patch);
+  bool slotTaken = isGlobal ? programSlotCached(globalState->storage, bank, patch) : patchSlotCached(globalState->storage, bank, patch);
 
   char buffer[] = "____";
   currentMenuPage->at(2)->renderPrintableValue(buffer);
   buffer[3] = slotTaken ? '*' : '.';
-  lcd->setCursor(4 * 2, 1);
-  lcd->print(buffer);
+  display->setCursor(4 * 2, 1);
+  display->print(buffer);
 }
 
 void MixMuteMode::postPartOrModeSwitch() {
@@ -1278,26 +1251,26 @@ void SequencerMode::processLockParameter(int potIndex, int potVal) {
   ParameterInfo *lockParam = (*pis)[potIndex];
 
   // display locked value
-  lcd->setCursor(4 * potIndex, 1);
+  display->setCursor(4 * potIndex, 1);
   char buffer[] = "    ";
   lockParam->renderPrintableValueFromPotValue(buffer, potVal);
-  lcd->print(buffer);
+  display->print(buffer);
 
   int selectedPart = this->globalState->selectedPart;
   Sequence *s = this->globalState->patterns[globalState->selectedPattern][selectedPart];
   int32_t noteIndex = Sequence::ensureNoteAtStep(s, cursorPos);
   if (noteIndex == -1) {
-    Serial.println("failed to allocate note for lock");
+    CBLog.println("failed to allocate note for lock");
     return;
   }
 
   if (!Sequence::addOrUpdateNoteLock(noteIndex, lockParam, potVal)) {
-    Serial.println("all locking slots occupied");
+    CBLog.println("all locking slots occupied");
   } else {
-    Serial.print("locking parameter ");
-    Serial.print(lockParam->getName());
-    Serial.print(" on note index ");
-    Serial.println(noteIndex);
+    CBLog.print("locking parameter ");
+    CBLog.print(lockParam->getName().c_str());
+    CBLog.print(" on note index ");
+    CBLog.println(noteIndex);
   }
 }
 
@@ -1307,13 +1280,13 @@ void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
   param->updateParameter(potVal);
 
   // display locked value
-  lcd->setCursor(4 * potIndex, 1);
-  lcd->print("   ");
-  lcd->setCursor(4 * potIndex, 1);
+  display->setCursor(4 * potIndex, 1);
+  display->print("   ");
+  display->setCursor(4 * potIndex, 1);
   char buffer[] = "____";
   param->renderPrintableValue(buffer);
-  lcd->print(buffer);
-  //lcd->print(param->printableValue());
+  display->print(buffer);
+  //display->print(param->printableValue());
 }
 
 
@@ -1322,7 +1295,7 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
   // if in plock mode, pressing 'no'/6/part button deletes all plocks of the current step
   if (this->paramLockMode == 1) {
     if (buttonIndex == MODE_BUTTON) {
-      Serial.println("deleting plocks");
+      CBLog.println("deleting plocks");
       Sequence *s = this->globalState->patterns[globalState->selectedPattern][globalState->selectedPart];
       int32_t noteIndex = s->steps[cursorPos];
       if (noteIndex != -1) {
@@ -1377,10 +1350,10 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
       globalNotes[noteIndex].on = (int8_t)newValue;
     }
 
-    Serial.print("new value at position:");
-    Serial.print(cursorPos);
-    Serial.print(":");
-    Serial.println(newValue);
+    CBLog.print("new value at position:");
+    CBLog.print(cursorPos);
+    CBLog.print(":");
+    CBLog.println(newValue);
     displayOctAndNote();
   }
 
@@ -1400,7 +1373,7 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
     this->globalState->seqPlaying = !this->globalState->seqPlaying;
     if (this->globalState->seqPlaying) {
       this->playHead = 0;
-      this->nextTriggerTime = millis();  // 0; // means: in the next call a step 0 is going to be played
+      this->nextTriggerTime = System::millis();  // 0; // means: in the next call a step 0 is going to be played
     } else {                             // switch off current note
       // of all parts
       cleanUpAfterStop();
@@ -1466,9 +1439,9 @@ bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
 
 
 bool SequencerMode::pushButtonReleased(int buttonIndex) {
-  //Serial.print("pushButtonReleased seq mode:");
+  //CBLog.print("pushButtonReleased seq mode:");
   bool needToLock = Mode::pushButtonReleased(buttonIndex);
-  //Serial.println(buttonIndex);
+  //CBLog.println(buttonIndex);
   if (buttonIndex == 4) {
     this->paramLockMode = 0;
 
@@ -1482,7 +1455,7 @@ bool SequencerMode::pushButtonReleased(int buttonIndex) {
       int stepInPage = cursorPos % 8;
       cursorPos = page->getValueDiscrete() * 8 + stepInPage;
       if(!globalState->seqPlaying && sequencerPlaying->getValueDiscrete() == 1) {
-        this->nextTriggerTime = millis(); // avoid that all missed steps are played now
+        this->nextTriggerTime = System::millis(); // avoid that all missed steps are played now
       }
       globalState->seqPlaying = sequencerPlaying->getValueDiscrete() == 1;
       globalState->selectedPattern = selectedPattern->getValueDiscrete();
@@ -1506,7 +1479,7 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
       int stepInPage = seqMode->cursorPos % 8;
       seqMode->cursorPos = seqMode->page->getValueDiscrete() * 8 + stepInPage;
       if(!globalState->seqPlaying && seqMode->sequencerPlaying->getValueDiscrete() == 1) {
-        seqMode->nextTriggerTime = millis(); // avoid that all missed steps are played now
+        seqMode->nextTriggerTime = System::millis(); // avoid that all missed steps are played now
       }
       globalState->seqPlaying = seqMode->sequencerPlaying->getValueDiscrete() == 1;
       globalState->selectedPattern = seqMode->selectedPattern->getValueDiscrete();
@@ -1531,10 +1504,10 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
       globalNotes[noteIndex].on = (int8_t)newValue;
     }
 
-    Serial.print("new value at position:");
-    Serial.print(seqMode->cursorPos);
-    Serial.print(":");
-    Serial.println(newValue);
+    CBLog.print("new value at position:");
+    CBLog.print(seqMode->cursorPos);
+    CBLog.print(":");
+    CBLog.println(newValue);
   }
 
   //seqMode->displayStep();
@@ -1551,11 +1524,12 @@ bool SequencerModeGraphic::pushButtonReleased(int buttonIndex) {
 }
 
 void SequencerMode::fullDisplayUpdate() {
-  lcd->clear();
-  lcd->setCursor(0, 0);
+  display->clear();
+  display->setCursor(0, 0);
 
   // Part
-  lcd->print(String("P") + (this->globalState->selectedPart + 1));
+  display->print("P");
+  display->print(this->globalState->selectedPart + 1);
 
   displayStep();
 
@@ -1568,7 +1542,7 @@ void SequencerModeGraphic::fullDisplayUpdate() {
 }
 
 void SequencerMode::displayLockingParams() {
-  lcd->clear();
+  display->clear();
 
   for (unsigned int p = 0; p < 4; p++) {
     int effectivePartId = this->effectivePartId(globalState->selectedPart);
@@ -1576,35 +1550,35 @@ void SequencerMode::displayLockingParams() {
     std::vector<ParameterInfo *> *pis = this->globalState->synthMode.allSynthParameters[effectivePartId]->getPage(this->globalState->synthMode.selectedLane, this->globalState->synthMode.selectedPage);
     ParameterInfo *lockParam = (*pis)[p];
 
-    Serial.print(lockParam->getName());
-    Serial.print("__");
+    CBLog.print(lockParam->getName().c_str());
+    CBLog.print("__");
 
-    lcd->setCursor(4 * p, 0);
-    lcd->print(lockParam->getName());
-    lcd->setCursor(4 * p, 1);
+    display->setCursor(4 * p, 0);
+    display->print(lockParam->getName().c_str());
+    display->setCursor(4 * p, 1);
     char buffer[] = "____";
     lockParam->renderPrintableValue(buffer);
-    lcd->print(buffer);
-    //lcd->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
+    display->print(buffer);
+    //display->print(lockParam->printableValue());  // TODO: if there is already a parameter lock, print this value instead
   }
 }
 
 void SequencerMode::displayDoubleShiftMode() {
-  lcd->clear();
+  display->clear();
   for (unsigned int p = 0; p < 4; p++) {
     ParameterInfo *param = doubleShiftParameters[p];
 
-    Serial.print(param->getName());
-    Serial.print("__");
+    CBLog.print(param->getName().c_str());
+    CBLog.print("__");
 
-    lcd->setCursor(4 * p, 0);
-    lcd->print(param->getName());
-    lcd->setCursor(4 * p, 1);
+    display->setCursor(4 * p, 0);
+    display->print(param->getName().c_str());
+    display->setCursor(4 * p, 1);
 
-    //lcd->print(param->printableValue());
+    //display->print(param->printableValue());
     char buffer[] = "    ";
     param->renderPrintableValue(buffer);
-    lcd->print(buffer);
+    display->print(buffer);
   }
 }
 
@@ -1614,19 +1588,19 @@ void SequencerMode::displayDoubleShiftMode() {
 
 void SequencerMode::displayStep() {
   // Step
-  lcd->setCursor(3, 0);  // X,Y
-  lcd->print("S  ");
-  lcd->setCursor(4, 0);
-  lcd->print(this->cursorPos);
+  display->setCursor(3, 0);  // X,Y
+  display->print("S  ");
+  display->setCursor(4, 0);
+  display->print(this->cursorPos);
 
-  String stepVisu = String("");
+  std::string stepVisu = std::string("");
   int page = cursorPos / 8;
   for (int step = 0; step < 8; step++) {
-    String thisChar = (page * 8 + step == cursorPos) ? String("|") : String(" ");
+    std::string thisChar = (page * 8 + step == cursorPos) ? std::string("|") : std::string(" ");
     stepVisu = stepVisu + thisChar;
   }
-  lcd->setCursor(8, 1);
-  lcd->print(stepVisu);
+  display->setCursor(8, 1);
+  display->print(stepVisu.c_str());
 }
 
 void SequencerMode::displayOctAndNote() {
@@ -1636,42 +1610,42 @@ void SequencerMode::displayOctAndNote() {
   int8_t octave = 0;
   int8_t note = 0;
   int8_t length = 0;
-  int8_t on = 0;
   if (noteIndex != -1) {
     octave = globalNotes[noteIndex].octave;
     note = globalNotes[noteIndex].note;
     length = globalNotes[noteIndex].length;
-    on = globalNotes[noteIndex].on;
   }
 
-  lcd->setCursor(0, 1);
-  lcd->print(String("O") + String(octave) + String("N") + String(note) + String("L") + String(length) + String(" "));
-  lcd->setCursor(7, 1);
+  display->setCursor(0, 1);
+  char noteBuffer[17];
+  snprintf(noteBuffer, sizeof(noteBuffer), "O%dN%dL%d ", octave, note, length);
+  display->print(noteBuffer);
+  display->setCursor(7, 1);
 
-  String stepVisu = String("");
+  std::string stepVisu = std::string("");
   int page = cursorPos / 8;
   for (int step = 0; step < 8; step++) {
     int32_t stepIndex = s->steps[page * 8 + step];
-    String thisChar = (stepIndex != -1 && globalNotes[stepIndex].on) ? "+" : "_";
+    std::string thisChar = (stepIndex != -1 && globalNotes[stepIndex].on) ? "+" : "_";
     stepVisu = stepVisu + thisChar;
   }
-  lcd->setCursor(8, 0);
-  lcd->print(stepVisu);
+  display->setCursor(8, 0);
+  display->print(stepVisu.c_str());
 }
 
 void SequencerMode::displayPlayStatus() {
   // play status
-  lcd->setCursor(6, 0);
-  lcd->print(globalState->seqPlaying ? "P" : "-");
-  //lcd->setCursor(14, 1);
-  //lcd->print("__");
-  //lcd->setCursor(14, 1);
-  //lcd->print(this->playHead % nbSteps);
+  display->setCursor(6, 0);
+  display->print(globalState->seqPlaying ? "P" : "-");
+  //display->setCursor(14, 1);
+  //display->print("__");
+  //display->setCursor(14, 1);
+  //display->print(this->playHead % nbSteps);
 }
 
 
 void SequencerMode::maybePlay() {
-  if (millis() > nextTriggerTime) {
+  if (System::millis() > nextTriggerTime) {
     nextTriggerTime = nextTriggerTime + interBeatMs;
     play();
     // recalculate tempo: TODO, can we do that more rarely?
@@ -1681,8 +1655,8 @@ void SequencerMode::maybePlay() {
 
 void SequencerMode::play() {
 
-    Serial.print("playing step ");
-    Serial.println(playHead);
+    CBLog.print("playing step ");
+    CBLog.println(playHead);
 
     for (int part = 0; part < NB_PARTS; part++) {  // TODO: play all parts
 
@@ -1734,7 +1708,7 @@ void SequencerMode::play() {
 
         // finally play new note
         globalState->myNoteOn(part + 1, newNote, 127);
-        Serial.println(newNote);
+        CBLog.println(newNote);
       }
     }
 
@@ -1755,12 +1729,12 @@ void Mode::serializePart(JsonObject *jsonObject, int partId) {
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
       std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+      for (int elementId = 0; elementId < static_cast<int>(pOnPage->size()); elementId++) {
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         (*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
-        Serial.print("Serializing ");
-        Serial.print(pinfo->getName());
-        Serial.println(pinfo->getValue());
+        CBLog.print("Serializing ");
+        CBLog.print(pinfo->getName().c_str());
+        CBLog.println(pinfo->getValue());
       }
     }
   }
@@ -1776,7 +1750,7 @@ void Mode::deserializePart(JsonObject *jsonObject, int partId) {
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
       std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+      for (int elementId = 0; elementId < static_cast<int>(pOnPage->size()); elementId++) {
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         //(*jsonObject)[pinfo->getUniqueName()] = pinfo->getValue();
 
@@ -1784,15 +1758,15 @@ void Mode::deserializePart(JsonObject *jsonObject, int partId) {
         if (!value.isNull()) {
           pinfo->setValue(value.as<float>());
         }
-        //Serial.print("Deserialized ");
-        //Serial.print(pinfo->getName());
-        //Serial.println(extractedValue);
+        //CBLog.print("Deserialized ");
+        //CBLog.print(pinfo->getName());
+        //CBLog.println(extractedValue);
       }
     }
   }
 }
 
-ParameterInfo *Mode::getParameterByNameAndPart(String uniqueName, int partId) {
+ParameterInfo *Mode::getParameterByNameAndPart(std::string uniqueName, int partId) {
 
   SynthParameters *params = this->allSynthParameters[partId];
   int nbLanes = params->getNbLanes();
@@ -1801,7 +1775,7 @@ ParameterInfo *Mode::getParameterByNameAndPart(String uniqueName, int partId) {
     int nbPages = params->getNbPages(lane);
     for (int page = 0; page < nbPages; page++) {
       std::vector<ParameterInfo *> *pOnPage = params->getPage(lane, page);
-      for (int elementId = 0; elementId < pOnPage->size(); elementId++) {
+      for (int elementId = 0; elementId < static_cast<int>(pOnPage->size()); elementId++) {
         ParameterInfo *pinfo = (*pOnPage)[elementId];
         if (pinfo->getUniqueName() == uniqueName) {
           return pinfo;
@@ -1820,7 +1794,7 @@ void GlobalState::serializeProgram(JsonObject *prg) {
 
   for (int i = 0; i < NB_PARTS; i++) {
     int effPartId = synthMode.effectivePartId(i);
-    JsonObject partParameters = patchList.add<JsonObject>();
+    JsonObject partParameters = patchList.createNestedObject();
     synthMode.serializePart(&partParameters, effPartId);
   }
 
@@ -1828,7 +1802,7 @@ void GlobalState::serializeProgram(JsonObject *prg) {
   JsonArray configList = (*prg)["PartConfig"].to<JsonArray>();
 
   for (int i = 0; i < NB_PARTS; i++) {
-    JsonObject partConfigParameters = configList.add<JsonObject>();
+    JsonObject partConfigParameters = configList.createNestedObject();
     partConfigMode.serializePart(&partConfigParameters, i);
   }
 
@@ -1836,7 +1810,7 @@ void GlobalState::serializeProgram(JsonObject *prg) {
   JsonArray seqdata = (*prg)["SequencerData"].to<JsonArray>();
 
   for (int i = 0; i < NB_PARTS; i++) {
-    JsonObject partSeqData = seqdata.add<JsonObject>();
+    JsonObject partSeqData = seqdata.createNestedObject();
     sequencerMode.serializeSequencerData(&partSeqData, i);
   }
 }
@@ -1875,15 +1849,15 @@ void GlobalState::deserializeProgram(JsonObject *prg) {
 }
 
 void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
-  Serial.println("serializeSequencerData");
+  CBLog.println("serializeSequencerData");
 
   JsonArray patterns = (*seqData)["Patterns"].to<JsonArray>();
 
   for (int patternId = 0; patternId < NB_PATTERNS; patternId++) {
     Sequence *s = this->globalState->patterns[patternId][partId];
-    JsonArray pattern = patterns.add<JsonArray>();
+    JsonArray pattern = patterns.createNestedArray();
     for (int step = 0; step < s->NB_STEPS; step++) {
-      JsonObject stepData = pattern.add<JsonObject>();
+      JsonObject stepData = pattern.createNestedObject();
       int32_t noteIndex = s->steps[step];
       if (noteIndex == -1) {
         stepData["o"] = -1;
@@ -1900,7 +1874,7 @@ void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
         JsonArray lockedParams = stepData["pLocks"].to<JsonArray>();
         int32_t lockNode = note.lockHead;
         while (lockNode != -1) {
-          JsonObject onePlock = lockedParams.add<JsonObject>();
+          JsonObject onePlock = lockedParams.createNestedObject();
           onePlock["name"] = globalLockNodes[lockNode].param->getUniqueName();
           onePlock["value"] = globalLockNodes[lockNode].value;
           lockNode = globalLockNodes[lockNode].next;
@@ -1911,14 +1885,14 @@ void SequencerMode::serializeSequencerData(JsonObject *seqData, int partId) {
 }
 
 void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
-  Serial.println("deserializeSequencerData");
+  CBLog.println("deserializeSequencerData");
 
   JsonArray patterns = (*seqData)["Patterns"];
 
-  for (int patternId = 0; ((patternId < patterns.size())&&(patternId < NB_PATTERNS)); patternId++) {
+  for (int patternId = 0; ((patternId < static_cast<int>(patterns.size())) && (patternId < NB_PATTERNS)); patternId++) {
     Sequence *s = this->globalState->patterns[patternId][partId];
     JsonArray pattern = patterns[patternId];
-    for (int step = 0; step < pattern.size(); step++) {
+    for (int step = 0; step < static_cast<int>(pattern.size()); step++) {
       JsonObject stepData = pattern[step];
       bool active = true;
       int8_t octave = 0;
@@ -1962,8 +1936,8 @@ void SequencerMode::deserializeSequencerData(JsonObject *seqData, int partId) {
 
       if (stepData["pLocks"].is<JsonArray>()) {
         JsonArray pLocks = stepData["pLocks"];
-        for (int pIndex = 0; pIndex < pLocks.size(); pIndex++) {
-          String uniqueName = pLocks[pIndex]["name"];
+        for (int pIndex = 0; pIndex < static_cast<int>(pLocks.size()); pIndex++) {
+          std::string uniqueName = pLocks[pIndex]["name"];
           float value = pLocks[pIndex]["value"];
           int synthPartId = this->effectivePartId(partId);
           ParameterInfo *paramToLock = globalState->synthMode.getParameterByNameAndPart(uniqueName, synthPartId);
@@ -1985,16 +1959,16 @@ void KeyboardMode::setup() {
   centerNote = new StaticSignalDiscrete(NULL, 0);
   mode = new StaticSignalDiscrete(NULL, 0);
 
-  // ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param, String uniqueName, const std::vector<String>& strings=std::vector<String>() )
+  // ParameterInfoDiscrete(std::string name, float min, float max, StaticSignal* param, std::string uniqueName, const std::vector<std::string>& strings=std::vector<std::string>() )
 
   ParameterInfoDiscrete *pOctave = new ParameterInfoDiscrete("OCT", 0, 4, octave, "ko");
 
   // Key means Tonart here, not the keyboard key
-  std::vector<String> keys = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "Bb", "B"};
+  std::vector<std::string> keys = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "Bb", "B"};
   ParameterInfoDiscrete *pKey = new ParameterInfoDiscrete("KEY", 0, 11, key, "key", keys);
   ParameterInfoDiscrete *pCenterNote = new ParameterInfoDiscrete("CTR", 0, 7, centerNote, "ck");
 
-  std::vector<String> modes = {"ply", "rec", "dub"};
+  std::vector<std::string> modes = {"ply", "rec", "dub"};
   ParameterInfoDiscrete *pMode = new ParameterInfoDiscrete("MOD", 0, 3, mode, "md", modes);
 
   allSynthParameters.push_back(new SynthParameters());
@@ -2005,7 +1979,7 @@ void KeyboardMode::setup() {
 
 bool KeyboardMode::pushButtonPressed(int buttonIndex) {
 
-  Serial.print("keyboard button pressed");
+  CBLog.print("keyboard button pressed");
 
   // when doing parameter switch, respect the fact that we have only one synthparameter here
   int eventConsumed = handleGenericPushButtonEvents(buttonIndex);
@@ -2020,6 +1994,11 @@ bool KeyboardMode::pushButtonPressed(int buttonIndex) {
   int additionalOctave = 12 * ((buttonIndex + centerNote->getValueDiscrete()) / 7);
   int noteToPlay = 36 + octave->getValueDiscrete() * 12 + key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale] + additionalOctave;
   this->playingNotesPerKey[buttonIndex] = noteToPlay;
+
+  if (buttonIndex == 7) {
+    CBLog.print("[Modes] KeyboardMode: button 7 (I) -> NoteOn ");
+    CBLog.println(noteToPlay);
+  }
 
   // todo: if the sequencer is currently playing/holding a note, stop the note so we can hear the button we are pressing (assuming monophonic synth)
 
@@ -2049,7 +2028,7 @@ bool KeyboardMode::pushButtonPressed(int buttonIndex) {
     if (globalState->seqPlaying) {// TODO, also when synced to clock we are in this mode
       int wrappedPlayHead = globalState->sequencerMode.playHead % globalState->sequencerMode.patternLengths[part]->getValueDiscrete();
       positionToRecord = wrappedPlayHead;
-      int currentTime = millis();
+      int currentTime = System::millis();
       int timeToNextTrig = globalState->sequencerMode.nextTriggerTime - currentTime;
 
       if (timeToNextTrig > 0.5 * globalState->sequencerMode.interBeatMs) {
@@ -2062,8 +2041,8 @@ bool KeyboardMode::pushButtonPressed(int buttonIndex) {
       globalNotes[noteIndex].on = 1;
       globalNotes[noteIndex].octave = (int8_t)((octave->getValueDiscrete() + additionalOctave) / 12);
       globalNotes[noteIndex].note = (int8_t)(key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale]);
-      Serial.print("Recorded at position ");
-      Serial.println(positionToRecord);
+      CBLog.print("Recorded at position ");
+      CBLog.println(positionToRecord);
     }
 
   }
@@ -2079,6 +2058,10 @@ bool KeyboardMode::pushButtonReleased(int buttonIndex) {
   if (buttonIndex > 7) return false;
 
   if (playingNotesPerKey[buttonIndex] >=0) {
+    if (buttonIndex == 7) {
+      CBLog.print("[Modes] KeyboardMode: button 7 (I) -> NoteOff ");
+      CBLog.println(playingNotesPerKey[buttonIndex]);
+    }
     globalState->myNoteOff(globalState->selectedPart+1, playingNotesPerKey[buttonIndex], 0);
   }
 

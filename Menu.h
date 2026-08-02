@@ -24,7 +24,7 @@ using namespace std;
 class ParameterInfo {
 
   public: 
-    ParameterInfo(String name, float min, float max, StaticSignal* param, String uniqueName)  {
+    ParameterInfo(std::string name, float min, float max, StaticSignal* param, std::string uniqueName)  {
       this->name = name;
       this->min = min;
       this->max = max;
@@ -48,20 +48,20 @@ class ParameterInfo {
       storedValue = param->getValue();
       float targetValue = this->min + (potValue/1024.0) * (this->max - this->min);
       param->setValue(targetValue);
-      //Serial.print("lock");
-      //Serial.println(this->getName());
+      //CBLog.print("lock");
+      //CBLog.println(this->getName());
     }
 
     virtual void unlock() {
       if (!locked) return;
       locked = false;
       param->setValue(storedValue);
-      //Serial.print("unlock");
-      //Serial.println(this->getName());
+      //CBLog.print("unlock");
+      //CBLog.println(this->getName());
     }
 
-    String getName() {return name;}
-    String getUniqueName() {return uniqueName;}
+    std::string getName() {return name;}
+    std::string getUniqueName() {return uniqueName;}
     
     // we only really have 3 digits, so map the value back to a 0..100 scale
     //virtual int printableValue() {return (int)( 100* (param->getValue() - this->min) / (this->max - this->min) );}
@@ -84,8 +84,8 @@ class ParameterInfo {
     virtual void setValue(float newValue) {param->setValue(newValue);} // directly set the parameter value (used internally e.g. for load functionality)
 
   protected:
-    String name;
-    String uniqueName; // name that is unique within a synth patch (not across parts), so we can use it for save and load
+    std::string name;
+    std::string uniqueName; // name that is unique within a synth patch (not across parts), so we can use it for save and load
     float min;
     float max;
     StaticSignal* param;
@@ -97,7 +97,7 @@ class ParameterInfo {
 class ParameterInfoDiscrete: public ParameterInfo {
   
   public:
-  ParameterInfoDiscrete(String name, float min, float max, StaticSignal* param, String uniqueName, const std::vector<String>& strings=std::vector<String>() ):ParameterInfo(name, min, max, param, uniqueName) {
+  ParameterInfoDiscrete(std::string name, float min, float max, StaticSignal* param, std::string uniqueName, const std::vector<std::string>& strings=std::vector<std::string>() ):ParameterInfo(name, min, max, param, uniqueName) {
     stringValues = strings;
   }
 
@@ -112,7 +112,7 @@ class ParameterInfoDiscrete: public ParameterInfo {
   virtual void renderPrintableValue(char* buff) {
       int value = (int)param->getValue();
 
-      if((value >=0) && (value < stringValues.size())) {
+      if ((value >= 0) && (value < static_cast<int>(stringValues.size()))) {
         snprintf(buff, 5, "%4s", stringValues[value].c_str());
       } else {
         snprintf(buff, 5, "%4d", value); // TODO: is it correct to put 5 here, even though the string has only 4 visible characters?
@@ -122,7 +122,7 @@ class ParameterInfoDiscrete: public ParameterInfo {
   virtual void renderPrintableValueFromPotValue(char *buff, int potValue) {
     int value = (int) (this->min + (potValue/1024.0) * (this->max - this->min));
 
-    if((value >=0) && (value < stringValues.size())) {
+    if ((value >= 0) && (value < static_cast<int>(stringValues.size()))) {
         snprintf(buff, 5, "%4s", stringValues[value].c_str());
       } else {
         snprintf(buff, 5, "%4d", value); // TODO: is it correct to put 5 here, even though the string has only 4 visible characters?
@@ -131,20 +131,20 @@ class ParameterInfoDiscrete: public ParameterInfo {
   }
 
   protected:
-  std::vector<String> stringValues;
+  std::vector<std::string> stringValues;
 };
 
 class ParameterInfoDiscreteConfirmation: public ParameterInfoDiscrete {
 
   public:
   ParameterInfoDiscreteConfirmation(
-    String name, 
+    std::string name, 
     float min, 
     float max, 
     StaticSignal* param, 
-    String uniqueName, 
+    std::string uniqueName, 
     ParameterInfo **confirmationNotification,
-    const std::vector<String>& strings=std::vector<String>() 
+    const std::vector<std::string>& strings=std::vector<std::string>() 
     ):ParameterInfoDiscrete(name, min, max, param, uniqueName, strings) {
     this->confirmationNotification = confirmationNotification;
   }
@@ -163,7 +163,7 @@ class ParameterInfoDiscreteConfirmation: public ParameterInfoDiscrete {
 
 class DummyParameterInfo: public ParameterInfo {
   public: 
-    DummyParameterInfo(String name):ParameterInfo(name, 0, 1, NULL, String("dummyParameter"))  {}
+    DummyParameterInfo(std::string name):ParameterInfo(name, 0, 1, NULL, std::string("dummyParameter"))  {}
 
     virtual void updateParameter(int potValue) {}
     virtual void lock(int potValue) {} 
@@ -197,10 +197,10 @@ class SynthParameters {
     void addPage(vector<ParameterInfo*> newParams, unsigned int laneId) {
       if (laneId < lanes.size()) {
         lanes.at(laneId).push_back(newParams);
-        Serial.print("adding params to lane ");
-        Serial.println(laneId);
+        CBLog.print("adding params to lane ");
+        CBLog.println(laneId);
       } else {
-        Serial.println("Can't add parameters");
+        CBLog.println("Can't add parameters");
       }
     }
 
@@ -208,7 +208,7 @@ class SynthParameters {
       if (existPage(laneId, pageId)) {
         return &(lanes.at(laneId).at(pageId));
       } else {
-        Serial.println("Page does not exist");
+        CBLog.println("Page does not exist");
         return getPage(0,0);
       }
     }
