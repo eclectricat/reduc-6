@@ -15,8 +15,6 @@ BEGIN_IPLUG_NAMESPACE
 namespace {
 constexpr int kNumParams = 0;
 constexpr int kNumPresets = 1;
-constexpr int kUiWidth = 900;
-constexpr int kUiHeight = 560;
 }
 
 /*CookiePlug::CookiePlug(const InstanceInfo& info)
@@ -47,7 +45,7 @@ CookiePlug::CookiePlug(const InstanceInfo& info)
   mApp.initialize();
 
   mMakeGraphicsFunc = [&]() {
-    return MakeGraphics(*this, kUiWidth, kUiHeight, 60.0, 1.0);
+    return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS, igraphics::GetScaleForScreen(PLUG_WIDTH, PLUG_HEIGHT));
   };
 
   mLayoutFunc = [&](igraphics::IGraphics* pGraphics) {

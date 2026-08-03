@@ -186,25 +186,27 @@ void CookieBoxUI::Attach(IGraphics* pGraphics) {
     return true;
   });
 
-  const IRECT topArea = bounds.GetFromTop(bounds.H() * 0.28f).GetPadded(-12.f);
-  const IRECT displayRect = topArea.GetMidHPadded(topArea.W() * 0.08f);
+  const float outerPad = std::max(8.f, std::min(bounds.W(), bounds.H()) * 0.02f);
+  const IRECT content = bounds.GetPadded(-outerPad);
+
+  // Stable landscape-friendly proportions that also behave on square/tall views.
+  const IRECT topArea = content.GetFromTop(content.H() * 0.24f);
+  const IRECT displayRect = topArea.GetMidHPadded(topArea.W() * 0.06f);
 
   auto* display = new DisplayControl(displayRect, mApp);
   mDisplayControl = display;
   mGraphics->AttachControl(display);
 
-  const IRECT knobBand = bounds.GetFromTop(bounds.H() * 0.66f).GetFromBottom(bounds.H() * 0.23f).GetPadded(-12.f);
-  const float knobW = knobBand.W() / 4.f;
+  const IRECT knobBand = content.GetFromTop(content.H() * 0.70f).GetFromBottom(content.H() * 0.30f).GetPadded(-2.f);
   const char* knobLabels[4] = {"K1", "K2", "K3", "K4"};
+  const float knobW = knobBand.W() / 4.f;
   for (int i = 0; i < 4; ++i) {
     const IRECT r = IRECT(knobBand.L + i * knobW, knobBand.T, knobBand.L + (i + 1) * knobW, knobBand.B).GetPadded(-4.f);
     mGraphics->AttachControl(new KnobControl(r, mApp, i, knobLabels[i]));
   }
 
-  const IRECT buttonRow = bounds.GetFromBottom(bounds.H() * 0.17f).GetPadded(-12.f);
-
+  const IRECT buttonRow = content.GetFromBottom(content.H() * 0.22f).GetPadded(-2.f);
   const std::array<char, 10> keys = {'Q', 'W', 'E', 'R', 'T', 'Z', 'U', 'I', 'O', 'P'};
-
   const float buttonW = buttonRow.W() / static_cast<float>(keys.size());
   for (int i = 0; i < static_cast<int>(keys.size()); ++i) {
     const IRECT r = IRECT(buttonRow.L + i * buttonW, buttonRow.T, buttonRow.L + (i + 1) * buttonW, buttonRow.B).GetPadded(-4.f);

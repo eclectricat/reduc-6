@@ -44,6 +44,22 @@
 		4FDF6D7B2267CE540007B686 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 4FDF6D752267CE540007B686 /* AppDelegate.m */; };
 		4FDF6D7F2267CEBA0007B686 /* IPlugAUPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4FDF6D7D2267CEBA0007B686 /* IPlugAUPlayer.mm */; };
 		91236D811B08F59300734C5E /* CookiePlugAppExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 91236D771B08F59300734C5E /* CookiePlugAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F686A6BD3021283B00C116F6 /* IPlugDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B73021283B00C116F6 /* IPlugDisplay.cpp */; };
+		F686A6BE3021283B00C116F6 /* Modes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B53021283B00C116F6 /* Modes.cpp */; };
+		F686A6BF3021283B00C116F6 /* DesktopArduinoShims.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6BB3021283B00C116F6 /* DesktopArduinoShims.cpp */; };
+		F686A6C03021283B00C116F6 /* SystemAdapter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6BC3021283B00C116F6 /* SystemAdapter.cpp */; };
+		F686A6C13021283B00C116F6 /* PluginApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B93021283B00C116F6 /* PluginApp.cpp */; };
+		F686A6C23021283B00C116F6 /* SynthEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B63021283B00C116F6 /* SynthEngine.cpp */; };
+		F686A6C33021283B00C116F6 /* CookieBoxUI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B83021283B00C116F6 /* CookieBoxUI.cpp */; };
+		F686A6C43021283B00C116F6 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = F686A6BA3021283B00C116F6 /* config.h */; };
+		F686A6C53021288E00C116F6 /* Modes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B53021283B00C116F6 /* Modes.cpp */; };
+		F686A6C63021288E00C116F6 /* SynthEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B63021283B00C116F6 /* SynthEngine.cpp */; };
+		F686A6C73021288E00C116F6 /* IPlugDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B73021283B00C116F6 /* IPlugDisplay.cpp */; };
+		F686A6C83021288E00C116F6 /* CookieBoxUI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B83021283B00C116F6 /* CookieBoxUI.cpp */; };
+		F686A6C93021288E00C116F6 /* PluginApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6B93021283B00C116F6 /* PluginApp.cpp */; };
+		F686A6CA3021288E00C116F6 /* DesktopArduinoShims.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6BB3021283B00C116F6 /* DesktopArduinoShims.cpp */; };
+		F686A6CB3021288E00C116F6 /* SystemAdapter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F686A6BC3021283B00C116F6 /* SystemAdapter.cpp */; };
+		F686A6CC3021288E00C116F6 /* CookiePlug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FFF108720A1036200D3092F /* CookiePlug.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -239,6 +255,14 @@
 		4FFF108820A1036200D3092F /* CookiePlug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CookiePlug.h; path = ../CookiePlug.h; sourceTree = "<group>"; };
 		91236D0D1B08F42B00734C5E /* CookiePlug.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CookiePlug.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		91236D771B08F59300734C5E /* CookiePlugAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CookiePlugAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F686A6B53021283B00C116F6 /* Modes.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Modes.cpp; path = /Users/tobias/Documents/Arduino/CookieBox/CookieBox/Modes.cpp; sourceTree = "<absolute>"; };
+		F686A6B63021283B00C116F6 /* SynthEngine.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SynthEngine.cpp; path = /Users/tobias/Documents/Arduino/CookieBox/CookieBox/SynthEngine.cpp; sourceTree = "<absolute>"; };
+		F686A6B73021283B00C116F6 /* IPlugDisplay.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = IPlugDisplay.cpp; path = ../../IPlugDisplay.cpp; sourceTree = "<group>"; };
+		F686A6B83021283B00C116F6 /* CookieBoxUI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CookieBoxUI.cpp; path = ../../CookieBoxUI.cpp; sourceTree = "<group>"; };
+		F686A6B93021283B00C116F6 /* PluginApp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = PluginApp.cpp; path = ../../PluginApp.cpp; sourceTree = "<group>"; };
+		F686A6BA3021283B00C116F6 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = config.h; path = ../config.h; sourceTree = "<group>"; };
+		F686A6BB3021283B00C116F6 /* DesktopArduinoShims.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = DesktopArduinoShims.cpp; path = ../../compat/DesktopArduinoShims.cpp; sourceTree = SOURCE_ROOT; };
+		F686A6BC3021283B00C116F6 /* SystemAdapter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = SystemAdapter.cpp; path = ../../SystemAdapter.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -527,6 +551,14 @@
 		91D3DA0B1B023C03008FFFBB = {
 			isa = PBXGroup;
 			children = (
+				F686A6B53021283B00C116F6 /* Modes.cpp */,
+				F686A6B63021283B00C116F6 /* SynthEngine.cpp */,
+				F686A6B73021283B00C116F6 /* IPlugDisplay.cpp */,
+				F686A6B83021283B00C116F6 /* CookieBoxUI.cpp */,
+				F686A6B93021283B00C116F6 /* PluginApp.cpp */,
+				F686A6BA3021283B00C116F6 /* config.h */,
+				F686A6BB3021283B00C116F6 /* DesktopArduinoShims.cpp */,
+				F686A6BC3021283B00C116F6 /* SystemAdapter.cpp */,
 				4FFF108420A1036200D3092F /* config.h */,
 				4FFF108820A1036200D3092F /* CookiePlug.h */,
 				4FFF108720A1036200D3092F /* CookiePlug.cpp */,
@@ -557,6 +589,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F686A6C43021283B00C116F6 /* config.h in Headers */,
 				4FA61F7C22E89A5900A92C58 /* AUv3Framework.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -637,7 +670,7 @@
 					};
 					91236D0C1B08F42B00734C5E = {
 						CreatedOnToolsVersion = 7.0;
-						DevelopmentTeam = 686EDA2T8T;
+						DevelopmentTeam = 95ANXU2B8A;
 						LastSwiftMigration = 1010;
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
@@ -653,7 +686,7 @@
 					};
 					91236D761B08F59300734C5E = {
 						CreatedOnToolsVersion = 7.0;
-						DevelopmentTeam = 686EDA2T8T;
+						DevelopmentTeam = 95ANXU2B8A;
 						LastSwiftMigration = 1010;
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
@@ -742,6 +775,13 @@
 				4FA61F8422E89B2000A92C58 /* GenericUI.mm in Sources */,
 				4FA61F8622E89B2000A92C58 /* IPlugAUv3.mm in Sources */,
 				4FA61F8522E89B2000A92C58 /* IPlugAUAudioUnit.mm in Sources */,
+				F686A6BD3021283B00C116F6 /* IPlugDisplay.cpp in Sources */,
+				F686A6BE3021283B00C116F6 /* Modes.cpp in Sources */,
+				F686A6BF3021283B00C116F6 /* DesktopArduinoShims.cpp in Sources */,
+				F686A6C03021283B00C116F6 /* SystemAdapter.cpp in Sources */,
+				F686A6C13021283B00C116F6 /* PluginApp.cpp in Sources */,
+				F686A6C23021283B00C116F6 /* SynthEngine.cpp in Sources */,
+				F686A6C33021283B00C116F6 /* CookieBoxUI.cpp in Sources */,
 				4FA61F8F22E89B4300A92C58 /* IGraphicsIOS_view.mm in Sources */,
 				4FA61F8E22E89B4300A92C58 /* IGraphicsIOS.mm in Sources */,
 				4FA61F9022E8A1F500A92C58 /* IGraphics.cpp in Sources */,
@@ -765,6 +805,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F686A6C53021288E00C116F6 /* Modes.cpp in Sources */,
+				F686A6C63021288E00C116F6 /* SynthEngine.cpp in Sources */,
+				F686A6C73021288E00C116F6 /* IPlugDisplay.cpp in Sources */,
+				F686A6C83021288E00C116F6 /* CookieBoxUI.cpp in Sources */,
+				F686A6C93021288E00C116F6 /* PluginApp.cpp in Sources */,
+				F686A6CA3021288E00C116F6 /* DesktopArduinoShims.cpp in Sources */,
+				F686A6CB3021288E00C116F6 /* SystemAdapter.cpp in Sources */,
+				F686A6CC3021288E00C116F6 /* CookiePlug.cpp in Sources */,
 				4FDF6D7F2267CEBA0007B686 /* IPlugAUPlayer.mm in Sources */,
 				4FDF6D7B2267CE540007B686 /* AppDelegate.m in Sources */,
 				4FDF6D772267CE540007B686 /* AppViewController.mm in Sources */,
@@ -906,7 +954,7 @@
 		91236D281B08F42B00734C5E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = CookiePlugiOSAppIcon;
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -923,6 +971,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 95ANXU2B8A;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -939,6 +988,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					../../compat/,
+					"$(SRCROOT)/../../compat/",
+					"$(EXTRA_INC_PATHS)",
+					"$(IPLUG_INC_PATHS)",
+					"$(SRCROOT)/../../../.pio/libdeps/teensy41/ArduinoJson/src",
+				);
 				INFOPLIST_FILE = "$(SRCROOT)/../resources/CookiePlug-iOS-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -948,14 +1005,16 @@
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 4.2;
+				SYSTEM_HEADER_SEARCH_PATHS = ../../compat/;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				USER_HEADER_SEARCH_PATHS = "../../core/ ../../ ../../compat/ ../";
 			};
 			name = Debug;
 		};
 		91236D291B08F42B00734C5E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = CookiePlugiOSAppIcon;
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -972,6 +1031,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 95ANXU2B8A;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -986,6 +1046,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					../../compat/,
+					"$(SRCROOT)/../../compat/",
+					"$(EXTRA_INC_PATHS)",
+					"$(IPLUG_INC_PATHS)",
+					"$(SRCROOT)/../../../.pio/libdeps/teensy41/ArduinoJson/src",
+				);
 				INFOPLIST_FILE = "$(SRCROOT)/../resources/CookiePlug-iOS-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -994,7 +1062,9 @@
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				SWIFT_VERSION = 4.2;
+				SYSTEM_HEADER_SEARCH_PATHS = ../../compat/;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				USER_HEADER_SEARCH_PATHS = "../../core/ ../../ ../../compat/ ../";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -1018,6 +1088,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 95ANXU2B8A;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -1066,6 +1137,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 95ANXU2B8A;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -1114,7 +1186,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_ENTITLEMENTS = "CookiePlug-iOS.entitlements";
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = 686EDA2T8T;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1136,11 +1208,13 @@
 					"$(IPLUG_INC_PATHS)",
 				);
 				IBSC_FLATTEN_NIBS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					$AUv3_FRAMEWORKS,
 					"$(EXTRA_LNK_FLAGS)",
 				);
+				SDKROOT = iphoneos;
 				SWIFT_VERSION = 4.0;
 				SYMROOT = "../build-ios";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1168,7 +1242,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_ENTITLEMENTS = "CookiePlug-iOS.entitlements";
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = 686EDA2T8T;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_PREFIX_HEADER = $IPLUG_PATH/IPlugOBJCPrefix.pch;
@@ -1189,10 +1263,12 @@
 					"$(IPLUG_INC_PATHS)",
 				);
 				IBSC_FLATTEN_NIBS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				OTHER_LDFLAGS = (
 					$AUv3_FRAMEWORKS,
 					"$(EXTRA_LNK_FLAGS)",
 				);
+				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				SWIFT_VERSION = 4.0;
 				SYMROOT = "../build-ios";
