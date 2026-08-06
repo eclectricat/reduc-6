@@ -13,6 +13,7 @@
 class SynthEngine;
 class GlobalState;
 class IPlugDisplay;
+class Storage;
 
 class CookieBoxPluginApp {
 public:
@@ -24,6 +25,7 @@ public:
 
   // Called by host/audio thread to process audio (platform-specific adapter)
   void processAudio(double** outputs, int nFrames, int nChannels);
+  void processMidiMessage(uint8_t status, uint8_t data1, uint8_t data2);
 
   // Inject an external display implementation (optional).
   // If not set, an internal 2x16 display implementation is used.
@@ -60,6 +62,7 @@ private:
 
   std::unique_ptr<SynthEngine> engine;
   std::unique_ptr<GlobalState> globalState;
+  std::unique_ptr<Storage> storage;
 
   std::array<int, kNumKnobs> currentPotVals = {0, 0, 0, 0};
   std::array<int, kNumKnobs> potValuesOnParamChange = {0, 0, 0, 0};

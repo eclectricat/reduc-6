@@ -3615,6 +3615,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				OTHER_LDFLAGS = (
 					"$(APP_FRAMEWORKS)",
 					"$(inherited)",
@@ -3653,6 +3654,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				OTHER_LDFLAGS = (
 					"$(APP_FRAMEWORKS)",
 					"$(inherited)",
@@ -3691,6 +3693,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				OTHER_LDFLAGS = (
 					"$(APP_FRAMEWORKS)",
 					"$(inherited)",

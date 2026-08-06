@@ -2187,7 +2187,8 @@ CMakeFiles/CookieBoxPlugin.dir/CookieBoxUI.cpp.o: /Users/tobias/Documents/Arduin
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/unordered_set
 
 CMakeFiles/CookieBoxPlugin.dir/IPlugDisplay.cpp.o: /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/IPlugDisplay.cpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/IPlugDisplay.h \
@@ -3629,11 +3630,26 @@ CMakeFiles/CookieBoxPlugin.dir/PluginApp.cpp.o: /Users/tobias/Documents/Arduino/
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/perfect_forward.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/compat/arm_math.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/Utils.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Log.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/sstream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Configuration.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/JsonArray.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/ElementProxy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantRefBase.hpp \
@@ -3676,18 +3692,6 @@ CMakeFiles/CookieBoxPlugin.dir/PluginApp.cpp.o: /Users/tobias/Documents/Arduino/
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StoragePolicy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringAdapter.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/JsonString.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/Adapters/StringObject.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringTraits.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantSlot.hpp \
@@ -3773,7 +3777,26 @@ CMakeFiles/CookieBoxPlugin.dir/PluginApp.cpp.o: /Users/tobias/Documents/Arduino/
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Storage.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Audio.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Midi.h \
-  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/filesystem \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/copy_options.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_entry.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_status.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_type.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/perms.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_time_type.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__chrono/file_clock.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/filesystem_error.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/path.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/iomanip \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/operations.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/perm_options.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/space_info.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_iterator.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_options.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/path_iterator.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/recursive_directory_iterator.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/u8path.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/fstream
 
 CMakeFiles/CookieBoxPlugin.dir/SystemAdapter.cpp.o: /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/SystemAdapter.cpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h \
@@ -5373,11 +5396,26 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/perfect_forward.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/compat/arm_math.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/Utils.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Log.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/sstream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Configuration.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/JsonArray.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/ElementProxy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantRefBase.hpp \
@@ -5420,18 +5458,6 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StoragePolicy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringAdapter.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/JsonString.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/Adapters/StringObject.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringTraits.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantSlot.hpp \
@@ -5517,8 +5543,7 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Storage.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Audio.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Midi.h \
-  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Display.h \
-  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Display.h
 
 CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBox/SynthEngine.cpp.o: /Users/tobias/Documents/Arduino/CookieBox/CookieBox/SynthEngine.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/vector \
@@ -6305,11 +6330,26 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/perfect_forward.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/compat/arm_math.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/Utils.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Log.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/sstream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Configuration.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/JsonArray.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/ElementProxy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantRefBase.hpp \
@@ -6352,18 +6392,6 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StoragePolicy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringAdapter.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/JsonString.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/Adapters/StringObject.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringTraits.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantSlot.hpp \
@@ -25912,7 +25940,7 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/AP
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreFoundation.framework/Headers/CFXMLParser.h \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugProcessor.h \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/Extras/NChanDelay.h \
-  /Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/config.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/config.h \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugSWELL.h \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/WDL/swell/swell.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/param.h \
@@ -25940,7 +25968,7 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/AP
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/sstream \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/Dependencies/IPlug/RTMidi/RtMidi.h \
-  /Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/resources/resource.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/resources/resource.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Cocoa.framework/Headers/Cocoa.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/Foundation.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSObjCRuntime.h \
@@ -26970,9 +26998,9 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/AP
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreData.framework/Headers/NSCoreDataCoreSpotlightDelegate.h \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugPaths.h \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/WDL/swell/swell-dlggen.h \
-  /Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/resources/main.rc_mac_dlg \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/resources/main.rc_mac_dlg \
   /Users/tobias/Projekte/AudioPlugin/iPlug2/WDL/swell/swell-menugen.h \
-  /Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/resources/main.rc_mac_menu
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/resources/main.rc_mac_menu
 
 CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugAPIBase.cpp.o: /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugAPIBase.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/cmath \
@@ -44841,7 +44869,11 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugParameter.cpp:
 
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/resources/main.rc_mac_menu:
+
 /Users/tobias/Projekte/AudioPlugin/iPlug2/WDL/swell/swell-menugen.h:
+
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/resources/main.rc_mac_dlg:
 
 /Users/tobias/Projekte/AudioPlugin/iPlug2/WDL/swell/swell-dlggen.h:
 
@@ -45133,8 +45165,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSImage.h:
 
-/Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/resources/main.rc_mac_dlg:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSLayoutGuide.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSLayoutAnchor.h:
@@ -45293,26 +45323,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Users/tobias/Projekte/AudioPlugin/iPlug2/IGraphics/Controls/IFPSDisplayControl.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/recursive_directory_iterator.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_iterator.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/perm_options.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/operations.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/path.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/filesystem_error.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_status.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_entry.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/filesystem:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/fstream:
-
 /Users/tobias/Projekte/AudioPlugin/iPlug2/IGraphics/IGraphicsLiveEdit.h:
 
 /Users/tobias/Projekte/AudioPlugin/iPlug2/IGraphics/IGraphics.cpp:
@@ -45368,10 +45378,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/QuartzCore.framework/Headers/CAMetalDisplayLink.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/QuartzCore.framework/Headers/CAMetalLayer.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/perms.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/QuartzCore.framework/Headers/CAMediaTiming.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/QuartzCore.framework/Headers/CALayer.h:
 
@@ -46063,29 +46069,39 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/Authorization.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CFNetwork.framework/Headers/CFHTTPStream.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/CipherSuite.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolTypes.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSNumberFormatter.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolObject.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/OSServices.framework/Headers/CSIdentityAuthority.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolOptions.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/certextensions.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecTrust.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/cssmerr.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/cssmapple.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecImportExport.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecRandom.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecPolicy.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecKey.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecAccessControl.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecIdentity.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/x509defs.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/cssmconfig.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSNumberFormatter.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/certextensions.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/OSServices.framework/Headers/CSIdentityAuthority.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecBase.h:
 
@@ -46139,8 +46155,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/MultiprocessingInfo.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecTrust.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/fenv.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/fp.h:
@@ -46191,12 +46205,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/Endian.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/AIFF.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSDistributedNotificationCenter.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/TextCommon.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/CMSEncoder.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/MacErrors.h:
@@ -46237,12 +46245,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Accelerate.framework/Frameworks/vImage.framework/Headers/Alpha.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Carbon.framework/Frameworks/HIToolbox.framework/Headers/HIPopupButton.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__cstddef/max_align_t.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecItem.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/machine/vm_param.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Accelerate.framework/Frameworks/vImage.framework/Headers/vImage_Types.h:
@@ -46273,8 +46275,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/task.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/processor.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSDragging.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/host_security.h:
@@ -46286,8 +46286,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sched.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach_debug/vm_info.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecPolicy.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/AE.framework/Headers/AEHelpers.h:
 
@@ -46571,8 +46569,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/mmintrin.h:
 
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/prfchiintrin.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/vecLib.framework/Headers/vfp.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Polyfills/type_traits/remove_cv.hpp:
@@ -46627,9 +46623,45 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__stop_token/stop_state.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/rotate_copy.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreVideo.framework/Headers/CVMetalBufferCache.h:
 
-/Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ranges/from_range.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/iomanip:
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/prfchiintrin.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/path.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/processor.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSPredicate.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__tuple/tuple_like_ext.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/iostream:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_time_type.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/QuartzCore.framework/Headers/CAMediaTiming.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/perms.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/ranges_operations.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_type.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/AIFF.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSDistributedNotificationCenter.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/TextCommon.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_status.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_entry.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/filesystem:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/objc/objc.h:
 
@@ -46678,8 +46710,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Deserialization/DeserializationOptions.hpp:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Deserialization/DeserializationError.hpp:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolObject.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Deserialization/deserialize.hpp:
 
@@ -46815,18 +46845,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/Adapters/StringObject.hpp:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSArrayController.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATSUI.framework/Headers/ATSUnicodeFlattening.h:
-
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/shaintrin.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h:
-
 /Users/tobias/Projekte/AudioPlugin/iPlug2/IGraphics/Controls/IVKeyboardControl.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/MsgPack/endianness.hpp:
@@ -46850,10 +46868,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/IOKit.framework/Headers/IOMapTypes.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Polyfills/type_traits/make_void.hpp:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/_types/_rune_t.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolMetadata.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__utility/swap.h:
 
@@ -46907,15 +46921,31 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Polyfills/preprocessor.hpp:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/u8path.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATS.framework/Headers/ATSFont.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/u8path.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Namespace.hpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSUserDefaultsController.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSArrayController.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATSUI.framework/Headers/ATSUnicodeFlattening.h:
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/shaintrin.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/rotate_copy.h:
+
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/AE.framework/Headers/AE.h:
 
@@ -47211,6 +47241,12 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreGraphics.framework/Headers/CGEXRToneMappingGamma.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSTextFieldCell.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/binary_negate.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/space_info.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreGraphics.framework/Headers/CGFunction.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreImage.framework/Headers/CIFilter.h:
@@ -47218,6 +47254,8 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreGraphics.framework/Headers/CGPDFStream.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/vaesintrin.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/operations.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreGraphics.framework/Headers/CGPDFObject.h:
 
@@ -47246,6 +47284,8 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/Modes.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreFoundation.framework/Headers/CFXMLParser.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/fstream:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__thread/this_thread.h:
 
@@ -47665,6 +47705,10 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/avx512bitalgintrin.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__atomic/check_memory_order.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/path_iterator.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/function.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/SlotFunctions.hpp:
@@ -47713,6 +47757,10 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/copy_cvref.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolMetadata.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/_types/_rune_t.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/add_cv.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/i386/limits.h:
@@ -47752,8 +47800,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Users/tobias/Projekte/AudioPlugin/iPlug2/IPlug/IPlugPluginBase.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/binary_function.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecRandom.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/i386/boolean.h:
 
@@ -47895,11 +47941,13 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/types.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_options.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/filesystem_error.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/FixMath.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__memory/addressof.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_options.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/system_error:
 
@@ -48029,11 +48077,7 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_allocator.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/iomanip:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreVideo.framework/Headers/CVMetalBufferCache.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ranges/from_range.h:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/directory_iterator.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/_types/_fd_isset.h:
 
@@ -48123,6 +48167,10 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/partition_copy.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/CipherSuite.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CFNetwork.framework/Headers/CFHTTPStream.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSPreviewRepresentingActivityItem.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSItemProvider.h:
@@ -48137,10 +48185,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__exception/exception_ptr.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_type.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/ranges_operations.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/CoreServices.framework/Frameworks/CarbonCore.framework/Headers/BackupCore.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__debug_utils/randomize_range.h:
@@ -48154,6 +48198,8 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/ndr.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/sort.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/recursive_directory_iterator.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/__stddef_rsize_t.h:
 
@@ -48299,8 +48345,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__iterator/istream_iterator.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecImportExport.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_empty.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__iterator/back_insert_iterator.h:
@@ -48408,8 +48452,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/task_inspect.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/pthread/pthread_impl.h:
-
-/Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/resources/resource.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__mutex/lock_guard.h:
 
@@ -48580,10 +48622,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__chrono/high_resolution_clock.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/_types/_timespec.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/path_iterator.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__atomic/check_memory_order.h:
 
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Document/JsonDocument.hpp:
 
@@ -48811,14 +48849,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/avx512dqintrin.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/file_time_type.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSPredicate.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__tuple/tuple_like_ext.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/iostream:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/vm_region.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_swappable.h:
@@ -48906,8 +48936,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__math/exponential_functions.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/ranges_copy.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecProtocolOptions.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/vecLib.framework/Headers/BNNS/bnns_structures.h:
 
@@ -49061,8 +49089,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/i386/signal.h:
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecAccessControl.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSSegmentedControl.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/_types/_null.h:
@@ -49176,12 +49202,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Metal.framework/Headers/MTLFunctionLog.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdbool.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSTextFieldCell.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/space_info.h:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/binary_negate.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Carbon.framework/Headers/Carbon.h:
 
@@ -49397,6 +49417,8 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/subrange.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/unordered_set:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSTokenField.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__concepts/regular.h:
@@ -49516,6 +49538,8 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__utility/exchange.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/conjunction.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__filesystem/perm_options.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/emmintrin.h:
 
@@ -49773,8 +49797,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__memory/allocator.h:
 
-/Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/config.h:
-
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__math/trigonometric_functions.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/cups/http.h:
@@ -49822,8 +49844,6 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Users/tobias/Documents/Arduino/CookieBox/CookieBox/.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Polyfills/ctype.hpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__memory/pointer_traits.h:
-
-/Users/tobias/Projekte/AudioPlugin/iPlug2/Examples/IPlugEffect/resources/main.rc_mac_menu:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/mach/mig_strncpy_zerofill_support.h:
 
@@ -49999,6 +50019,12 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/iterator_operations.h:
 
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Carbon.framework/Frameworks/HIToolbox.framework/Headers/HIPopupButton.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Security.framework/Headers/SecItem.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__cstddef/max_align_t.h:
+
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/sys/_types/_ssize_t.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__concepts/convertible_to.h:
@@ -50082,6 +50108,8 @@ CMakeFiles/CookieBoxPlugin.dir/compat/DesktopArduinoShims.cpp.o: /Users/tobias/D
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/Metal.framework/Headers/MTLDefines.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__algorithm/find.h:
+
+/Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Log.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSRunningApplication.h:
 

@@ -43,9 +43,15 @@ CookiePlug::CookiePlug(const InstanceInfo& info)
   : Plugin(info, MakeConfig(kNumParams, kNumPresets))
   , mUI(mApp) {
   mApp.initialize();
-
+    
+  
   mMakeGraphicsFunc = [&]() {
-    return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS, igraphics::GetScaleForScreen(PLUG_WIDTH, PLUG_HEIGHT));
+    float scale = 1.0f;
+    #ifdef OS_IOS
+      // This code only compiles and runs on iOS
+      scale = igraphics::GetScaleForScreen(PLUG_WIDTH, PLUG_HEIGHT);
+    #endif
+    return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS, scale);
   };
 
   mLayoutFunc = [&](igraphics::IGraphics* pGraphics) {
@@ -61,6 +67,14 @@ void CookiePlug::ProcessBlock(sample** inputs, sample** outputs, int nFrames) {
   }
 
   mApp.processAudio(reinterpret_cast<double**>(outputs), nFrames, nOut);
+}
+
+void CookiePlug::ProcessMidiMsg(const IMidiMsg& msg) {
+  mApp.processMidiMessage(msg.mStatus, msg.mData1, msg.mData2);
+}
+
+void CookiePlug::OnReset() {
+  mApp.setSampleRate(GetSampleRate());
 }
 
 

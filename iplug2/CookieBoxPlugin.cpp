@@ -37,6 +37,10 @@ void CookieBoxPlugin::ProcessBlock(sample** inputs, sample** outputs, int nFrame
   mApp.processAudio(reinterpret_cast<double**>(outputs), nFrames, nOut);
 }
 
+void CookieBoxPlugin::ProcessMidiMsg(const IMidiMsg& msg) {
+  mApp.processMidiMessage(msg.mStatus, msg.mData1, msg.mData2);
+}
+
 void CookieBoxPlugin::OnIdle() {
   mUI.OnIdle();
 }

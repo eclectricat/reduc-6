@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cmath>
 #include <string>
+#include <unordered_set>
 
 BEGIN_IPLUG_NAMESPACE
 BEGIN_IGRAPHICS_NAMESPACE
@@ -20,7 +21,7 @@ static const IColor kInk(255, 230, 236, 240);
 static const IColor kAccent(255, 60, 170, 190);
 
 static const IText kLabelText(13.f, kInk, "UI-Label", EAlign::Center, EVAlign::Middle);
-static const IText kDisplayText(16.f, kInk, "UI-Display", EAlign::Near, EVAlign::Middle);
+static const IText kDisplayText(28.f, kInk, "UI-Display", EAlign::Near, EVAlign::Middle);
 
 class DisplayControl final : public IControl {
 public:
@@ -109,7 +110,9 @@ public:
     : IControl(bounds)
     , mApp(app)
     , mButtonIndex(buttonIndex)
-    , mKeyLabel(1, keyLabel) {}
+    , mKeyLabel(1, keyLabel) {
+    SetWantsMultiTouch(true);
+  }
 
   void Draw(IGraphics& g) override {
     const IColor fill = mIsDown ? kAccent : kPanelBright;
@@ -121,6 +124,8 @@ public:
   }
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override {
+    mActiveTouchIDs.insert(mod.touchID);
+
     if (!mIsDown) {
       mIsDown = true;
       mApp.setButtonState(mButtonIndex, true);
@@ -129,15 +134,22 @@ public:
   }
 
   void OnMouseUp(float x, float y, const IMouseMod& mod) override {
-    if (mIsDown) {
+    mActiveTouchIDs.erase(mod.touchID);
+
+    if (mIsDown && mActiveTouchIDs.empty()) {
       mIsDown = false;
       mApp.setButtonState(mButtonIndex, false);
       SetDirty(false);
     }
   }
 
+  void OnTouchCancelled(float x, float y, const IMouseMod& mod) override {
+    OnMouseUp(x, y, mod);
+  }
+
   void OnMouseOut() override {
-    if (mIsDown) {
+    // Keep touch presses active when another finger leaves bounds.
+    if (mIsDown && mActiveTouchIDs.empty()) {
       mIsDown = false;
       mApp.setButtonState(mButtonIndex, false);
       SetDirty(false);
@@ -149,6 +161,7 @@ private:
   int mButtonIndex = 0;
   std::string mKeyLabel;
   bool mIsDown = false;
+  std::unordered_set<ITouchID> mActiveTouchIDs;
 };
 
 }
@@ -161,6 +174,7 @@ CookieBoxUI::~CookieBoxUI() = default;
 void CookieBoxUI::Attach(IGraphics* pGraphics) {
   if (!pGraphics) return;
   mGraphics = pGraphics;
+  mGraphics->EnableMultiTouch(true);
 
   const IRECT bounds = mGraphics->GetBounds();
   mGraphics->AttachPanelBackground(kBg);
@@ -170,10 +184,10 @@ void CookieBoxUI::Attach(IGraphics* pGraphics) {
   if (!loadedLabelFont) loadedLabelFont = mGraphics->LoadFont("UI-Label", "Helvetica", ETextStyle::Normal);
   if (!loadedLabelFont) loadedLabelFont = mGraphics->LoadFont("UI-Label", "Arial", ETextStyle::Normal);
 
-  bool loadedDisplayFont = mGraphics->LoadFont("UI-Display", "Roboto-Regular.ttf");
+  bool loadedDisplayFont = mGraphics->LoadFont("UI-Display", "Menlo", ETextStyle::Normal);
   if (!loadedDisplayFont) loadedDisplayFont = mGraphics->LoadFont("UI-Display", "Courier New", ETextStyle::Normal);
   if (!loadedDisplayFont) loadedDisplayFont = mGraphics->LoadFont("UI-Display", "Courier", ETextStyle::Normal);
-  if (!loadedDisplayFont) loadedDisplayFont = mGraphics->LoadFont("UI-Display", "Menlo", ETextStyle::Normal);
+  if (!loadedDisplayFont) loadedDisplayFont = mGraphics->LoadFont("UI-Display", "Roboto-Regular.ttf");
   if (!loadedDisplayFont) mGraphics->LoadFont("UI-Display", "Arial", ETextStyle::Normal);
 
   mGraphics->SetKeyHandlerFunc([this](const IKeyPress& key, bool isUp) {
@@ -191,7 +205,7 @@ void CookieBoxUI::Attach(IGraphics* pGraphics) {
 
   // Stable landscape-friendly proportions that also behave on square/tall views.
   const IRECT topArea = content.GetFromTop(content.H() * 0.24f);
-  const IRECT displayRect = topArea.GetMidHPadded(topArea.W() * 0.06f);
+  const IRECT displayRect = topArea.GetMidHPadded(topArea.W() * 0.25f);
 
   auto* display = new DisplayControl(displayRect, mApp);
   mDisplayControl = display;

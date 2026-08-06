@@ -786,11 +786,26 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__functional/perfect_forward.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/compat/arm_math.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/Utils.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Log.h \
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/sstream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Configuration.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/istream \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/ostream \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/JsonArray.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Array/ElementProxy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantRefBase.hpp \
@@ -833,18 +848,6 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StoragePolicy.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringAdapter.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/JsonString.hpp \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__ostream/basic_ostream.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/bitset \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__type_traits/is_char_like_type.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/format \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/queue \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/deque.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/queue.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/deque \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/stack \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/__fwd/stack.h \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/print \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.4.sdk/usr/include/unistd.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/Adapters/StringObject.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Strings/StringTraits.hpp \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/iplug2/../.pio/libdeps/teensy41/ArduinoJson/src/ArduinoJson/Variant/VariantSlot.hpp \
@@ -930,5 +933,4 @@ CMakeFiles/CookieBoxPlugin.dir/Users/tobias/Documents/Arduino/CookieBox/CookieBo
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Storage.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Audio.h \
   /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Midi.h \
-  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Display.h \
-  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/System.h
+  /Users/tobias/Documents/Arduino/CookieBox/CookieBox/core/Display.h

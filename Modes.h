@@ -247,7 +247,7 @@ class SequencerMode: public Mode {
   int patternSelectMode = 0;
 
   //float valuesToReset[4 * 6] ; // TODO: don't hardcode
-  ParameterInfo *parametersToReset[10 * NB_PARTS];
+  ParameterInfo *parametersToReset[10 * NB_PARTS] = {};
   StaticSignalDiscrete* patternLengths[NB_PARTS];
 
   StaticSignalDiscrete *sequencerActive[NB_PARTS];

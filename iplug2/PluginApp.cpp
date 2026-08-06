@@ -4,16 +4,113 @@
 
 #include "../Modes.h"
 #include "../SynthEngine.h"
+#include "../core/Storage.h"
 #include "../core/System.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <system_error>
 
 namespace {
 constexpr int kPotUnlockThreshold = 30;
 constexpr uint32_t kPotDisplayUpdateIntervalMs = 33;
+
+class PluginStorage final : public Storage {
+public:
+  PluginStorage() {
+    const char* home = std::getenv("HOME");
+    if (home && home[0] != '\0') {
+      mBasePath = std::filesystem::path(home) / "Library" / "Application Support" / "CookieBox";
+    } else {
+      mBasePath = std::filesystem::temp_directory_path() / "CookieBox";
+    }
+  }
+
+  bool begin() override {
+    std::error_code ec;
+    std::filesystem::create_directories(mBasePath, ec);
+    return !ec;
+  }
+
+  bool exists(const std::string& path) override {
+    std::error_code ec;
+    return std::filesystem::exists(resolve(path), ec) && !ec;
+  }
+
+  bool mkdir(const std::string& path) override {
+    std::error_code ec;
+    std::filesystem::create_directories(resolve(path), ec);
+    return !ec;
+  }
+
+  bool remove(const std::string& path) override {
+    std::error_code ec;
+    std::filesystem::remove_all(resolve(path), ec);
+    return !ec;
+  }
+
+  bool writeLines(const std::string& path, const std::vector<std::string>& lines) override {
+    const auto fullPath = resolve(path);
+    std::error_code ec;
+    std::filesystem::create_directories(fullPath.parent_path(), ec);
+    if (ec) return false;
+
+    std::ofstream out(fullPath, std::ios::out | std::ios::trunc);
+    if (!out.is_open()) return false;
+
+    for (size_t i = 0; i < lines.size(); ++i) {
+      out << lines[i];
+      if (i + 1 < lines.size()) {
+        out << '\n';
+      }
+    }
+
+    return out.good() || out.eof();
+  }
+
+  bool readLines(const std::string& path, std::vector<std::string>& outLines) override {
+    std::ifstream in(resolve(path));
+    if (!in.is_open()) return false;
+
+    outLines.clear();
+    std::string line;
+    while (std::getline(in, line)) {
+      outLines.push_back(line);
+    }
+
+    return in.good() || in.eof();
+  }
+
+  bool listDir(const std::string& path, std::vector<std::string>& outEntries) override {
+    const auto fullPath = resolve(path);
+    std::error_code ec;
+    if (!std::filesystem::exists(fullPath, ec) || ec) return false;
+
+    outEntries.clear();
+    for (const auto& entry : std::filesystem::directory_iterator(fullPath, ec)) {
+      if (ec) return false;
+      outEntries.push_back(entry.path().filename().string());
+    }
+
+    return true;
+  }
+
+private:
+  std::filesystem::path resolve(const std::string& path) const {
+    std::filesystem::path relative(path);
+    if (relative.is_absolute()) {
+      relative = relative.relative_path();
+    }
+    return mBasePath / relative;
+  }
+
+  std::filesystem::path mBasePath;
+};
 }
 
 CookieBoxPluginApp::CookieBoxPluginApp() {}
@@ -27,6 +124,9 @@ void CookieBoxPluginApp::initialize() {
 
   engine = std::make_unique<SynthEngine>();
   globalState = std::make_unique<GlobalState>(engine.get(), display);
+  storage = std::make_unique<PluginStorage>();
+  storage->begin();
+  globalState->setStorage(storage.get());
 
   // Mirrors CookieBox.ino setup order for mode/menu wiring.
   globalState->setup();
@@ -58,6 +158,47 @@ void CookieBoxPluginApp::processAudio(double** outputs, int nFrames, int nChanne
   }
 
   engine->renderBlock(outputs, nFrames, nChannels);
+}
+
+void CookieBoxPluginApp::processMidiMessage(uint8_t status, uint8_t data1, uint8_t data2) {
+  if (!initialized || !globalState) return;
+
+  switch (status) {
+    case 0xF8: // MIDI clock (24 PPQN)
+      globalState->sequencerMode.tick();
+      return;
+    case 0xFA: // MIDI start
+      globalState->seqPlaying = true;
+      globalState->sequencerMode.startSync();
+      globalState->sequencerMode.displayPlayStatus();
+      return;
+    case 0xFB: // MIDI continue
+      globalState->seqPlaying = true;
+      globalState->sequencerMode.continueSync();
+      globalState->sequencerMode.displayPlayStatus();
+      return;
+    case 0xFC: // MIDI stop
+      globalState->seqPlaying = false;
+      globalState->sequencerMode.stopSync();
+      globalState->sequencerMode.displayPlayStatus();
+      return;
+    default:
+      break;
+  }
+
+  // Channel voice fallback: allow host keyboard MIDI to trigger engine directly.
+  const uint8_t statusHi = status & 0xF0;
+  const uint8_t channel = (status & 0x0F) + 1;
+
+  if (statusHi == 0x90) {
+    if (data2 == 0) {
+      globalState->myNoteOff(channel, data1, data2);
+    } else {
+      globalState->myNoteOn(channel, data1, data2);
+    }
+  } else if (statusHi == 0x80) {
+    globalState->myNoteOff(channel, data1, data2);
+  }
 }
 
 void CookieBoxPluginApp::setDisplay(Display* disp) {
@@ -122,12 +263,17 @@ void CookieBoxPluginApp::setKeyState(char key, bool isDown) {
 void CookieBoxPluginApp::tickUI() {
   if (!initialized || !globalState) return;
 
+  if (globalState->seqPlaying && !globalState->sequencerMode.playingSync) {
+    // Internal sequencer clock; tempo is derived from current BPM in maybePlay().
+    globalState->sequencerMode.maybePlay();
+  }
+
   if (engine) {
     const uint32_t now = System::millis();
     if (now - mLastMaxLevelLogMs >= 1000U) {
       mLastMaxLevelLogMs = now;
       const float maxLevel = engine->getAndResetMaxLevel();
-      std::fprintf(stderr, "[Audio] SynthEngine.maxSignalLevel=%.6f\n", maxLevel);
+      //std::fprintf(stderr, "[Audio] SynthEngine.maxSignalLevel=%.6f\n", maxLevel);
     }
   }
 

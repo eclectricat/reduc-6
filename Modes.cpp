@@ -1176,7 +1176,7 @@ void PartConfigMode::updateFilExistenceFeedback() {
 
   char buffer[] = "____";
   currentMenuPage->at(2)->renderPrintableValue(buffer);
-  buffer[3] = slotTaken ? '*' : '.';
+  buffer[0] = slotTaken ? '*' : '.';
   display->setCursor(4 * 2, 1);
   display->print(buffer);
 }
