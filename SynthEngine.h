@@ -34,7 +34,8 @@ extern char* __brkval;
 #define NB_PART_TYPES 2
 
 #ifndef AUDIO_SAMPLE_RATE
-#define AUDIO_SAMPLE_RATE 44100.0f
+extern float gAudioSampleRate;
+#define AUDIO_SAMPLE_RATE gAudioSampleRate
 #endif
 
 #ifndef AUDIO_BLOCK_SAMPLES
@@ -1088,8 +1089,8 @@ public:
 
     float currentBpm = this->bpm->value;
 
-    // Calculate samples in one 16th note (60/BPM/4 * 44100)
-    float stepSamples = std::min((float)bufferLength, (60.0f / (currentBpm * 4.0f)) * 44100.0f);
+    // Calculate samples in one 16th note using the current sample rate.
+    float stepSamples = std::min((float)bufferLength, (60.0f / (currentBpm * 4.0f)) * AUDIO_SAMPLE_RATE);
     float mVal = move->value;
 
     // Calculate base indices and apply drift
@@ -1211,11 +1212,11 @@ public:
       return;
     }
 
-    int delayTime = (int) (timeMs->value * 44.1f);
+    int delayTime = (int) (timeMs->value * (AUDIO_SAMPLE_RATE / 1000.0f));
     int bpm = this->bpm->value;
     int beats = this->timeBeat->intValue;
 
-    delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
+    delayTime = delayTime + beats * (60.0f * AUDIO_SAMPLE_RATE) / (bpm * 4);
 
     delayTime = delayTime / subsample;
 
@@ -1281,7 +1282,7 @@ public:
       return;
     }
 
-    int delayTime = (int) (timeMs->getValue() * 44.1f);
+    int delayTime = (int) (timeMs->getValue() * (AUDIO_SAMPLE_RATE / 1000.0f));
     int bpm = this->bpm->getValue();
     int beats = this->timeBeat->getValueDiscrete();
 
@@ -1295,7 +1296,7 @@ public:
     // float to byte: value * 255
     // byte to float: value / 255
 
-    delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
+    delayTime = delayTime + beats * (60.0f * AUDIO_SAMPLE_RATE) / (bpm * 4);
 
 
     //int loopLength = (int) (60.0f / (bpm * 4 * frac) * 44100);
@@ -1365,7 +1366,7 @@ public:
     float in = this->in->value;
     float vol = this->vol->value;
 
-    int delayTime = (int) (timeMs->value * 44.1f);
+    int delayTime = (int) (timeMs->value * (AUDIO_SAMPLE_RATE / 1000.0f));
     int bpm = this->bpm->value;
     int beats = this->timeBeat->getValueDiscrete();
 
@@ -1379,7 +1380,7 @@ public:
     // float to byte: value * 255
     // byte to float: value / 255
 
-    delayTime = delayTime + beats * (60.0f * 44100) / (bpm * 4);
+    delayTime = delayTime + beats * (60.0f * AUDIO_SAMPLE_RATE) / (bpm * 4);
 
     int readHead = writehead - delayTime;
     while (readHead < 0) readHead += bufferLength;

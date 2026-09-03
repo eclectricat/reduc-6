@@ -4,6 +4,8 @@
 
 using namespace std;
 
+float gAudioSampleRate = 44100.0f;
+
 SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int partId, ParameterInfo* delayParams[], Signal **fxBus) {
 
   registry->setPartAndVoiceTag(partId,0);

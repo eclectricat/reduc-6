@@ -21,7 +21,7 @@ public:
   ~CookieBoxPluginApp();
 
   // Initialize plugin and core engine
-  void initialize();
+  void initialize(double sampleRate = 44100.0);
 
   // Called by host/audio thread to process audio (platform-specific adapter)
   void processAudio(double** outputs, int nFrames, int nChannels);

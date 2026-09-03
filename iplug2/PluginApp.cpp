@@ -116,7 +116,13 @@ private:
 CookieBoxPluginApp::CookieBoxPluginApp() {}
 CookieBoxPluginApp::~CookieBoxPluginApp() {}
 
-void CookieBoxPluginApp::initialize() {
+void CookieBoxPluginApp::initialize(double sampleRate) {
+  if (sampleRate <= 1.0) {
+    sampleRate = 44100.0;
+  }
+
+  gAudioSampleRate = static_cast<float>(sampleRate);
+
   if (!display) {
     internalDisplay = std::make_unique<IPlugDisplay>();
     display = internalDisplay.get();

@@ -42,7 +42,7 @@ constexpr int kNumPresets = 1;
 CookiePlug::CookiePlug(const InstanceInfo& info)
   : Plugin(info, MakeConfig(kNumParams, kNumPresets))
   , mUI(mApp) {
-  mApp.initialize();
+  mApp.initialize(GetSampleRate());
     
   
   mMakeGraphicsFunc = [&]() {
@@ -71,10 +71,6 @@ void CookiePlug::ProcessBlock(sample** inputs, sample** outputs, int nFrames) {
 
 void CookiePlug::ProcessMidiMsg(const IMidiMsg& msg) {
   mApp.processMidiMessage(msg.mStatus, msg.mData1, msg.mData2);
-}
-
-void CookiePlug::OnReset() {
-  mApp.setSampleRate(GetSampleRate());
 }
 
 

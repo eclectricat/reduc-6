@@ -17,7 +17,7 @@ constexpr int kNumPresets = 1;
 CookieBoxPlugin::CookieBoxPlugin(const InstanceInfo& info)
   : Plugin(info, MakeConfig(kNumParams, kNumPresets))
   , mUI(mApp) {
-  mApp.initialize();
+  mApp.initialize(GetSampleRate());
 
   mMakeGraphicsFunc = [&]() {
     return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS, GetScaleForScreen(PLUG_WIDTH, PLUG_HEIGHT));
