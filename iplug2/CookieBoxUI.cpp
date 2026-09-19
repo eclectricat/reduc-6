@@ -14,14 +14,28 @@ BEGIN_IPLUG_NAMESPACE
 BEGIN_IGRAPHICS_NAMESPACE
 
 namespace {
-static const IColor kBg(255, 18, 21, 24);
-static const IColor kPanel(255, 27, 31, 35);
-static const IColor kPanelBright(255, 42, 47, 53);
+static const IColor kBg(255, 255, 243, 176);
+static const IColor kDisplayPanel(255, 224, 224, 224);
+static const IColor kKnob(255, 255, 255, 255);
+static const IColor kBlack(255, 0, 0, 0);
 static const IColor kInk(255, 230, 236, 240);
 static const IColor kAccent(255, 60, 170, 190);
+static const std::array<IColor, 10> kButtonColors = {
+  IColor(255, 239, 83, 80),
+  IColor(255, 255, 152, 0),
+  IColor(255, 255, 235, 59),
+  IColor(255, 156, 204, 101),
+  IColor(255, 76, 175, 80),
+  IColor(255, 38, 198, 218),
+  IColor(255, 66, 165, 245),
+  IColor(255, 126, 87, 194),
+  IColor(255, 176, 176, 176),
+  IColor(255, 96, 96, 96)
+};
 
 static const IText kLabelText(13.f, kInk, "UI-Label", EAlign::Center, EVAlign::Middle);
-static const IText kDisplayText(28.f, kInk, "UI-Display", EAlign::Near, EVAlign::Middle);
+static const IText kButtonLabelText(13.f, kBlack, "UI-Label", EAlign::Center, EVAlign::Middle);
+static const IText kDisplayText(28.f, kBlack, "UI-Display", EAlign::Near, EVAlign::Middle);
 
 class DisplayControl final : public IControl {
 public:
@@ -29,8 +43,8 @@ public:
     : IControl(bounds), mApp(app) {}
 
   void Draw(IGraphics& g) override {
-    g.FillRect(kPanel, mRECT);
-    g.DrawRect(kAccent, mRECT, nullptr, 2.f);
+    g.FillRect(kDisplayPanel, mRECT);
+    g.DrawRect(kBlack, mRECT, nullptr, 1.5f);
 
     const IRECT row0 = mRECT.GetReducedFromTop(4.f).GetFromTop(mRECT.H() * 0.5f - 2.f).GetPadded(-6.f);
     const IRECT row1 = mRECT.GetReducedFromBottom(4.f).GetFromBottom(mRECT.H() * 0.5f - 2.f).GetPadded(-6.f);
@@ -59,8 +73,8 @@ public:
     const float cx = knobRect.MW();
     const float cy = knobRect.MH();
 
-    g.FillCircle(kPanelBright, cx, cy, r);
-    g.DrawCircle(kInk, cx, cy, r, nullptr, 1.5f);
+    g.FillCircle(kKnob, cx, cy, r);
+    g.DrawCircle(kBlack, cx, cy, r, nullptr, 1.5f);
 
     // Use a conventional 270-degree knob sweep from ~7:30 (min) to ~4:30 (max).
     const float startTheta = 0.75f * static_cast<float>(M_PI);
@@ -69,7 +83,7 @@ public:
     const float ix = cx + std::cos(theta) * r * 0.72f;
     const float iy = cy + std::sin(theta) * r * 0.72f;
 
-    g.DrawLine(kAccent, cx, cy, ix, iy, nullptr, 3.f);
+    g.DrawLine(kBlack, cx, cy, ix, iy, nullptr, 3.f);
     g.DrawText(kLabelText, mLabel.c_str(), labelRect);
   }
 
@@ -106,21 +120,21 @@ private:
 
 class ButtonControl final : public IControl {
 public:
-  ButtonControl(const IRECT& bounds, CookieBoxPluginApp& app, int buttonIndex, char keyLabel)
+  ButtonControl(const IRECT& bounds, CookieBoxPluginApp& app, int buttonIndex, char keyLabel, const IColor& color)
     : IControl(bounds)
     , mApp(app)
     , mButtonIndex(buttonIndex)
-    , mKeyLabel(1, keyLabel) {
+    , mKeyLabel(1, keyLabel)
+    , mColor(color) {
     SetWantsMultiTouch(true);
   }
 
   void Draw(IGraphics& g) override {
-    const IColor fill = mIsDown ? kAccent : kPanelBright;
-    const IColor outline = mIsDown ? kInk : kAccent;
+    const IColor fill = mIsDown ? kKnob : mColor;
 
     g.FillRoundRect(fill, mRECT, 7.f);
-    g.DrawRoundRect(outline, mRECT, 7.f, nullptr, 2.f);
-    g.DrawText(kLabelText, mKeyLabel.c_str(), mRECT);
+    g.DrawRoundRect(kBlack, mRECT, 7.f, nullptr, 1.5f);
+    g.DrawText(kButtonLabelText, mKeyLabel.c_str(), mRECT);
   }
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override {
@@ -160,6 +174,7 @@ private:
   CookieBoxPluginApp& mApp;
   int mButtonIndex = 0;
   std::string mKeyLabel;
+  IColor mColor;
   bool mIsDown = false;
   std::unordered_set<ITouchID> mActiveTouchIDs;
 };
@@ -205,7 +220,7 @@ void CookieBoxUI::Attach(IGraphics* pGraphics) {
 
   // Stable landscape-friendly proportions that also behave on square/tall views.
   const IRECT topArea = content.GetFromTop(content.H() * 0.24f);
-  const IRECT displayRect = topArea.GetMidHPadded(topArea.W() * 0.25f);
+  const IRECT displayRect = topArea.GetMidHPadded(topArea.W() * 0.25f).GetReducedFromTop(16.f);
 
   auto* display = new DisplayControl(displayRect, mApp);
   mDisplayControl = display;
@@ -224,7 +239,7 @@ void CookieBoxUI::Attach(IGraphics* pGraphics) {
   const float buttonW = buttonRow.W() / static_cast<float>(keys.size());
   for (int i = 0; i < static_cast<int>(keys.size()); ++i) {
     const IRECT r = IRECT(buttonRow.L + i * buttonW, buttonRow.T, buttonRow.L + (i + 1) * buttonW, buttonRow.B).GetPadded(-4.f);
-    mGraphics->AttachControl(new ButtonControl(r, mApp, i, keys[i]));
+    mGraphics->AttachControl(new ButtonControl(r, mApp, i, keys[i], kButtonColors[i]));
   }
 }
 
