@@ -48,6 +48,8 @@ The hardware abstraction layer encompasses display, knobs and buttons, audio int
 The iPlug2 UI was on purpose kept minimal and identical to the interface on the teensy. Of course, UI improvements and advanced features would be low hanging fruits 
 (e.g. better browser for stored projects and patches, real-time audio waveform display, graphical display, recording of audio performances)
 
+https://github.com/user-attachments/assets/7c6e47cf-2d41-42b3-9634-84092a9d2f8b
+
 ### Build instructions
 
 Building the code using the xcode project should be relatively straightforward on MacOS. It relies on a checkout of iPlug2. Currently, we use the version from May 2025
