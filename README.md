@@ -4,7 +4,7 @@ Source code and hardware specs of a proof-of-concept minimal standalone sound ma
 
 Originally designed as a minimal low-cost hardware device, but can also be built for desktop or iOS (plugin, or standalone app).
 
-The goal is to explore minimal hardware UI for sound creation, as a sandbox with contrained interaction surface yet infinite possibilities.
+The goal is to explore minimal hardware UI for sound creation, as a sandbox with constrained interaction surface yet infinite possibilities.
 
 
 ## Features
