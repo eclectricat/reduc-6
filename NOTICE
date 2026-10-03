@@ -1,0 +1,24 @@
+NOTICE — Licensing scope and history
+
+This repository is licensed under the CookieBox No-AI License v1.0 (see
+LICENSE), except for the third-party material listed below, which remains
+under its own license and is NOT covered by the CookieBox No-AI License:
+
+* iplug2/CookiePlug/ contains project scaffolding generated from the iPlug2
+  framework templates (project files, scripts, plists). iPlug2 is an
+  external dependency by Oli Larkin and contributors, governed by its own
+  license; see https://github.com/iPlug2/iPlug2. The iPlug2 SDK source is
+  not vendored into this repository.
+* The Teensy Audio Library (PJRC), the Arduino/Teensy core libraries, and
+  ArduinoJson are external dependencies with their own licenses; their
+  source code is not part of this repository.
+* Build output directories (.pio/, iplug2/build-test/) are not part of the
+  licensed work.
+
+License history:
+
+The CookieBox No-AI License v1.0 was adopted on 2026-10-03. The repository
+was first published publicly in June 2024 without a formal LICENSE file and
+was described as MIT-licensed; any copies received before 2026-10-03 remain
+governed by the terms under which they were received. The CookieBox No-AI
+License v1.0 applies to this version and all subsequent versions.
