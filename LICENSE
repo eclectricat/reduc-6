@@ -1,0 +1,82 @@
+CookieBox No-AI License v1.0
+
+SPDX-License-Identifier: LicenseRef-CookieBox-NoAI-1.0
+
+Copyright (c) 2024-2026 Eclectricat (https://github.com/eclectricat)
+
+This license is based on the MIT License, with added restrictions on use by
+AI/ML systems. It is intentionally NOT an "Open Source" license as defined
+by the Open Source Initiative.
+
+
+SECTION 1 — PERMISSION FOR HUMAN USE
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this license, including Section 2, shall be
+included in all copies or substantial portions of the Software.
+
+A human being may read the Software and manually create derivative works.
+Commercial use and proprietary derivative works are permitted.
+
+
+SECTION 2 — AI/ML RESTRICTIONS
+
+Notwithstanding Section 1, the Software, in whole or in part, shall not be
+provided as input to, or ingested, read, indexed, embedded, or otherwise
+processed by, any AI System. In particular, the following are prohibited:
+
+(a) using the Software to train, pre-train, fine-tune, continue training,
+    reinforce, or distill a model;
+
+(b) including the Software in any training or evaluation dataset, benchmark,
+    embedding, vector database, index, or retrieval/RAG system used by an AI
+    System;
+
+(c) processing the Software with an AI System for inference, analysis,
+    summarization, translation, transformation, completion, recommendation,
+    or generation, including via code-completion systems, AI coding
+    assistants, or autonomous/agentic coding systems, whether the Software
+    is provided directly, as prompt or context, or via a retrieval,
+    indexing, caching, or storage mechanism;
+
+(d) using an AI System to create a derivative work of the Software, to
+    extract, reproduce, port, refactor, rewrite, or extend any portion of
+    the Software, or to incorporate any output of an AI System that is based
+    on, derived from, or contains any portion of the Software into this or
+    any other work or project.
+
+
+SECTION 3 — DEFINITIONS
+
+"AI System" means any software, product, or service that uses machine
+learning, neural networks, large language models, or other models trained on
+data to generate, complete, transform, analyze, classify, or make
+predictions about content, including any tool that incorporates such a
+system.
+
+Ordinary deterministic development tools that do not use machine learning on
+the Software — including compilers, interpreters, linkers, build systems,
+version control systems, package managers, text editors, syntax
+highlighting, linters, formatters, and static analysis tools — are not AI
+Systems and are not restricted by Section 2.
+
+"Derivative work" has the meaning given by applicable copyright law and, for
+the avoidance of doubt, additionally includes any output of an AI System
+produced using the Software as input.
+
+
+SECTION 4 — NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
