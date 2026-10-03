@@ -4,7 +4,7 @@ Source code and hardware specs of a proof-of-concept minimal standalone sound ma
 
 Originally designed as a minimal low-cost hardware device, but can also be built for desktop or iOS (plugin, or standalone app).
 
-The goal is to explore minimal hardware UI for sound creation, as a sandbox with contrained interaction surface yet infinite possibilities.
+The goal is to explore minimal hardware UI for sound creation, as a sandbox with constrained interaction surface yet infinite possibilities.
 
 
 ## Features
@@ -47,6 +47,8 @@ The hardware abstraction layer encompasses display, knobs and buttons, audio int
 
 The iPlug2 UI was on purpose kept minimal and identical to the interface on the teensy. Of course, UI improvements and advanced features would be low hanging fruits 
 (e.g. better browser for stored projects and patches, real-time audio waveform display, graphical display, recording of audio performances)
+
+https://github.com/user-attachments/assets/7c6e47cf-2d41-42b3-9634-84092a9d2f8b
 
 ### Build instructions
 
