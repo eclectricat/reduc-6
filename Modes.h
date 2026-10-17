@@ -312,6 +312,10 @@ class KeyboardMode : public Mode {
   ParameterInfoDiscrete *pMode = NULL;
   int playingNotesPerKey[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
 
+  // for note length recording: when the key was pressed and which sequencer step it was recorded to
+  unsigned long pressTimePerKey[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  int recordedStepPerKey[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+
   int halfNotesIntervalsMajor[8] = {0,2,4,5,7,9,11,12}; 
 
 };

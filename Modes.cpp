@@ -2097,6 +2097,15 @@ bool KeyboardMode::pushButtonPressed(int buttonIndex) {
       globalNotes[noteIndex].note = (int8_t)(key->getValueDiscrete() + this->halfNotesIntervalsMajor[noteIndexInScale]);
       CBLog.print("Recorded at position ");
       CBLog.println(positionToRecord);
+
+      // remember press time and position for note length recording on release.
+      // only ONE key may own a step: if another key previously claimed this step,
+      // drop its claim so its release does not overwrite our note's length
+      for (int k = 0; k < 8; k++) {
+        if (recordedStepPerKey[k] == positionToRecord) recordedStepPerKey[k] = -1;
+      }
+      pressTimePerKey[buttonIndex] = System::millis();
+      recordedStepPerKey[buttonIndex] = positionToRecord;
     }
 
   }
@@ -2120,6 +2129,25 @@ bool KeyboardMode::pushButtonReleased(int buttonIndex) {
   }
 
   if (mode->getValueDiscrete() > 0) {
+
+    // record quantized note length
+    if (recordedStepPerKey[buttonIndex] != -1) {
+      int part = globalState->selectedPart;
+      Sequence *s = this->globalState->patterns[globalState->selectedPattern][part];
+      int32_t noteIndex = s->steps[recordedStepPerKey[buttonIndex]];
+      if (noteIndex != -1) {
+        unsigned long heldMs = System::millis() - pressTimePerKey[buttonIndex];
+        float stepMs = globalState->sequencerMode.interBeatMs;
+        int lengthSteps = (int)std::lround(heldMs / stepMs);
+        if (lengthSteps < 1) lengthSteps = 1;
+        if (lengthSteps > s->NB_STEPS) lengthSteps = s->NB_STEPS;
+        globalNotes[noteIndex].length = (int8_t)lengthSteps;
+        CBLog.print("Note length recorded: ");
+        CBLog.println(lengthSteps);
+      }
+      recordedStepPerKey[buttonIndex] = -1;
+    }
+
     if (!globalState->seqPlaying) { // go to next step
       int part = globalState->selectedPart;
       globalState->sequencerMode.cursorPos = (globalState->sequencerMode.cursorPos + 1) % globalState->sequencerMode.patternLengths[part]->getValueDiscrete();
@@ -2127,8 +2155,6 @@ bool KeyboardMode::pushButtonReleased(int buttonIndex) {
       // TODO: store note length
     }
   }
-
-  
 
   return true;
 }
