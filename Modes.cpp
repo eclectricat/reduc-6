@@ -1289,6 +1289,48 @@ void SequencerMode::processDoubleShiftParameter(int potIndex, int potVal) {
   //display->print(param->printableValue());
 }
 
+// buttons in double shift mode: 0/1 = page -/+, 2/3 = pattern -/+, 7 = play toggle
+// returns true if the button was consumed
+bool SequencerMode::handleDoubleShiftButton(int buttonIndex) {
+  int handled = -1; // index into doubleShiftParameters display slot, -1 = not handled
+
+  if (buttonIndex == 0) { // page -
+    int v = page->getValueDiscrete() - 1;
+    if (v < 0) v = 7;
+    page->setValue(v);
+    handled = 0;
+  } else if (buttonIndex == 1) { // page +
+    int v = page->getValueDiscrete() + 1;
+    if (v > 7) v = 0;
+    page->setValue(v);
+    handled = 0;
+  } else if (buttonIndex == 2) { // pattern -
+    int v = selectedPattern->getValueDiscrete() - 1;
+    if (v < 0) v = NB_PATTERNS - 1;
+    selectedPattern->setValue(v);
+    handled = 2;
+  } else if (buttonIndex == 3) { // pattern +
+    int v = selectedPattern->getValueDiscrete() + 1;
+    if (v > NB_PATTERNS - 1) v = 0;
+    selectedPattern->setValue(v);
+    handled = 2;
+  } else if (buttonIndex == 7) { // play toggle
+    sequencerPlaying->setValue(sequencerPlaying->getValueDiscrete() == 1 ? 0 : 1);
+    handled = 3;
+  }
+
+  if (handled < 0) return false;
+
+  // update the display slot of the changed parameter
+  display->setCursor(4 * handled, 1);
+  display->print("   ");
+  display->setCursor(4 * handled, 1);
+  char buffer[] = "____";
+  doubleShiftParameters[handled]->renderPrintableValue(buffer);
+  display->print(buffer);
+  return true;
+}
+
 
 bool SequencerMode::pushButtonPressed(int buttonIndex) {
 
@@ -1302,6 +1344,12 @@ bool SequencerMode::pushButtonPressed(int buttonIndex) {
         Sequence::clearNoteLocks(noteIndex);
       }
     }
+  }
+
+  // in double shift mode, buttons flip page/pattern/play; must run before the
+  // generic handler, which would otherwise treat buttons as part/mode switches
+  if (this->doubleShiftMode) {
+    if (handleDoubleShiftButton(buttonIndex)) return true;
   }
 
   int consumed = handleGenericPushButtonEvents(buttonIndex);
@@ -1398,6 +1446,12 @@ void SequencerMode::cleanUpAfterStop() {
 }
 
 bool SequencerModeGraphic::pushButtonPressed(int buttonIndex) {
+
+  // in double shift mode, buttons flip page/pattern/play; must run before the
+  // generic handler, which would otherwise treat buttons as part/mode switches
+  if (seqMode->doubleShiftMode) {
+    if (seqMode->handleDoubleShiftButton(buttonIndex)) return true;
+  }
 
   int consumed = handleGenericPushButtonEvents(buttonIndex);
   if (consumed == 2) return true;

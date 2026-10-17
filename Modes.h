@@ -197,6 +197,7 @@ class SequencerMode: public Mode {
   void processLockParameter(int potIndex, int value);
   void displayDoubleShiftMode();
   void processDoubleShiftParameter(int potIndex, int value);
+  bool handleDoubleShiftButton(int buttonIndex);
 
   void maybePlay(); // internal clock
   void play(); // called directly when externally clocked
