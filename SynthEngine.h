@@ -157,6 +157,10 @@ protected:
 float blep(float t, float dt);
 float blep2(float t, float dt, float pw);
 
+// one shared sine table for all oscillators (previously each MultiOsc carried its own 4KB table).
+// initialized once in SynthEngine.cpp. amplitude is 0.5 to match MultiOsc's previous scaling.
+extern float gSineTable[1024];
+
 class SawOsc : public Signal {
 public:
   SawOsc(Registry* r, Signal* f, Signal* pw, Signal* wave, Signal* subL, Signal* subP)
@@ -180,12 +184,17 @@ public:
     return "osc";
   }
 
+  // optional phase-modulation input, scaled by pmIndex (fmAmt). NULL = off.
+  void setPM(Signal* input, Signal* index) { pmInput = input; pmIndex = index; }
+
 private:
   Signal* freq;
   Signal* pulseWidth;
   Signal* waveblend;
   Signal* subLevel = NULL;
   Signal* subPhase = NULL;
+  Signal* pmInput = NULL;
+  Signal* pmIndex = NULL;
   //float value;
   float phase;
   int subHalf = 0;  // 0 or 1
@@ -572,6 +581,29 @@ protected:
   //float value = 0;
 };
 
+// calculates 2^(oct + semi/12); fast_exp2f only runs when the inputs change (i.e. on knob moves)
+class PitchMultiplier : public Signal {
+public:
+  PitchMultiplier(Registry* r, Signal* oct, Signal* semi) : Signal(r), oct(oct), semi(semi) {}
+
+  void update() override {
+    float o = oct->value;
+    float s = semi->value;
+    if (o != lastO || s != lastS) {
+      lastO = o;
+      lastS = s;
+      value = fast_exp2f(o + s * (1.0f / 12.0f));
+    }
+  }
+
+  float getValue(int channel = 0) override { return value; }
+  virtual std::string signame() const override { return "pitchMultiplier"; }
+
+private:
+  Signal *oct, *semi;
+  float lastO = -1, lastS = -1;
+};
+
 class ContinuousOctaver : public Signal {
 public:
   ContinuousOctaver(Registry* r, Signal* exponent)
@@ -658,6 +690,29 @@ private:
 
 // oscillator with selectable waveform: sin, saw, square, triangle
 
+// simple sine modulator for drum FM; also audible on its own (via osc2Vol).
+class FmModulator : public Signal {
+public:
+  FmModulator(Registry* r, Signal* freq) : Signal(r) {
+    this->freq = freq;
+  }
+
+  void update() override {
+    phase = phase + freq->value * rateInverse;
+    if (phase > 1) phase -= 1;
+    if (phase < 0) phase += 1; // through-zero safe
+    value = gSineTable[(int)(phase * 1024) & 1023];
+  }
+
+  virtual std::string signame() const { return "fmModulator"; }
+
+  float getValue(int channel = 0) { return value; }
+
+private:
+  Signal* freq;
+  float phase = 0;
+};
+
 class MultiOsc : public Signal {
 public:  MultiOsc(Registry* r, Signal* freq, StaticSignalDiscrete* wave)
     : Signal(r) {
@@ -665,37 +720,47 @@ public:  MultiOsc(Registry* r, Signal* freq, StaticSignalDiscrete* wave)
     this->wave = wave;
     value = 0;
     phase = 0;
+  }
 
-      for (int i=0; i<1024; i++) {
-        sineTable[i] = arm_sin_f32((i / 1024.0f) * 2 * PI) * 0.5f;
-      }
-  }   
+  // optional phase-modulation input, scaled by pmIndex (fmAmt). NULL = off.
+  void setPM(Signal* input, Signal* index) { pmInput = input; pmIndex = index; }
+  // feedback amount (0..~2); scales the last sample back into the phase
+  void setFeedback(Signal* fb) { feedback = fb; }
 
   void update() {
+
+    float pm = 0;
+    if (pmInput != NULL) pm = pmInput->value * pmIndex->value;
+    if (feedback != NULL) pm += feedback->value * lastValue;
 
     float increment = freq->value * rateInverse;
     phase = phase + increment;
     if (phase > 1) phase -= 1;
     if (phase < 0) phase += 1; // to support through zero mod
 
+    float p = phase + pm;
+    p = p - (long)p;
+    if (p < 0) p += 1;
+
     switch (wave->getValueDiscrete()) {
       case 0:
-        value = phase - 0.5f; // saw
+        value = p - 0.5f; // saw
         break;
       case 1: // triangle
-        value = (phase < 0.5f) ? phase : 1 - phase;
+        value = (p < 0.5f) ? p : 1 - p;
         value = (value * 2) - 0.5;
         break;
       case 2: // square
-        value = (phase < 0.5f) ? -0.5f : 0.5f;
+        value = (p < 0.5f) ? -0.5f : 0.5f;
         break;
       case 3: // sine
-        value = sineTable[(int)(phase * 1024) % 1024];
+        value = gSineTable[(int)(p * 1024) & 1023];
         break;
       default:
         value = 0;
         break;
     }
+    lastValue = value;
   }
 
   virtual std::string signame() const {
@@ -704,13 +769,16 @@ public:  MultiOsc(Registry* r, Signal* freq, StaticSignalDiscrete* wave)
 
   float getValue(int channel = 0) {
     return value;
-  } 
+  }
 
 private:
   Signal* freq;
   StaticSignalDiscrete* wave;
   float phase;
-  float sineTable[1024]; // with 1024 samples, we can represent frequencies up to around 20kHz without too much aliasing, which is enough for our purposes
+  Signal* pmInput = NULL;
+  Signal* pmIndex = NULL;
+  Signal* feedback = NULL;
+  float lastValue = 0;
 };  
 
 
@@ -1734,6 +1802,8 @@ private:
   StaticSignal* o2wave = NULL;
   StaticSignal* o1pw = NULL;
   StaticSignal* o2pw = NULL;
+  StaticSignalDiscrete* o2Semi = NULL;
+  StaticSignal* fmAmt = NULL;
   StaticSignal* subVol = NULL;
   StaticSignal* subPhase = NULL;
   StaticSignal* envA = NULL;
@@ -1793,6 +1863,11 @@ private:
   StaticSignalDiscrete* drumOscType = NULL;
   StaticSignal* pitchEnvDR = NULL;
   StaticSignal* ampEnvDR = NULL;
+
+  StaticSignal* fmAmt = NULL;
+  StaticSignal* osc2Ratio = NULL;
+  StaticSignal* fmFb = NULL;
+  StaticSignal* osc2Vol = NULL;
   
   StaticSignal* envPitchAmount = NULL;
 

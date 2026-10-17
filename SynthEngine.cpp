@@ -6,6 +6,15 @@ using namespace std;
 
 float gAudioSampleRate = 44100.0f;
 
+// shared sine table, initialized once at startup
+float gSineTable[1024];
+
+void initSineTable() {
+  for (int i = 0; i < 1024; i++) {
+    gSineTable[i] = arm_sin_f32((i / 1024.0f) * 2 * PI) * 0.5f;
+  }
+}
+
 SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int partId, ParameterInfo* delayParams[], Signal **fxBus) {
 
   registry->setPartAndVoiceTag(partId,0);
@@ -20,6 +29,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   o2wave = new StaticSignal(registry, 1.0f);
   o1pw = new StaticSignal(registry, 0.5f);
   o2pw = new StaticSignal(registry, 0.5f);
+  o2Semi = new StaticSignalDiscrete(registry, 0.0f);
+  fmAmt = new StaticSignal(registry, 0.0f);
 
   subVol = new StaticSignal(registry, 0.0f);
   subPhase = new StaticSignal(registry, 1.0f);
@@ -61,6 +72,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
   ParameterInfo *pO2Wave = new ParameterInfo(" Wav", 0.0f, 1.0f, o2wave, "o2wave");
   ParameterInfo *pO1Pw = new ParameterInfo("1PW", 0.01f, 0.99f, o1pw, "o1pw");
   ParameterInfo *pO2Pw = new ParameterInfo("2PW", 0.01f, 0.99f, o2pw, "o2pw");
+  ParameterInfo *pO2Semi = new ParameterInfoDiscrete("2Sem", 0.0f, 12.0f, o2Semi, "o2Semi");
+  ParameterInfo *pFmAmt = new ParameterInfo("FM", 0.0f, 3.0f, fmAmt, "fmAmt");
   ParameterInfo *pSubVol = new ParameterInfo(" Sub", 0.0f, 1.0f, subVol, "subVol");
   ParameterInfo *pSubPhase = new ParameterInfo(" sPh", 0.0f, 1.0f, subPhase, "subPhase");
 
@@ -96,8 +109,8 @@ SignalPtr SynthPart::buildSynth(Registry* registry, SynthParameters *menu, int p
 
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pO1Wave, pO1Vol, pDetune }, 0);
   menu->addPage(vector<ParameterInfo *>{ pO1Pw, pLfoToPW1, pSubVol, pSubPhase}, 0);
-  menu->addPage(vector<ParameterInfo *>{ pO2Oct, pO2Wave, pO2Vol, pDummy }, 0);
-  menu->addPage(vector<ParameterInfo *>{ pO2Pw, pLfoToPW2, pDummy, pDummy }, 0); // noise, crossmod
+  menu->addPage(vector<ParameterInfo *>{ pO2Oct, pO2Wave, pO2Vol, pO2Semi }, 0);
+  menu->addPage(vector<ParameterInfo *>{ pO2Pw, pLfoToPW2, pFmAmt, pDummy }, 0); // noise, crossmod
 
   menu->addPage(vector<ParameterInfo *>{ pCutoff, pResonance, pEnvFilterAmount, pDummy }, 1);
   menu->addPage(vector<ParameterInfo *>{ pFEnvA, pFEnvD, pFEnvS, pFEnvR }, 2);
@@ -143,12 +156,13 @@ void SynthPart::createSynthVoice(int i, Registry *registry) {
 
   SawOsc *osc = new SawOsc(registry, octavedFreq1,totalO1PW, o1wave, subVol, subPhase);
 
-  Signal *octavedFreq2 = new VCA(registry, vibratoPitchFreq, new Octaver(registry, o2Oct));
+  Signal *octavedFreq2 = new VCA(registry, vibratoPitchFreq, new PitchMultiplier(registry, o2Oct, o2Semi));
 
   Signal *pwm2 = new VCA(registry, lfo, lfoToPW2);
   Signal *totalO2PW = new Mixer(registry, {o2pw, pwm2}, 1.0f);
 
   SawOsc *osc2 = new SawOsc(registry, octavedFreq2, totalO2PW, o2wave, NULL, NULL);
+  osc->setPM(osc2, fmAmt); // crossmod: osc2 phase-modulates osc1
 
   VCA *scaledOsc1 = new VCA(registry, osc, o1vol);
   VCA *scaledOsc2 = new VCA(registry, osc2, o2vol);
@@ -197,6 +211,11 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
 
   ampEnvDR = new StaticSignal(registry, 5.0f);
 
+  fmAmt = new StaticSignal(registry, 0.0f);
+  osc2Ratio = new StaticSignal(registry, 1.0f);
+  fmFb = new StaticSignal(registry, 0.0f);
+  osc2Vol = new StaticSignal(registry, 0.0f);
+
   sinVol = new StaticSignal(registry, 0.5f);
   noiseVol = new StaticSignal(registry, 0.5f);
 
@@ -233,6 +252,11 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   ParameterInfo *pEnvPitchAmount = new ParameterInfo("Env ", 0, 5, envPitchAmount, "envPitchAmount"); // 0 to 5 octaves
 
   ParameterInfo *pAmpEnvDR = new ParameterInfo("ADR ", 0, 30, ampEnvDR, "ampEnvDR");
+
+  ParameterInfo *pFmAmt = new ParameterInfo("FM", 0, 1, fmAmt, "fmAmt");
+  ParameterInfo *pOsc2Ratio = new ParameterInfo("RAT", 0.25f, 16.0f, osc2Ratio, "osc2Ratio");
+  ParameterInfo *pFmFb = new ParameterInfo("FB", 0, 2, fmFb, "fmFb");
+  ParameterInfo *pOsc2Vol = new ParameterInfo("O2V", 0, 1, osc2Vol, "osc2Vol");
 
   ParameterInfo *pNoiseVol = new ParameterInfo("Noi ", 0, 1, noiseVol, "noiseVol");
   ParameterInfo *pSinVol = new ParameterInfo("Osc ", 0, 1, sinVol, "sinVol");
@@ -278,6 +302,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   menu->addPage(vector<ParameterInfo *>{ pO1Oct, pDrumOscType, pPitchEnvDR, pEnvPitchAmount}, 1);
 
   menu->addPage(vector<ParameterInfo *>{ pNoiseType, pHiPassCutoff, pHiPassRes, pClickLPF }, 1);
+  menu->addPage(vector<ParameterInfo *>{ pFmAmt, pOsc2Ratio, pFmFb, pOsc2Vol }, 2);
 
   menu->addPage(vector<ParameterInfo *>{ pLoPassCutoff, pOverdriveGain,  pHiPassCutoff2, pHiPassRes2, pDummy }, 2);
   menu->addPage(vector<ParameterInfo *>{ pStutterEnable, pStutterStart, pStutterEnd, pStutterMove }, 3);
@@ -299,9 +324,16 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   Signal *envInOctaves = new VCA(registry, pitchEnv, envPitchAmount);
   Signal *totalFreq = new VCA(registry, octavedFreq1, new ContinuousOctaver(registry, envInOctaves));
 
-  Signal* drumOsc = new MultiOsc(registry, totalFreq, drumOscType); // 
+  MultiOsc* drumOsc = new MultiOsc(registry, totalFreq, drumOscType); // 
+
+  // modulator (osc2): freq follows the pitch envelope too, scaled by osc2Ratio
+  Signal *osc2Freq = new VCA(registry, totalFreq, osc2Ratio);
+  FmModulator *fmMod = new FmModulator(registry, osc2Freq);
+  drumOsc->setPM(fmMod, fmAmt);
+  drumOsc->setFeedback(fmFb);
 
   Signal* osc = new VCA(registry, drumOsc, sinVol);
+  Signal* osc2Audible = new VCA(registry, fmMod, osc2Vol);
 
 
   Signal* noise = new VCA(registry, new MultiNoise(registry, noiseType),noiseVol);
@@ -315,7 +347,7 @@ SignalPtr DrumPart::buildSynth(Registry* registry, SynthParameters *menu, int pa
   //Signal *clickLP = new Digital2Pole(registry, click, clickLPF, new StaticSignal(NULL, 0));
   Signal *clickVCA = new VCA(registry, this->click, clickVol);
 
-  Signal *loPassed = new Digital2Pole(registry, new Mixer(registry, {noise, osc, clickVCA}, 1), loPassCutoff, dummyS);
+  Signal *loPassed = new Digital2Pole(registry, new Mixer(registry, {noise, osc, osc2Audible, clickVCA}, 1), loPassCutoff, dummyS);
 
   Signal *hip = new DigitalHiPass(registry, loPassed, hiPassCutoff2, hiPassRes2);
 
@@ -427,6 +459,8 @@ void Part::noteOff(int note, int velo) {
 }
 
 void SynthEngine::buildEngine(std::vector<SynthParameters*> allParams, StaticSignal *bpm) {
+
+  initSineTable();
 
   // create parameters for the global modules, i.e. FX
 
@@ -545,20 +579,35 @@ void SawOsc::update() {
     subHalf = (subHalf + 1) % 2;
   }
 
-  /*value = phase - 0.5f;
-  value = value * 2;
-  value = value - blep(phase, increment);  // assuming signal from -1 to 1
-  value = value / 2;*/
+  // sine is cheap and alias-free: pure table lookup, skip BLEP entirely
+  // sine sits at the LEFT end of the wave knob; threshold at 2% because the
+  // pot extremes are not reliably reachable
+  if (waveblend < 0.02f) {
+    float p = phase;
+    if (pmInput != NULL) p += pmInput->value * pmIndex->value;
+    p = p - (long)p;
+    if (p < 0) p += 1;
+    value = gSineTable[(int)(p * 1024) & 1023];
+    return;
+  }
 
-  float tempblep = blep(phase, increment);
-  float saw = phase - 0.5f;
+  // apply phase modulation (crossmod): shift phase before waveform computation
+  float p = phase;
+  if (pmInput != NULL) {
+    p += pmInput->value * pmIndex->value;
+    p = p - (long)p;
+    if (p < 0) p += 1;
+  }
+
+  float tempblep = blep(p, increment);
+  float saw = p - 0.5f;
   //saw = saw * 2;
   saw = saw - 0.5f * tempblep;  // blep is assuming signal from -1 to 1
   //saw = saw / 2;
 
-  float pulse = (phase - pw <= 0.f) ? -1.f : 1.f;
+  float pulse = (p - pw <= 0.f) ? -1.f : 1.f;
   pulse = pulse - tempblep;
-  pulse = pulse - blep2(phase, increment, pw);
+  pulse = pulse - blep2(p, increment, pw);
   pulse = pulse * 0.5f;
 
   value = waveblend * saw + (1-waveblend) * pulse;
